@@ -1,0 +1,60 @@
+┌───────────────────────────┐
+│  FILE DROPPED TO FOLDER   │
+│  (contracts/*/incoming)   │
+└─────────────┬─────────────┘
+              │
+              │ FileWatcher
+              ▼
+┌───────────────────────────┐
+│ InvoiceParser             │
+│---------------------------│
+│ - OCR / text              │
+│ - invoice header          │
+│ - invoice lines           │
+└─────────────┬─────────────┘
+              │
+              │ persist
+              ▼
+┌────────────────────────────────────┐
+│ Invoice                            │
+│------------------------------------│
+│ status: NEW                        │
+│ header data parsed                 │
+│                                    │
+│ InvoiceLine[]                      │
+│ - description                      │
+│ - quantity                         │
+│ - amount                           │
+│ - cost_node: NULL                  │
+│ - cost_type: NULL                  │
+└─────────────┬──────────────────────┘
+              │
+              │ CLI: generate-excel
+              │ (for ALL invoices NEW)
+              ▼
+┌───────────────────────────┐
+│ Invoice                   │
+│---------------------------│
+│ status: IN_PROGRESS       │
+│                           │
+│ Excel generated:          │
+│ - rows = InvoiceLine      │
+│ - editable columns:       │
+│   * contract (optional)   │
+│   * cost_node             │
+│   * cost_type             │
+└─────────────┬─────────────┘
+              │
+              │ user edits excel
+              │ CLI: apply-excel
+              ▼
+┌───────────────────────────┐
+│ Invoice                   │
+│---------------------------│
+│ status: PROCESSED         │
+│                           │
+│ InvoiceLine[]             │
+│ - cost_node ASSIGNED      │
+│ - cost_type ASSIGNED      │
+│ - ready for reports       │
+└───────────────────────────┘
