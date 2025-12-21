@@ -1,7 +1,5 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from contract_costs.model.invoice import Invoice
-from contract_costs.model.invoice_line import InvoiceLine
 from contract_costs.services.invoices.dto.parse import InvoiceParseResult
 
 

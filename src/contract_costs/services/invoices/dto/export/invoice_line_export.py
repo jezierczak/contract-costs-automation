@@ -10,7 +10,8 @@ class InvoiceLineExport:
     id: UUID | None              # None = nowa linia
     invoice_id: UUID | None      # None = koszt bez faktury
 
-    description: str
+    item_name: str
+    description: str | None
     quantity: Decimal
     unit: UnitOfMeasure
 

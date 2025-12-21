@@ -39,6 +39,7 @@ class FakeInvoiceParser(InvoiceParser):
                 InvoiceLineUpdate(
                     invoice_line_id=None,
                     invoice_ref=invoice_ref,
+                    item_name="Item name",
                     description="Material A",
                     quantity=Decimal("2"),
                     unit=UnitOfMeasure.PIECE,

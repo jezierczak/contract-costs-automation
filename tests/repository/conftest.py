@@ -86,6 +86,7 @@ def invoice_line_complete(contract_id_1):
         cost_node_id=uuid4(),
         cost_type_id=uuid4(),
         description="Complete line",
+        item_name="Kształtki"
     )
 
 
@@ -101,6 +102,7 @@ def invoice_line_missing_cost_node(contract_id_1):
         cost_node_id=None,
         cost_type_id=uuid4(),
         description="Missing cost node",
+        item_name="Missing item"
     )
 
 
@@ -116,6 +118,7 @@ def invoice_line_missing_cost_type(contract_id_2):
         cost_node_id=uuid4(),
         cost_type_id=None,
         description="Missing cost type",
+        item_name="Missing cost item"
     )
 
 @pytest.fixture
@@ -124,6 +127,7 @@ def cost_type_material():
         id=uuid4(),
         code="MAT",
         name="Material",
+        description="Description",
         is_active=True,
     )
 
@@ -135,6 +139,7 @@ def cost_type_service():
         code="SRV",
         name="Service",
         is_active=True,
+        description=None
     )
 
 from uuid import uuid4

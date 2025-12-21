@@ -3,6 +3,7 @@ from datetime import datetime
 from uuid import uuid4, UUID
 
 from contract_costs.model.invoice import Invoice, InvoiceStatus
+from contract_costs.repository.invoice_line_repository import InvoiceLineRepository
 from contract_costs.repository.invoice_repository import InvoiceRepository
 from contract_costs.services.invoices.dto.common import InvoiceUpdate
 
@@ -16,6 +17,7 @@ class InvoiceUpdateService:
 
     def __init__(self, invoice_repository: InvoiceRepository) -> None:
         self._invoice_repository = invoice_repository
+
 
     def apply(self, invoices: list[InvoiceUpdate]) -> dict[str,UUID]:
 
@@ -93,3 +95,4 @@ class InvoiceUpdateService:
                 status=InvoiceStatus.PROCESSED,
             )
             self._invoice_repository.update(updated)
+

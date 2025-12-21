@@ -21,7 +21,8 @@ class TestInvoiceLine:
             contract_id=uuid4(),
             cost_node_id=uuid4(),
             cost_type_id=uuid4(),
-            description="Test line"
+            description="Test line",
+            item_name="Test Item"
         )
 
         assert line.amount.net == Decimal("100")
@@ -42,6 +43,7 @@ class TestInvoiceLine:
             cost_node_id=uuid4(),
             cost_type_id=uuid4(),
             description="Work",
+            item_name="Test Work Name"
         )
 
         assert line.quantity == 3

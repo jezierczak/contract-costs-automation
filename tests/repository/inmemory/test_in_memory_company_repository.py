@@ -3,7 +3,8 @@ from uuid import uuid4
 from contract_costs.repository.inmemory.company_repository import (
     InMemoryCompanyRepository
 )
-from contract_costs.model.company import Company
+from contract_costs.model.company import Company, CompanyType, Address
+from contract_costs.services.companies.create_company_service import CreateCompanyService
 
 
 class TestInMemoryCompanyRepository:
@@ -73,6 +74,19 @@ class TestInMemoryCompanyRepository:
 
         assert repo.get(uuid4()) is None
 
+    def test_system_cannot_start_without_owner(self) -> None:
+        repo = InMemoryCompanyRepository()
+        assert not repo.exists_owner()
 
+    def test_owner_can_be_added(self) -> None:
+        repo = InMemoryCompanyRepository()
+        service = CreateCompanyService(repo)
 
+        service.execute(
+            name="My Company",
+            tax_number="123",
+            address=Address(street="str",city="city",zip_code="34-700",country="PL"),
+            role=CompanyType.OWN
+        )
 
+        assert repo.exists_owner()

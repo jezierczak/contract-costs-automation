@@ -68,6 +68,7 @@ def contract_company() -> Company:
 @pytest.fixture
 def contract_starter_1(contract_owner: Company,contract_company: Company) -> ContractStarter:
     return {    "name": "Contract Starter 1",
+                "code": "CONTRACT_STARTER1",
                 "contract_owner": contract_owner,
                 "client": contract_company,
                 "description": "Description",
@@ -89,8 +90,9 @@ def contract_1(contract_starter_1) -> Contract:
 def contract_2(contract_owner,contract_company) -> Contract:
     return Contract(
         id = uuid4(),
+        code="CODE",
         name = "Contract 2",
-        contract_owner = contract_owner,
+        owner= contract_owner,
         client = contract_company,
         description= "Description Contract 2",
 
@@ -107,16 +109,21 @@ def cost_node_tree_1() -> CostNodeInput:
     return {
         "code":"WYB",
         "name":"wyburzenia",
-
+        "quantity": Decimal("1"),
+        "unit": None,
         "budget":Decimal("100000"),
         "children": [
             { "code":"WYB_SCI",
             "name":"wyburzenia scian",
+              "quantity": Decimal("10"),
+              "unit": UnitOfMeasure.CUBIC_METER,
             "budget":Decimal("50000"),
             "children": []
             },
             {"code": "WYB_POS",
              "name": "wyburzenia posadzki",
+             "quantity": Decimal("100"),
+             "unit": UnitOfMeasure.SQUARE_METER,
              "budget": Decimal("50000"),
              "children": []
              }
@@ -135,6 +142,7 @@ def invoice_line_1(contract_1) -> InvoiceLine:
         unit = UnitOfMeasure.TON,
         amount = Amount(Decimal("10000"),VatRate.VAT_23),
         description = "Description1",
+        item_name="Item1"
     )
 
 @pytest.fixture
@@ -149,6 +157,7 @@ def invoice_line_2(contract_2) -> InvoiceLine:
         unit=UnitOfMeasure.METER,
         amount=Amount(Decimal("5000"), VatRate.VAT_8),
         description="Description2",
+        item_name="Item2"
     )
 
 @pytest.fixture
@@ -165,6 +174,8 @@ def root_node(node_contract_id):
         name="Root",
         budget=Decimal("1000"),
         is_active=True,
+        quantity= Decimal("1"),
+        unit=None,
     )
 
 
@@ -178,4 +189,6 @@ def child_node(node_contract_id, root_node):
         name="Child",
         budget=Decimal("500"),
         is_active=True,
+        quantity=Decimal("10"),
+        unit=UnitOfMeasure.METER,
     )

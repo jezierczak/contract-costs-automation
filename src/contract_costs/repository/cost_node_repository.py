@@ -11,6 +11,7 @@ class CostNodeRepository(ABC):
         """Persist new cost node"""
         ...
 
+
     @abstractmethod
     def add_all(self, cost_nodes: list[CostNode]) -> None:
         """Add new cost nodes group"""
@@ -43,6 +44,13 @@ class CostNodeRepository(ABC):
         ...
 
     @abstractmethod
+    def delete_by_contract(self, contract_id: UUID) -> None:
+        ...
+
+    @abstractmethod
     def exists(self, cost_node_id: UUID) -> bool:
         """Check if cost node exists"""
+        ...
+
+    def hes_costs(self, contract_id: UUID) -> bool:
         ...

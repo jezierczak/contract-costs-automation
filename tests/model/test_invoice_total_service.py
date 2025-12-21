@@ -30,6 +30,7 @@ class TestInvoiceTotalService:
                 cost_node_id=uuid4(),
                 cost_type_id=uuid4(),
                 description="Material",
+                item_name="Test Material",
             ),
             InvoiceLine(
                 id=uuid4(),
@@ -45,6 +46,7 @@ class TestInvoiceTotalService:
                 cost_node_id=uuid4(),
                 cost_type_id=uuid4(),
                 description="Non tax cost",
+                item_name="No tax item"
             ),
         ]
 

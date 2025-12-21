@@ -33,8 +33,25 @@ class InMemoryCostNodeRepository(CostNodeRepository):
             if node.contract_id == contract_id
         ]
 
+    def delete_by_contract(self, contract_id: UUID) -> None:
+        to_delete = [
+            node_id
+            for node_id, node in self._nodes.items()
+            if node.contract_id == contract_id
+        ]
+
+        for node_id in to_delete:
+            del self._nodes[node_id]
+
+
     def update(self, cost_node: CostNode) -> None:
         self._nodes[cost_node.id] = cost_node
 
     def exists(self, cost_node_id: UUID) -> bool:
         return cost_node_id in self._nodes
+
+    def has_costs(self, contract_id: UUID) -> bool:
+        return any(
+            node.contract_id == contract_id
+            for node in self._nodes.values()
+        )

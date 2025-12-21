@@ -17,6 +17,7 @@ class ContractStatus(Enum):
 
 class ContractStarter(TypedDict):
     name: str
+    code: str
     contract_owner: Company
     client: Company
     description: str | None
@@ -31,8 +32,9 @@ class ContractStarter(TypedDict):
 @dataclass
 class Contract:
     id: UUID
+    code: str
     name: str
-    contract_owner: Company
+    owner: Company
     client: Company
     description: str | None
 
@@ -47,8 +49,9 @@ class Contract:
     def from_contract_starter(cls,data: ContractStarter) -> "Contract":
         return Contract(
             id=uuid4(),
+            code=data['code'],
             name=data['name'],
-            contract_owner=data['contract_owner'],
+            owner=data['contract_owner'],
             client=data['client'],
             description=data['description'],
             start_date=data['start_date'],

@@ -56,7 +56,7 @@ Rules:
 
 invoice_items MUST be an array.
 Each invoice_items element MUST have exactly these fields:
-- description
+- item_name
 - quantity
 - unit
 - net_unit_price

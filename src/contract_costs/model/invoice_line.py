@@ -13,8 +13,9 @@ class InvoiceLine:
     contract_id: UUID
     cost_node_id: UUID | None
     cost_type_id: UUID | None
+    item_name: str
     quantity: Decimal | None
     unit: UnitOfMeasure
     amount: Amount
-    description: str
+    description: str | None
 
