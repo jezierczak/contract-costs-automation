@@ -21,13 +21,18 @@ class ApplyInvoiceExcelBatchService:
         self._invoice_line_service = invoice_line_service
 
     def apply(self, batch: InvoiceExcelBatch) -> None:
+        """
+        Contract:
+        - faktury bez kompletnych linii NIE są procesowane
+        - linie bez invoice_id pozostają kosztami nieewidencjonowanymi
+        """
         #  Faktury (tworzenie / update + ref_map)
         ref_map = self._invoice_service.apply(batch.invoices)
 
         # Linie faktur
-        self._invoice_line_service.apply(batch.lines, ref_map)
+        finalized_invoice_ids = self._invoice_line_service.apply(batch.lines, ref_map)
 
         # Finalizacja – status PROCESSED
         self._invoice_service.mark_processed(
-            invoice_ids=list(ref_map.values())
+            invoice_ids=list(finalized_invoice_ids)
         )

@@ -48,7 +48,7 @@ class TestCreateContractService:
         assert contract.status == contract_starter_1["status"]
 
         # --- relacje ---
-        assert contract.contract_owner == contract_starter_1["contract_owner"]
+        assert contract.owner == contract_starter_1["contract_owner"]
         assert contract.client == contract_starter_1["client"]
 
         # --- brak cost nodes ---

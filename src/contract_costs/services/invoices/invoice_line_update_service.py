@@ -1,3 +1,4 @@
+from collections import defaultdict
 from dataclasses import replace
 from uuid import uuid4, UUID
 
@@ -21,7 +22,10 @@ class InvoiceLineUpdateService:
         self,
         lines: list[InvoiceLineUpdate],
         ref_map: dict[str, UUID],
-    ) -> None:
+    ) ->  set[UUID]:
+
+        invoice_line_states: dict[UUID, list[bool]] = defaultdict(list)
+
         for update in lines:
             invoice_id = self._resolve_invoice_id(update.invoice_ref, ref_map)
 
@@ -29,6 +33,23 @@ class InvoiceLineUpdateService:
                 self._create_line(update, invoice_id)
             else:
                 self._update_line(update, invoice_id)
+
+            is_complete = self._is_line_complete(update)
+            invoice_line_states[invoice_id].append(is_complete)
+
+        fully_assigned_invoice_ids ={
+            inv_id for inv_id,states in invoice_line_states.items() if all(states)
+        }
+
+        return fully_assigned_invoice_ids
+
+    @staticmethod
+    def _is_line_complete(update: InvoiceLineUpdate) -> bool:
+        return (
+                update.contract_id is not None and
+                update.cost_node_id is not None and
+                update.cost_type_id is not None
+        )
 
     def _create_line(
         self,
@@ -38,6 +59,7 @@ class InvoiceLineUpdateService:
         line = InvoiceLine(
             id=uuid4(),
             invoice_id=invoice_id,  # 🔥 TU JEST RÓŻNICA
+            item_name=update.item_name,
             description=update.description,
             quantity=update.quantity,
             unit=update.unit,
@@ -60,6 +82,7 @@ class InvoiceLineUpdateService:
         updated = replace(
             line,
             invoice_id=invoice_id,  # 🔥 TU JEST RÓŻNICA
+            item_name=update.item_name,
             description=update.description,
             quantity=update.quantity,
             unit=update.unit,

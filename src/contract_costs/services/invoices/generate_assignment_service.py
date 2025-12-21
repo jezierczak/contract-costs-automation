@@ -132,6 +132,7 @@ class GenerateInvoiceAssignmentService:
             InvoiceLineExport(
                 id=l.id,
                 invoice_id=l.invoice_id,
+                item_name = l.item_name,
                 description=l.description,
                 quantity=l.quantity,
                 unit=l.unit,

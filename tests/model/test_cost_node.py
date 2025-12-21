@@ -2,6 +2,7 @@ from decimal import Decimal
 from uuid import uuid4
 
 from contract_costs.model.cost_node import CostNode
+from contract_costs.model.unit_of_measure import UnitOfMeasure
 
 
 class TestCostNode:
@@ -15,6 +16,8 @@ class TestCostNode:
             is_active=True,
             code="ROOT",
             name="Root",
+            quantity=None,
+            unit = None,
         )
 
         assert node.parent_id is None
@@ -29,6 +32,8 @@ class TestCostNode:
             is_active=True,
             code="CHILD",
             name="Child",
+            quantity=Decimal("100"),
+            unit=UnitOfMeasure.METER,
         )
 
         assert node.parent_id == parent_id

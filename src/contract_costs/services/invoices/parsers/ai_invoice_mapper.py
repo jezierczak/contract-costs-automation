@@ -38,7 +38,8 @@ class AIInvoiceMapper:
             InvoiceLineUpdate(
                 invoice_line_id=None,
                 invoice_ref=ref,
-                description=item.get("description"),
+                item_name= item.get("item_name"),
+                description= None,
                 quantity=Decimal(str(item.get("quantity") or "1")),
                 unit=self._unit(item.get("unit")),
                 amount=Amount(

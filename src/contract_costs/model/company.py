@@ -15,6 +15,7 @@ class CompanyType(Enum):
     OWN = "Own"
     COOPERATIVE = "Cooperative"
     OCCASIONAL = "Occasional"
+    SUPPLIER = "Supplier"
     CLIENT = "Client"
     BUYER = "Buyer"
     SELLER = "Seller"

@@ -21,7 +21,7 @@ class TestContract:
         assert contract.end_date == contract_starter_1["end_date"]
 
         # --- relacje ---
-        assert contract.contract_owner == contract_starter_1["contract_owner"]
+        assert contract.owner == contract_starter_1["contract_owner"]
         assert contract.client == contract_starter_1["client"]
 
         # --- ścieżka ---

@@ -19,9 +19,17 @@ class CompanyRepository(ABC):
         ...
 
     @abstractmethod
+    def get_by_tax_number(self, tax_number: str) -> Company | None:
+        ...
+
+    @abstractmethod
     def update(self, company: Company) -> None:
         ...
 
     @abstractmethod
     def exists(self, company_id: UUID) -> bool:
+        ...
+
+    @abstractmethod
+    def exists_owner(self) -> bool:
         ...

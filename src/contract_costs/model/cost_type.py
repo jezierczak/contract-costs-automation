@@ -18,4 +18,5 @@ class CostType:
     id: UUID
     code: str            # unikalny, np. MATERIAL, SALARY
     name: str            # czytelna nazwa
+    description: str | None
     is_active: bool = True

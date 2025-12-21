@@ -32,7 +32,9 @@ class DefaultCostNodeTreeBuilder(CostNodeTreeBuilder):
             code=node_input['code'],
             name=node_input['name'],
             budget=node_input['budget'],
-            is_active=True
+            is_active=True,
+            quantity = node_input['quantity'],
+            unit = node_input['unit']
         )
 
         nodes = [node]

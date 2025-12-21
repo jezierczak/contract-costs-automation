@@ -1,5 +1,6 @@
 from decimal import Decimal
 from pathlib import Path
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -9,6 +10,7 @@ from contract_costs.model.unit_of_measure import UnitOfMeasure
 from contract_costs.repository.inmemory.contract_repository import InMemoryContractRepository
 from contract_costs.repository.inmemory.cost_node_repository import InMemoryCostNodeRepository
 from contract_costs.repository.inmemory.cost_type_repository import InMemoryCostTypeRepository
+from contract_costs.services.catalogues.invoice_file_organizer import InvoiceFileOrganizer
 from contract_costs.services.invoices.apply_invoice_excel_batch_service import ApplyInvoiceExcelBatchService
 from contract_costs.services.invoices.dto.common import InvoiceRef, InvoiceExcelBatch, InvoiceUpdate, InvoiceLineUpdate
 from contract_costs.services.invoices.parse_invoice_from_file import (
@@ -43,6 +45,8 @@ def workflow_context():
         "cost_node_repo": InMemoryCostNodeRepository(),
         "cost_type_repo": InMemoryCostTypeRepository(),
     }
+
+
 class TestWorkflow:
 
     def test_import_invoice_from_pdf_creates_invoice_and_lines(self,workflow_context):
@@ -57,17 +61,27 @@ class TestWorkflow:
 
         parser = FakeInvoiceParser()
 
+        file_organiser_service = MagicMock(InvoiceFileOrganizer())
+        file_organiser_service.move_to_owner.return_value = None
+        file_organiser_service.move_to_failed.return_value = None
+
         import_service = ParseInvoiceFromFileService(
             parser=parser,
             company_resolve_service=company_resolver,
             invoice_update_service=invoice_update_service,
             invoice_line_update_service=invoice_line_update_service,
+            invoice_file_organizer= file_organiser_service,
+            company_repository=company_repo
         )
         #_____________________STEP I parsing from file ___________________________________________________
         # --- execute ---
         import_service.execute(Path("fake.pdf"))
 
         # --- assertions: invoice ---
+        file_organiser_service.move_to_owner.assert_not_called()
+        file_organiser_service.move_to_failed.assert_called_once()
+
+
         invoices = invoice_repo.list_invoices()
         assert len(invoices) == 1
 
@@ -177,6 +191,7 @@ class TestWorkflow:
                 InvoiceLineUpdate(
                     invoice_line_id=line.id,
                     invoice_ref=ref,
+                    item_name= "(updated A)",
                     description="Material A (updated)",
                     quantity=Decimal("3"),
                     unit=UnitOfMeasure.PIECE,
@@ -189,6 +204,7 @@ class TestWorkflow:
                 InvoiceLineUpdate(
                     invoice_line_id=None,
                     invoice_ref=ref,
+                    item_name= "(updated B)",
                     description="Extra work",
                     quantity=Decimal("1"),
                     unit=UnitOfMeasure.SERVICE,
@@ -220,5 +236,10 @@ class TestWorkflow:
         descriptions = {l.description for l in updated_lines}
         assert "Material A (updated)" in descriptions
         assert "Extra work" in descriptions
+
+        item_names = {l.item_name for l in updated_lines}
+
+        assert "(updated A)" in item_names
+        assert "(updated B)" in item_names
 
 

@@ -23,8 +23,8 @@ class InvoiceUpdate:
     invoice_number: str
     invoice_date: date
     selling_date: date
-    buyer_id: UUID
-    seller_id: UUID
+    buyer_id: UUID | None
+    seller_id: UUID | None
     payment_method: PaymentMethod
     due_date: date
     payment_status: PaymentStatus
@@ -36,14 +36,15 @@ class InvoiceLineUpdate:
     invoice_line_id: UUID | None   # None = nowa linia
     invoice_ref: InvoiceRef | None # None = koszt bez faktury
 
-    description: str
+    item_name: str
+    description: str | None
     quantity: Decimal
     unit: UnitOfMeasure
     amount: Amount
 
-    contract_id: UUID
-    cost_node_id: UUID
-    cost_type_id: UUID
+    contract_id: UUID | None
+    cost_node_id: UUID | None
+    cost_type_id: UUID | None
 
 @dataclass(frozen=True)
 class InvoiceExcelBatch:
