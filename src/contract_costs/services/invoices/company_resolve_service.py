@@ -49,6 +49,8 @@ class CompanyResolveService:
         return None
 
     @staticmethod
-    def _normalize_nip(nip: str) -> str:
+    def _normalize_nip(nip: str | int) -> str:
+        if isinstance(nip, int):
+            nip = str(nip)
         return re.sub(r'^\s*PL\s*', '', nip, flags=re.IGNORECASE)
 

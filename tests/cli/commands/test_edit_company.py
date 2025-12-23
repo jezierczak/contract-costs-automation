@@ -1,11 +1,9 @@
+import builtins
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-import builtins
-
 from contract_costs.cli.commands.edit_company import handle_edit_company
-from contract_costs.model.company import Company, CompanyType
-from contract_costs.model.company import Address
+from contract_costs.model.company import CompanyType, Company, Address
 
 
 def test_handle_edit_company_happy_path(monkeypatch):
@@ -28,11 +26,11 @@ def test_handle_edit_company_happy_path(monkeypatch):
         is_active=True,
     )
 
-    # --- mock input ---
+    # input()
     inputs = iter(["123", "y"])
     monkeypatch.setattr(builtins, "input", lambda _: next(inputs))
 
-    # --- mock interactive_prompt ---
+    # interactive prompt
     monkeypatch.setattr(
         "contract_costs.cli.commands.edit_company.interactive_prompt",
         lambda _: {
@@ -49,20 +47,21 @@ def test_handle_edit_company_happy_path(monkeypatch):
         },
     )
 
-    # --- mock services ---
     services = MagicMock()
     services.company_repository.get_by_tax_number.return_value = company
-    services.change_company_role = MagicMock()
 
     monkeypatch.setattr(
         "contract_costs.cli.commands.edit_company.get_services",
         lambda: services,
     )
 
-    # --- execute ---
+    # MOCKUJEMY ADAPTER
+    adapter = MagicMock()
+    monkeypatch.setattr(
+        "contract_costs.cli.commands.edit_company.update_company_from_cli",
+        adapter,
+    )
+
     handle_edit_company()
 
-    services.change_company_role.execute.assert_called_once_with(
-        company_id=company.id,
-        new_role=CompanyType.OWN,
-    )
+    adapter.assert_called_once()

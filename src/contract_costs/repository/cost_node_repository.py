@@ -24,6 +24,11 @@ class CostNodeRepository(ABC):
         ...
 
     @abstractmethod
+    def get_by_code(self, cost_node_code: str) -> CostNode | None:
+        """Get cost node by code"""
+        ...
+
+    @abstractmethod
     def list_nodes(self) -> list[CostNode]:
         """List all cost nodes"""
         ...
@@ -42,9 +47,16 @@ class CostNodeRepository(ABC):
     def update(self, cost_node: CostNode) -> None:
         """Update existing cost node"""
         ...
+    @abstractmethod
+    def update_many(self, nodes: list[CostNode]) -> None:
+        ...
 
     @abstractmethod
     def delete_by_contract(self, contract_id: UUID) -> None:
+        ...
+
+    @abstractmethod
+    def delete_many(self, ids: list[UUID]) -> None:
         ...
 
     @abstractmethod
@@ -52,5 +64,10 @@ class CostNodeRepository(ABC):
         """Check if cost node exists"""
         ...
 
-    def hes_costs(self, contract_id: UUID) -> bool:
+    @abstractmethod
+    def has_costs(self, contract_id: UUID) -> bool:
+        ...
+
+    @abstractmethod
+    def node_has_costs(self, cost_node_id: UUID) -> bool:
         ...

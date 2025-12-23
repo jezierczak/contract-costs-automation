@@ -26,7 +26,7 @@ AI_SCHEMA: dict[str, str] = {
     "seller_bank_account": "string | null",
 
     "invoice_items": [
-        {
+        {   "item_name": "string | null",
             "description": "string | null",
             "quantity": "number | null",
             "unit": "string | null",

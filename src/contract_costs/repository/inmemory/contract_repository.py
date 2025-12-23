@@ -22,3 +22,9 @@ class InMemoryContractRepository(ContractRepository):
 
     def exists(self, contract_id: UUID) -> bool:
         return contract_id in self._contracts
+
+    def get_by_code(self, contract_code: str) -> Contract | None:
+        for contract in self._contracts.values():
+            if contract.code == contract_code:
+                return contract
+        return None

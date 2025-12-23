@@ -7,8 +7,8 @@ from contract_costs.model.amount import VatRate, TaxTreatment
 
 @dataclass(frozen=True)
 class InvoiceLineExport:
-    id: UUID | None              # None = nowa linia
-    invoice_id: UUID | None      # None = koszt bez faktury
+    id: UUID | None
+    invoice_number: str | None      # None = koszt bez faktury
 
     item_name: str
     description: str | None

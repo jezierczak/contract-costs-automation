@@ -2,7 +2,7 @@ from contract_costs.model.cost_node import CostNode
 from contract_costs.repository.cost_node_repository import CostNodeRepository
 
 
-class CostNodeValidator:
+class CostNodeOperationValidator:
 
     def __init__(self, repository: CostNodeRepository):
         self._repository = repository

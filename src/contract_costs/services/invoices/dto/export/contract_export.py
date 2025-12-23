@@ -7,4 +7,4 @@ from contract_costs.model.contract import ContractStatus
 class ContractExport:
     id: UUID
     name: str
-    status: ContractStatus
+    code: str

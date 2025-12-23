@@ -18,6 +18,12 @@ class InMemoryCostNodeRepository(CostNodeRepository):
     def get(self, cost_node_id: UUID) -> CostNode | None:
         return self._nodes.get(cost_node_id)
 
+    def get_by_code(self, cost_node_code: str) -> CostNode | None:
+        for cost_node in self._nodes.values():
+            if cost_node.code == cost_node_code:
+                return cost_node
+        return None
+
     def list_nodes(self) -> list[CostNode]:
         return list(self._nodes.values())
 
@@ -43,9 +49,16 @@ class InMemoryCostNodeRepository(CostNodeRepository):
         for node_id in to_delete:
             del self._nodes[node_id]
 
+    def delete_many(self, ids: list[UUID]) -> None:
+        for i in ids:
+            del self._nodes[i]
 
     def update(self, cost_node: CostNode) -> None:
         self._nodes[cost_node.id] = cost_node
+
+    def update_many(self, cost_nodes: list[CostNode]) -> None:
+        for cost_node in cost_nodes:
+            self.update(cost_node)
 
     def exists(self, cost_node_id: UUID) -> bool:
         return cost_node_id in self._nodes
@@ -53,5 +66,11 @@ class InMemoryCostNodeRepository(CostNodeRepository):
     def has_costs(self, contract_id: UUID) -> bool:
         return any(
             node.contract_id == contract_id
+            for node in self._nodes.values()
+        )
+
+    def node_has_costs(self, cost_node_id: UUID) -> bool:
+        return any(
+            node.id == cost_node_id
             for node in self._nodes.values()
         )

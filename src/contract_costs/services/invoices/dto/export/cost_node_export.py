@@ -11,4 +11,4 @@ class CostNodeExport:
     code: str
     name: str
     budget: Decimal | None
-    is_active: bool
+

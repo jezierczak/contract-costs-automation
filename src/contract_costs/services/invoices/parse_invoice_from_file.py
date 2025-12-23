@@ -42,6 +42,8 @@ class ParseInvoiceFromFileService:
         # Parsowanie dokumentu (DTO!)
         parse_result = self._parser.parse(file_path)
 
+        #tutaj działa
+
         # Resolve firm (NIP → Company.id)
         buyer_id = self._company_resolver.resolve(parse_result.buyer)
         seller_id = self._company_resolver.resolve(parse_result.seller)
@@ -56,7 +58,7 @@ class ParseInvoiceFromFileService:
 
         # Jednoznaczna referencja faktury dla linii
         # (parser zwykle generuje external_ref)
-        invoice_ref = invoice_update.ref
+        invoice_ref = invoice_update.invoice_number
 
         # Uzupełnienie linii o invoice_ref
         line_updates: list[InvoiceLineUpdate] = []
@@ -64,7 +66,7 @@ class ParseInvoiceFromFileService:
             line_updates.append(
                 replace(
                     line,
-                    invoice_ref=invoice_ref,
+                    invoice_id=invoice_ref,
                 )
             )
 
@@ -75,9 +77,13 @@ class ParseInvoiceFromFileService:
         )
 
         ref_map = self._invoice_update_service.apply(batch.invoices)
+
+
         self._invoice_line_update_service.apply(batch.lines, ref_map)
 
         # --- FILE ORGANIZATION (after successful persistence) ---
+        #tu nie działą
+
 
         buyer = self._company_repository.get(buyer_id)
         seller = self._company_repository.get(seller_id)

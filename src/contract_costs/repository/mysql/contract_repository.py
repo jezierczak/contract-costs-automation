@@ -13,7 +13,7 @@ class MySQLContractRepository(ContractRepository):
 
         cur.execute(
             """
-            INSERT INTO contract (
+            INSERT INTO contracts (
                 id, code, name, description,
                 owner_id, client_id,
                 start_date, end_date,
@@ -46,7 +46,7 @@ class MySQLContractRepository(ContractRepository):
 
         cur.execute(
             """
-            UPDATE contract SET
+            UPDATE contracts SET
                 code=%s,
                 name=%s,
                 description=%s,
@@ -83,7 +83,7 @@ class MySQLContractRepository(ContractRepository):
         cur = conn.cursor(dictionary=True)
 
         cur.execute(
-            "SELECT * FROM contract WHERE id = %s",
+            "SELECT * FROM contracts WHERE id = %s",
             (str(contract_id),),
         )
         row = cur.fetchone()
@@ -97,7 +97,7 @@ class MySQLContractRepository(ContractRepository):
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
 
-        cur.execute("SELECT * FROM contract")
+        cur.execute("SELECT * FROM contracts")
         rows = cur.fetchall()
 
         cur.close()
@@ -110,7 +110,7 @@ class MySQLContractRepository(ContractRepository):
         cur = conn.cursor()
 
         cur.execute(
-            "SELECT 1 FROM contract WHERE id = %s LIMIT 1",
+            "SELECT 1 FROM contracts WHERE id = %s LIMIT 1",
             (str(contract_id),),
         )
 
@@ -120,6 +120,21 @@ class MySQLContractRepository(ContractRepository):
         conn.close()
 
         return exists
+
+    def get_by_code(self, contract_code: str) -> Contract | None:
+        conn = get_connection()
+        cur = conn.cursor(dictionary=True)
+
+        cur.execute(
+            "SELECT * FROM contracts WHERE code = %s",
+            (contract_code,),
+        )
+        row = cur.fetchone()
+
+        cur.close()
+        conn.close()
+
+        return self._row_to_contract(row) if row else None
 
     # ---------- helper ----------
     @staticmethod

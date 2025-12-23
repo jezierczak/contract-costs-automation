@@ -1,6 +1,7 @@
 from dataclasses import replace
+from pathlib import Path
 
-from contract_costs.model.invoice import InvoiceStatus
+from contract_costs.model.invoice import InvoiceStatus, Invoice
 from contract_costs.repository.invoice_repository import InvoiceRepository
 from contract_costs.repository.invoice_line_repository import InvoiceLineRepository
 from contract_costs.repository.company_repository import CompanyRepository
@@ -42,11 +43,17 @@ class GenerateInvoiceAssignmentService:
         self._cost_type_repo = cost_type_repository
         self._exporter = exporter
 
-    def execute(self) -> None:
+    def execute(self, invoice_status: InvoiceStatus | list[InvoiceStatus], output_path: Path) -> None:
         #  Dane główne
-        invoices = self._invoice_repo.get_for_assignment()
 
-        updated_invoices = []
+        # invoice_status = InvoiceStatus(status)
+        invoices: list[Invoice] = self._invoice_repo.get_for_assignment(invoice_status)
+
+        invoice_ids = [i.id for i in invoices]
+
+        invoice_numbers_from_ids = {i.id:i.invoice_number for i in invoices}
+
+        updated_invoices: list[Invoice] = []
 
         for invoice in invoices:
             if invoice.status != InvoiceStatus.IN_PROGRESS:
@@ -56,22 +63,35 @@ class GenerateInvoiceAssignmentService:
             else:
                 updated_invoices.append(invoice)
 
-        invoice_lines = self._invoice_line_repo.get_for_assignment()
+        invoice_lines = self._invoice_line_repo.list_by_invoice_ids(invoice_ids)
+        invoice_lines.extend(self._invoice_line_repo.list_by_null_invoice())
+
 
         #  Companies (buyer + seller)
-        company_ids = {
-            inv.buyer_id for inv in updated_invoices
-        } | {
+
+        company_buyers = {
+            inv.buyer_id for inv in updated_invoices}
+        company_sellers= {
             inv.seller_id for inv in updated_invoices
         }
 
-        companies = [
+        buyers = [
             CompanyExport(
                 id=c.id,
                 name=c.name,
                 tax_number=c.tax_number,
             )
-            for c in (self._company_repo.get(cid) for cid in company_ids)
+            for c in (self._company_repo.get(cid) for cid in company_buyers)
+            if c is not None
+        ]
+
+        sellers = [
+            CompanyExport(
+                id=c.id,
+                name=c.name,
+                tax_number=c.tax_number,
+            )
+            for c in (self._company_repo.get(cid) for cid in company_sellers)
             if c is not None
         ]
 
@@ -80,7 +100,7 @@ class GenerateInvoiceAssignmentService:
             ContractExport(
                 id=c.id,
                 name=c.name,
-                status=c.status,
+                code=c.code,
             )
             for c in self._contract_repo.list()
         ]
@@ -94,7 +114,6 @@ class GenerateInvoiceAssignmentService:
                 code=n.code,
                 name=n.name,
                 budget=n.budget,
-                is_active=n.is_active,
             )
             for n in self._cost_node_repo.list_nodes()
         ]
@@ -112,12 +131,11 @@ class GenerateInvoiceAssignmentService:
         #  Mapowanie faktur
         invoice_exports = [
             InvoiceExport(
-                id=i.id,
                 invoice_number=i.invoice_number,
                 invoice_date=i.invoice_date,
                 selling_date=i.selling_date,
-                buyer_id=i.buyer_id,
-                seller_id=i.seller_id,
+                buyer_tax_number=self._company_repo.get(i.buyer_id).tax_number,
+                seller_tax_number=self._company_repo.get(i.seller_id).tax_number,
                 payment_method=i.payment_method,
                 payment_status=i.payment_status,
                 status=i.status,
@@ -128,31 +146,37 @@ class GenerateInvoiceAssignmentService:
         ]
 
         # ⃣Mapowanie linii
-        line_exports = [
-            InvoiceLineExport(
-                id=l.id,
-                invoice_id=l.invoice_id,
-                item_name = l.item_name,
-                description=l.description,
-                quantity=l.quantity,
-                unit=l.unit,
-                net=l.amount.value,
-                vat_rate=l.amount.vat_rate,
-                tax_treatment=l.amount.tax_treatment,
-                contract_id=l.contract_id,
-                cost_node_id=l.cost_node_id,
-                cost_type_id=l.cost_type_id,
-            )
-            for l in invoice_lines
-        ]
+        if invoice_lines is not None and len(invoice_lines) > 0:
+            # for ll in invoice_lines:
+            #     print(ll)
+            line_exports = [
+                InvoiceLineExport(
+                    id = l.id,
+                    invoice_number=invoice_numbers_from_ids.get(l.invoice_id) if l.invoice_id else "",
+                    item_name = l.item_name,
+                    description=l.description,
+                    quantity=l.quantity,
+                    unit=l.unit,
+                    net=l.amount.value,
+                    vat_rate=l.amount.vat_rate.value,
+                    tax_treatment=l.amount.tax_treatment,
+                    contract_id=l.contract_id,
+                    cost_node_id=l.cost_node_id,
+                    cost_type_id=l.cost_type_id,
+                )
+                for l in invoice_lines
+            ]
+        else:
+            line_exports = []
 
         bundle = InvoiceAssignmentExportBundle(
             invoices=invoice_exports,
             invoice_lines=line_exports,
-            companies=companies,
+            buyers=buyers,
+            sellers=sellers,
             contracts=contracts,
             cost_nodes=cost_nodes,
             cost_types=cost_types,
         )
 
-        self._exporter.export(bundle)
+        self._exporter.export(bundle,output_path=output_path)

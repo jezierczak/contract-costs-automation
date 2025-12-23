@@ -35,7 +35,7 @@ def handle_edit_company() -> None:
     update_company_from_cli(
         company=company,
         data=data,
-        change_role_service=services.change_company_role,
+        update_company_service=services.update_company_service,
     )
 
     print("\nCompany updated successfully.")

@@ -1,12 +1,13 @@
+import logging
 from dataclasses import replace
 from datetime import datetime
 from uuid import uuid4, UUID
 
 from contract_costs.model.invoice import Invoice, InvoiceStatus
-from contract_costs.repository.invoice_line_repository import InvoiceLineRepository
 from contract_costs.repository.invoice_repository import InvoiceRepository
 from contract_costs.services.invoices.dto.common import InvoiceUpdate
 
+logging.getLogger(__name__)
 
 class InvoiceUpdateService:
     """
@@ -28,14 +29,17 @@ class InvoiceUpdateService:
         ref_map: dict[str, UUID] = {}
 
         for update in invoices:
-            ref = update.ref
 
-            # Istniejąca faktura
-            if ref.invoice_id is not None:
-                invoice = self._invoice_repository.get(ref.invoice_id)
-                if invoice is None:
-                    raise ValueError("Invoice not found")
-
+            if update.invoice_number in ref_map:
+                logging.error(
+                    "Duplicate invoice_number in batch: %s (seller conflict possible)",
+                    update.invoice_number
+                )
+                raise ValueError("Duplicate invoice_number in batch")
+            #istniejąca faktura to robimy jej update,
+            invoice = self._get_existing_invoice(update)
+            if invoice is not None:
+                ref_map[invoice.invoice_number] = invoice.id
                 updated = replace(
                     invoice,
                     invoice_number=update.invoice_number,
@@ -51,12 +55,7 @@ class InvoiceUpdateService:
                 self._invoice_repository.update(updated)
                 continue
 
-            # Nowa faktura (external_ref)
-            if ref.external_ref is None:
-                raise ValueError("InvoiceRef must have invoice_id or external_ref")
-
-            if ref.external_ref in ref_map:
-                raise ValueError(f"Duplicate external_ref: {ref.external_ref}")
+            # Nowa faktura
 
             new_id = uuid4()
             invoice = Invoice(
@@ -73,11 +72,16 @@ class InvoiceUpdateService:
                 timestamp=datetime.now()
 
             )
-
+            print(invoice)
             self._invoice_repository.add(invoice)
-            ref_map[ref.external_ref] = new_id
+            ref_map[invoice.invoice_number] = new_id
 
         return ref_map
+
+    def _get_existing_invoice(self, invoice: InvoiceUpdate) -> Invoice | None:
+        unque_invoice = self._invoice_repository.get_unique_invoice(invoice.invoice_number,invoice.seller_id)
+
+        return unque_invoice if unque_invoice else None
 
     def mark_processed(self, invoice_ids: list[UUID]) -> None:
         for inv_id in invoice_ids:

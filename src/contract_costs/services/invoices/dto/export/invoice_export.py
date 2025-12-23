@@ -6,13 +6,12 @@ from contract_costs.model.invoice import InvoiceStatus, PaymentMethod, PaymentSt
 
 @dataclass(frozen=True)
 class InvoiceExport:
-    id: UUID
     invoice_number: str
     invoice_date: date
     selling_date: date
 
-    buyer_id: UUID
-    seller_id: UUID
+    buyer_tax_number: str
+    seller_tax_number: str
 
     payment_method: PaymentMethod
     payment_status: PaymentStatus

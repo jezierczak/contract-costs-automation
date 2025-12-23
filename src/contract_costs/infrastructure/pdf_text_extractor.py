@@ -9,6 +9,8 @@ from pdf2image import convert_from_path
 from PIL.Image import Image
 
 
+logging.getLogger(__name__)
+
 class PdfTextExtractor:
     def extract(self, pdf_path: Path) -> str:
         text = self._extract_with_pdfplumber(pdf_path)
@@ -34,12 +36,27 @@ class PdfTextExtractor:
 
     @staticmethod
     def _extract_with_ocr(image: Image) -> str:
-        gray = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2GRAY)
-        thresh = cv2.adaptiveThreshold(
-            gray, 255,
-            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv2.THRESH_BINARY, 11, 2
-        )
+        try:
+            gray = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2GRAY)
+            thresh = cv2.adaptiveThreshold(
+                gray, 255,
+                cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                cv2.THRESH_BINARY, 11, 2
+            )
 
-        text = pytesseract.image_to_string(thresh, lang="pol")
-        return re.sub(r"\n+", "\n", text).strip()
+            text = pytesseract.image_to_string(thresh, lang="pol")
+
+            if text is None:
+                logging.warning("OCR returned None")
+                return ""
+
+            text = text.strip()
+            if not text:
+                logging.warning("OCR returned empty text")
+                return ""
+
+            return re.sub(r"\n+", "\n", text)
+
+        except Exception:
+            logging.exception("OCR failed completely")
+            return ""

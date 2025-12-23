@@ -8,23 +8,24 @@ from contract_costs.model.invoice import PaymentMethod, PaymentStatus, InvoiceSt
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 
 
-@dataclass(frozen=True)
-class InvoiceRef:
-    """
-    Referencja faktury w Excelu.
-    """
-    invoice_id: UUID | None      # jeśli faktura już istnieje
-    external_ref: str | None     # jeśli faktura nowa (np. "INV-1")
+# @dataclass(frozen=True)
+# class InvoiceRef:
+#     """
+#     Referencja faktury w Excelu.
+#     """
+#     invoice_id: UUID | None      # jeśli faktura już istnieje
+#     external_ref: str | None     # jeśli faktura nowa (np. "INV-1")
 
 
 @dataclass(frozen=True)
 class InvoiceUpdate:
-    ref: InvoiceRef
+    # ref: InvoiceRef
+    id: UUID | str | None
     invoice_number: str
     invoice_date: date
     selling_date: date
-    buyer_id: UUID | None
-    seller_id: UUID | None
+    buyer_id: UUID | str | None
+    seller_id: UUID | str | None
     payment_method: PaymentMethod
     due_date: date
     payment_status: PaymentStatus
@@ -34,17 +35,17 @@ class InvoiceUpdate:
 @dataclass(frozen=True)
 class InvoiceLineUpdate:
     invoice_line_id: UUID | None   # None = nowa linia
-    invoice_ref: InvoiceRef | None # None = koszt bez faktury
 
+    invoice_id: str | None
     item_name: str
     description: str | None
     quantity: Decimal
     unit: UnitOfMeasure
     amount: Amount
 
-    contract_id: UUID | None
-    cost_node_id: UUID | None
-    cost_type_id: UUID | None
+    contract_id: str | None
+    cost_node_id: str | None
+    cost_type_id: str | None
 
 @dataclass(frozen=True)
 class InvoiceExcelBatch:

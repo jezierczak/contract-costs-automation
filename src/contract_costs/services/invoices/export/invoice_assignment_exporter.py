@@ -11,7 +11,8 @@ class InvoiceAssignmentExporter(ABC):
     @abstractmethod
     def export(
         self,
-        bundle: InvoiceAssignmentExportBundle
+        bundle: InvoiceAssignmentExportBundle,
+        output_path: Path
     ) -> None:
         """
         Export invoices and their lines

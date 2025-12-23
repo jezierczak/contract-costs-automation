@@ -1,18 +1,20 @@
 import argparse
+import logging
 import sys
 
 from contract_costs.cli.commands.add_company import handle_add_company
+from contract_costs.cli.commands.apply_excel_contract import handle_applyexcel_contract
+from contract_costs.cli.commands.apply_excel_invoices import handle_applyexcel_invoices
 from contract_costs.cli.commands.edit_company import handle_edit_company
 from contract_costs.cli.commands.add_cost_type import handle_add_cost_type
 from contract_costs.cli.commands.add_contract import handle_add_contract
 from contract_costs.cli.commands.init import handle_init
 from contract_costs.cli.commands.run import handle_run
+from contract_costs.cli.commands.showexcel_contract import handle_showexcel_contract
+from contract_costs.cli.commands.showexcel_invoices import handle_showexcel_invoices
 
 
-# kolejne importy będziemy dodawać stopniowo:
-# from contract_costs.cli.commands.edit_company import handle_edit_company
-# from contract_costs.cli.commands.add_contract import handle_add_contract
-
+logging.basicConfig(level=logging.INFO)
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -38,6 +40,40 @@ def build_parser() -> argparse.ArgumentParser:
     edit_sub = edit_parser.add_subparsers(dest="entity", required=True)
 
     edit_sub.add_parser("company", help="Edit existing companies")
+
+    showexcel_parser = subparsers.add_parser("showexcel")
+    showexcel_sub = showexcel_parser.add_subparsers(dest="entity")
+
+    showexcel_contract_parser = showexcel_sub.add_parser("contract")
+    showexcel_contract_parser.add_argument(
+        "contract_ref",
+        nargs="?",
+        help="Contract UUID or code",
+    )
+
+    showexcel_invoice_parser = showexcel_sub.add_parser("invoices")
+    showexcel_invoice_parser.add_argument(
+        "mode",
+        nargs="?",
+        help="Show invoice status new, in_progress, open for both",
+    )
+
+    applyexcel_parser = subparsers.add_parser("applyexcel")
+    applyexcel_sub = applyexcel_parser.add_subparsers(dest="entity")
+
+    applyexcel_sub_contract_parser = applyexcel_sub.add_parser("contract")
+    applyexcel_sub_contract_parser.add_argument(
+        "contract_ref",
+        nargs="?",
+        help="new from New, or Contract UUID or code from Edit",
+    )
+
+    applyexcel_sub_invoice_parser = applyexcel_sub.add_parser("invoices")
+    applyexcel_sub_invoice_parser.add_argument(
+        "file",
+        nargs="?",
+        help="Path to invoices excel file",
+    )
 
     return parser
 
@@ -71,6 +107,21 @@ def main(argv: list[str] | None = None) -> None:
         handle_edit_company()
         return
 
+    if args.command == "showexcel" and args.entity == "contract":
+        handle_showexcel_contract(args.contract_ref)
+        return
+
+    if args.command == "showexcel" and args.entity == "invoices":
+        handle_showexcel_invoices(args.mode)
+        return
+
+    if args.command == "applyexcel" and args.entity == "contract":
+        handle_applyexcel_contract(args.contract_ref)
+        return
+
+    if args.command == "applyexcel" and args.entity == "invoices":
+        handle_applyexcel_invoices(args.file)
+        return
 
     # fallback (nie powinno się zdarzyć)
     parser.print_help()

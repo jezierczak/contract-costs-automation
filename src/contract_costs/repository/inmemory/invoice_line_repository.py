@@ -14,6 +14,15 @@ class InMemoryInvoiceLineRepository(InvoiceLineRepository):
     def get(self, invoice_line_id: UUID) -> InvoiceLine | None:
         return self._lines.get(invoice_line_id)
 
+    def list_by_invoice_ids(self, invoice_line_ids: list[UUID]) -> list[InvoiceLine] | None:
+        return [self.get(id_) for id_ in invoice_line_ids]
+
+    def list_by_null_invoice(self) -> list[InvoiceLine] | None:
+        return [
+            line for line in self._lines.values()
+            if line.invoice_id is None
+        ]
+
     def list_lines(self) -> list[InvoiceLine]:
         return list(self._lines.values())
 

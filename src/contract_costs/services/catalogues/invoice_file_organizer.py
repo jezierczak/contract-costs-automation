@@ -25,7 +25,7 @@ class InvoiceFileOrganizer:
         """
         target_dir = (
             cfg.OWNERS_DIR
-            / owner.tax_number
+            / owner.name
             / "invoices"
             / str(issue_date.year)
             / f"{issue_date.month:02d}"
@@ -56,7 +56,7 @@ class InvoiceFileOrganizer:
         """
         Przenosi plik faktury do katalogu failed.
         """
-        target_dir = cfg.WORK_DIR / "failed" / reason.lower()
+        target_dir = cfg.INVOICE_FAILED_DIR / reason.lower()
         target_dir.mkdir(parents=True, exist_ok=True)
 
         target_path = target_dir / file_path.name

@@ -32,7 +32,7 @@ class MySQLCompanyRepository(CompanyRepository):
                 else None
             ),
             role=CompanyType(row["role"]),
-            tags=set(),
+            tags=set(), #TODO dodac pole do bazy danych i wczytywać to
             is_active=bool(row["is_active"]),
         )
 
@@ -44,7 +44,7 @@ class MySQLCompanyRepository(CompanyRepository):
 
         cur.execute(
             """
-            INSERT INTO company (
+            INSERT INTO companies (
                 id, name, description, tax_number,
                 street, city, zip_code, country,
                 bank_account_number, bank_account_country_code,
@@ -78,7 +78,7 @@ class MySQLCompanyRepository(CompanyRepository):
 
         cur.execute(
             """
-            UPDATE company SET
+            UPDATE companies SET
                 name=%s,
                 description=%s,
                 tax_number=%s,
@@ -117,7 +117,7 @@ class MySQLCompanyRepository(CompanyRepository):
         cur = conn.cursor(dictionary=True)
 
         cur.execute(
-            "SELECT * FROM company WHERE id = %s",
+            "SELECT * FROM companies WHERE id = %s",
             (str(company_id),),
         )
         row = cur.fetchone()
@@ -132,7 +132,7 @@ class MySQLCompanyRepository(CompanyRepository):
         cur = conn.cursor(dictionary=True)
 
         cur.execute(
-            "SELECT * FROM company WHERE tax_number = %s",
+            "SELECT * FROM companies WHERE tax_number = %s",
             (tax_number,),
         )
         row = cur.fetchone()
@@ -146,7 +146,7 @@ class MySQLCompanyRepository(CompanyRepository):
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
 
-        cur.execute("SELECT * FROM company")
+        cur.execute("SELECT * FROM companies")
         rows = cur.fetchall()
 
         cur.close()
@@ -159,7 +159,7 @@ class MySQLCompanyRepository(CompanyRepository):
         cur = conn.cursor()
 
         cur.execute(
-            "SELECT 1 FROM company WHERE id = %s LIMIT 1",
+            "SELECT 1 FROM companies WHERE id = %s LIMIT 1",
             (str(company_id),),
         )
 
@@ -175,7 +175,7 @@ class MySQLCompanyRepository(CompanyRepository):
         cur = conn.cursor()
 
         cur.execute(
-            "SELECT 1 FROM company WHERE role = %s LIMIT 1",
+            "SELECT 1 FROM companies WHERE role = %s LIMIT 1",
             (CompanyType.OWN.value,),
         )
 

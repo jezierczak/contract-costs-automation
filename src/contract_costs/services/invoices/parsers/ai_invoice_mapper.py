@@ -1,14 +1,13 @@
 from decimal import Decimal
 from datetime import date
 
-from contract_costs.model.company import CompanyType
 from contract_costs.services.invoices.dto.parse import (
     InvoiceParseResult,
     InvoiceUpdate,
     InvoiceLineUpdate,
     CompanyInput,
 )
-from contract_costs.services.invoices.dto.common import InvoiceRef
+
 from contract_costs.model.amount import Amount, VatRate
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 from contract_costs.model.invoice import PaymentMethod, PaymentStatus, InvoiceStatus
@@ -16,16 +15,12 @@ from contract_costs.model.invoice import PaymentMethod, PaymentStatus, InvoiceSt
 
 class AIInvoiceMapper:
     def map(self, data: dict) -> InvoiceParseResult:
-        ref = InvoiceRef(
-            invoice_id=None,
-            external_ref=data.get("invoice_number")
-        )
 
         invoice = InvoiceUpdate(
-            ref=ref,
+
             invoice_number=data.get("invoice_number"),
             invoice_date=self._date(data.get("invoice_date")),
-            selling_date=self._date(data.get("selling_date")),
+            selling_date=self._date(data.get("selling_date")) or self._date(data.get("invoice_date")),
             buyer_id=None,
             seller_id=None,
             payment_method=self._payment_method(data.get("payment_method")),
@@ -37,9 +32,9 @@ class AIInvoiceMapper:
         lines = [
             InvoiceLineUpdate(
                 invoice_line_id=None,
-                invoice_ref=ref,
+                invoice_id=None,
                 item_name= item.get("item_name"),
-                description= None,
+                description= item.get("description"),
                 quantity=Decimal(str(item.get("quantity") or "1")),
                 unit=self._unit(item.get("unit")),
                 amount=Amount(

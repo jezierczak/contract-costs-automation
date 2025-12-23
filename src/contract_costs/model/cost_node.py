@@ -13,6 +13,7 @@ class CostNodeInput(TypedDict):
     quantity: Decimal | None
     unit: UnitOfMeasure | None
     children: list["CostNodeInput"]
+    is_active: bool
 
 
 @dataclass

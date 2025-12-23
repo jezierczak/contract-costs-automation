@@ -1,0 +1,46 @@
+work_dir/
+├── companies/
+├── invoices/
+├── inputs/
+├── reports/
+└── logs/
+
+
+companies/
+└── <owner_code_or_nip>/
+    └── invoices/
+        └── YYYY/
+            └── MM/
+                └── faktura_123.pdf
+
+
+invoices/
+├── incoming/
+└── failed/
+
+
+inputs/
+├── companies/
+├── contracts/
+└── invoices/
+
+
+companies/
+├── new/
+├── edit/
+└── processed/
+    └── YYYY-MM-DD_HH-MM-SS/
+
+
+contracts/
+├── new/
+├── edit/
+└── processed/
+    └── YYYY-MM-DD_HH-MM-SS/
+
+
+invoices/
+├── new/
+├── assign/
+└── processed/
+    └── YYYY-MM-DD_HH-MM-SS/

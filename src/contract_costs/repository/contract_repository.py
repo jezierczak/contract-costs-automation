@@ -30,3 +30,6 @@ class ContractRepository(ABC):
     def exists(self, contract_id: UUID) -> bool:
         """Check if contract exists"""
         ...
+    @abstractmethod
+    def get_by_code(self, contract_code: str) -> Contract:
+        ...

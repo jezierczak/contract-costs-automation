@@ -6,18 +6,13 @@ from contract_costs.model.company import Company, CompanyType
 from contract_costs.model.company import Address
 
 
-def test_update_company_from_cli_changes_role():
+def test_update_company_from_cli_updates_company():
     company = Company(
         id=uuid4(),
         name="Company A",
         description=None,
         tax_number="123",
-        address=Address(
-            street="Street",
-            city="City",
-            zip_code="00-000",
-            country="PL",
-        ),
+        address=Address("Street", "City", "00-000", "PL"),
         bank_account=None,
         role=CompanyType.CLIENT,
         tags=set(),
@@ -25,50 +20,24 @@ def test_update_company_from_cli_changes_role():
     )
 
     data = {
+        "name": "Company A",
+        "description": None,
+        "address_street": "Street",
+        "address_city": "City",
+        "address_zip_code": "00-000",
+        "address_country": "PL",
+        "bank_account_number": None,
+        "bank_account_country_code": None,
         "role": CompanyType.OWN,
     }
 
-    change_role_service = MagicMock()
+    update_service = MagicMock()
 
     update_company_from_cli(
         company=company,
         data=data,
-        change_role_service=change_role_service,
+        update_company_service=update_service,
     )
 
-    change_role_service.execute.assert_called_once_with(
-        company_id=company.id,
-        new_role=CompanyType.OWN,
-    )
+    update_service.execute.assert_called_once()
 
-def test_update_company_from_cli_does_not_call_service_if_role_same():
-    company = Company(
-        id=uuid4(),
-        name="Company A",
-        description=None,
-        tax_number="123",
-        address=Address(
-            street="Street",
-            city="City",
-            zip_code="00-000",
-            country="PL",
-        ),
-        bank_account=None,
-        role=CompanyType.OWN,
-        tags=set(),
-        is_active=True,
-    )
-
-    data = {
-        "role": CompanyType.OWN,
-    }
-
-    change_role_service = MagicMock()
-
-    update_company_from_cli(
-        company=company,
-        data=data,
-        change_role_service=change_role_service,
-    )
-
-    change_role_service.execute.assert_not_called()

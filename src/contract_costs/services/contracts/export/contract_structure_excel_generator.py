@@ -41,6 +41,7 @@ class ContractStructureExcelGenerator:
     @staticmethod
     def _contract_headers() -> list[str]:
         return [
+            "code",
             "name",
             "owner_nip",
             "client_nip",
@@ -61,12 +62,14 @@ class ContractStructureExcelGenerator:
             "budget",
             "quantity",
             "unit",
+            "is_active"
         ]
 
 
     @staticmethod
     def map_contract_to_row( contract: Contract) -> dict:
         return {
+            "code": contract.code,
             "name": contract.name,
             "owner_nip": contract.owner.tax_number,
             "client_nip": contract.client.tax_number,
@@ -94,7 +97,8 @@ class ContractStructureExcelGenerator:
                 "parent_code": parent_code,
                 "budget": node.budget,
                 "quantity": node.quantity,
-                "unit": node.unit.name if node.unit else None,
+                "unit": node.unit.value if node.unit else None,
+                "is_active": node.is_active,
             })
 
         return rows

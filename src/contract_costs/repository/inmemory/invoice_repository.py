@@ -14,6 +14,11 @@ class InMemoryInvoiceRepository(InvoiceRepository):
     def get(self, invoice_id: UUID) -> Invoice | None:
         return self._invoices.get(invoice_id)
 
+    def get_by_invoice_number(self, invoice_number: str) -> Invoice | None:
+        return [
+            inv for inv in self._invoices.values()
+            if inv.invoice_number == invoice_number
+        ][0]
     def list_invoices(self) -> list[Invoice]:
         return list(self._invoices.values())
 
@@ -23,9 +28,14 @@ class InMemoryInvoiceRepository(InvoiceRepository):
     def exists(self, invoice_id: UUID) -> bool:
         return invoice_id in self._invoices
 
-    def get_for_assignment(self) -> list[Invoice]:
+    def get_for_assignment(self, status: InvoiceStatus | list[InvoiceStatus]) -> list[Invoice]:
+        if isinstance(status, InvoiceStatus):
+            return [
+                inv for inv in self._invoices.values()
+                if inv.status == status
+            ]
         return [
             inv for inv in self._invoices.values()
-            if inv.status in {InvoiceStatus.NEW, InvoiceStatus.IN_PROGRESS}
+            if inv.status in {status}
         ]
 

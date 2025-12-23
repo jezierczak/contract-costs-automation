@@ -16,6 +16,7 @@ from contract_costs.infrastructure.openai_invoice_client import OpenAIInvoiceCli
 from contract_costs.services.invoices.parsers.ai_invoice_mapper import AIInvoiceMapper
 from contract_costs.services.invoices.parsers.schema import AI_SCHEMA, AI_PROMPT
 
+logging.getLogger(__name__)
 
 class OCRAIAgentInvoiceParser(InvoiceParser):
 
@@ -25,9 +26,12 @@ class OCRAIAgentInvoiceParser(InvoiceParser):
         self._mapper = AIInvoiceMapper()
 
     def parse(self, file_path: Path) -> InvoiceParseResult:
+        logging.info(f"Extracting {file_path} with PDF parser")
+
         text = self._text_extractor.extract(file_path)
         # print("****************TEXT************************\n")
         # print(text)
+        logging.info(f"Parsing {file_path} with AI")
         ai_data = self._ai_client.extract(text)
         # print("****************AI_DATA************************\n")
         # print(ai_data)

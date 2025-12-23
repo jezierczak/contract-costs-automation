@@ -8,6 +8,7 @@ from contract_costs.runner.watcher import run_watcher
 
 
 def handle_run() -> None:
+
     services = get_services()
     run_watcher(services)
     # \services = get_services()

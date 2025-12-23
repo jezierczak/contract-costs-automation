@@ -10,7 +10,7 @@ class MySQLCostTypeRepository(CostTypeRepository):
 
     def add(self, cost_type: CostType) -> None:
         sql = """
-        INSERT INTO cost_type (
+        INSERT INTO cost_types (
             id,
             code,
             name,
@@ -41,7 +41,7 @@ class MySQLCostTypeRepository(CostTypeRepository):
             name,
             description,
             is_active
-        FROM cost_type
+        FROM cost_types
         WHERE id = %s
         """
 
@@ -63,7 +63,7 @@ class MySQLCostTypeRepository(CostTypeRepository):
             name,
             description,
             is_active
-        FROM cost_type
+        FROM cost_types
         WHERE code = %s
         """
 
@@ -85,7 +85,7 @@ class MySQLCostTypeRepository(CostTypeRepository):
             name,
             description,
             is_active
-        FROM cost_type
+        FROM cost_types
         ORDER BY code
         """
 
@@ -98,7 +98,7 @@ class MySQLCostTypeRepository(CostTypeRepository):
 
     def update(self, cost_type: CostType) -> None:
         sql = """
-        UPDATE cost_type
+        UPDATE cost_types
         SET
             code = %s,
             name = %s,
@@ -124,7 +124,7 @@ class MySQLCostTypeRepository(CostTypeRepository):
     def exists(self, cost_type_id: UUID) -> bool:
         sql = """
         SELECT 1
-        FROM cost_type
+        FROM cost_types
         WHERE id = %s
         LIMIT 1
         """

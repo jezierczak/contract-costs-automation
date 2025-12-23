@@ -1,4 +1,5 @@
 from contract_costs.services.invoices.dto.common import InvoiceExcelBatch
+from contract_costs.services.invoices.excel.invoice_excel_resolver import InvoiceExcelBatchResolver
 from contract_costs.services.invoices.invoice_line_update_service import InvoiceLineUpdateService
 from contract_costs.services.invoices.invoice_update_service import InvoiceUpdateService
 
@@ -16,9 +17,11 @@ class ApplyInvoiceExcelBatchService:
         self,
         invoice_service: InvoiceUpdateService,
         invoice_line_service: InvoiceLineUpdateService,
+            excel_resolver: InvoiceExcelBatchResolver,
     ) -> None:
         self._invoice_service = invoice_service
         self._invoice_line_service = invoice_line_service
+        self._excel_resolver = excel_resolver
 
     def apply(self, batch: InvoiceExcelBatch) -> None:
         """
@@ -26,6 +29,8 @@ class ApplyInvoiceExcelBatchService:
         - faktury bez kompletnych linii NIE są procesowane
         - linie bez invoice_id pozostają kosztami nieewidencjonowanymi
         """
+
+        batch = self._excel_resolver.resolve(batch)
         #  Faktury (tworzenie / update + ref_map)
         ref_map = self._invoice_service.apply(batch.invoices)
 

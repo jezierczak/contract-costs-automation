@@ -1,5 +1,6 @@
 from datetime import date
 from pathlib import Path
+import contract_costs.config as cfg
 
 from contract_costs.cli.prompts.interactive import interactive_prompt
 from contract_costs.cli.schemas.contract import CONTRACT_FIELDS
@@ -48,7 +49,7 @@ def handle_add_contract() -> None:
         start_date=_parse_date(data.get("start_date")),
         end_date=_parse_date(data.get("end_date")),
         budget=data.get("budget"),
-        path=_contract_path(owner, data["name"]),
+        path=_contract_path(cfg.OWNERS_DIR, owner),
         status=data["status"],
     )
 
