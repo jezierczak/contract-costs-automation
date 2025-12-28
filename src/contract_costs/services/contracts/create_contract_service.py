@@ -4,7 +4,9 @@ from contract_costs.model.cost_node import CostNode, CostNodeInput
 from contract_costs.repository.contract_repository import ContractRepository
 from contract_costs.repository.cost_node_repository import CostNodeRepository
 from contract_costs.services.contracts.validators.cost_node_tree_validator import CostNodeEntityValidator
+import logging
 
+logger = logging.getLogger(__name__)
 
 class CreateContractService:
 
@@ -24,17 +26,42 @@ class CreateContractService:
 
     def init(self, contract_starter: ContractStarter) -> None:
         self._contract = Contract.from_contract_starter(contract_starter)
+        logger.info(
+            "Initializing contract: code=%s, name=%s",
+            contract_starter['code'],
+            contract_starter['name'],
+        )
 
     def add_cost_node_tree(self, cost_node_input: list[CostNodeInput]) -> None:
         if self._contract is None:
             raise RuntimeError("Contract not initialized")
         nodes = self._builder.build(self._contract.id, cost_node_input)
+        logger.info(
+            "Adding cost node tree to contract_id=%s, nodes=%d",
+            self._contract.id,
+            len(cost_node_input),
+        )
         self._contract_cost_nodes.extend(nodes)
 
     def execute(self) -> None:
         if self._contract is None:
             raise RuntimeError("Contract not initialized")
-        self._cost_node_tree_validator.validate(self._contract_cost_nodes)
+        logger.debug(
+            "Validating cost node tree for contract_id=%s",
+            self._contract.id,
+        )
+        if self._contract_cost_nodes:
+            self._cost_node_tree_validator.validate(self._contract_cost_nodes)
+        else:
+            logger.info(
+                "Contract %s created without cost nodes (CLI mode)",
+                self._contract.id,
+            )
         self._contract_repository.add(self._contract)
         self._cost_node_repository.add_all(self._contract_cost_nodes)
+        logger.info(
+            "Contract created successfully: id=%s, cost_nodes=%d",
+            self._contract.id,
+            len(self._contract_cost_nodes),
+        )
 

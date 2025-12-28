@@ -1,26 +1,40 @@
+import time
 import logging
-import signal
+import threading
 import sys
 
-from contract_costs.cli.context import Services
 from contract_costs.config import INVOICE_INPUT_DIR
+from contract_costs.services.queue.invoice_queue import invoice_queue
+from contract_costs.services.scanner.unprocessed_scanner import scan_unprocessed
 
-logging.getLogger(__name__)
 
-def run_watcher(services: Services) -> None:
-
-    logging.info("Starting invoice watcher")
+def run_watcher(services) -> None:
+    logging.info("Starting invoice processing pipeline")
     logging.info("Watching directory: %s", INVOICE_INPUT_DIR)
-
+    logging.info("Press Ctrl+C to stop")
 
     watcher = services.invoice_watcher_service
+    worker = services.invoice_ai_worker
 
-    def shutdown(signum, frame):
-        logging.info("Stopping watcher...")
-        watcher.stop()
-        sys.exit(0)
+    # scan przy starcie
+    for file in scan_unprocessed(INVOICE_INPUT_DIR):
+        invoice_queue.put(file)
 
-    signal.signal(signal.SIGINT, shutdown)
-    signal.signal(signal.SIGTERM, shutdown)
+    worker_thread = threading.Thread(
+        target=worker.run,
+        name="invoice-ai-worker",
+    )
+    worker_thread.start()
 
     watcher.run()
+
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        logging.info("Ctrl+C received, shutting down...")
+        watcher.stop()
+        worker.stop()
+        worker_thread.join(timeout=5)
+        logging.info("Shutdown complete")
+        sys.exit(0)

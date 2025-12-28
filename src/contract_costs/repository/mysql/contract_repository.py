@@ -148,6 +148,9 @@ class MySQLContractRepository(ContractRepository):
         owner = company_repo.get(UUID(row["owner_id"]))
         client = company_repo.get(UUID(row["client_id"]))
 
+        if not owner or not client:
+            raise RuntimeError("Owner or client not found in database for contract %s" % row["code"])
+
         return Contract(
             id=UUID(row["id"]),
             code=row["code"],

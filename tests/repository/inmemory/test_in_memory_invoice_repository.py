@@ -64,7 +64,7 @@ class TestInMemoryInvoiceRepository:
         repo.add(invoice_in_progress)
         repo.add(invoice_processed)
 
-        result = repo.get_for_assignment()
+        result = repo.get_for_assignment([ InvoiceStatus.NEW, InvoiceStatus.IN_PROGRESS])
 
         assert len(result) == 2
         statuses = {inv.status for inv in result}

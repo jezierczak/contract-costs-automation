@@ -1,5 +1,6 @@
 from dataclasses import replace
 from pathlib import Path
+import logging
 
 from contract_costs.model.invoice import InvoiceStatus, Invoice
 from contract_costs.repository.invoice_repository import InvoiceRepository
@@ -8,6 +9,7 @@ from contract_costs.repository.company_repository import CompanyRepository
 from contract_costs.repository.contract_repository import ContractRepository
 from contract_costs.repository.cost_node_repository import CostNodeRepository
 from contract_costs.repository.cost_type_repository import CostTypeRepository
+from contract_costs.services.invoices.commands.invoice_command import InvoiceCommand
 
 from contract_costs.services.invoices.export.invoice_assignment_exporter import (
     InvoiceAssignmentExporter,
@@ -22,6 +24,9 @@ from contract_costs.services.invoices.dto.export.company_export import CompanyEx
 from contract_costs.services.invoices.dto.export.contract_export import ContractExport
 from contract_costs.services.invoices.dto.export.cost_node_export import CostNodeExport
 from contract_costs.services.invoices.dto.export.cost_type_export import CostTypeExport
+
+logger = logging.getLogger(__name__)
+
 
 class GenerateInvoiceAssignmentService:
 
@@ -84,6 +89,15 @@ class GenerateInvoiceAssignmentService:
             for c in (self._company_repo.get(cid) for cid in company_buyers)
             if c is not None
         ]
+        if len(buyers)==0:
+            buyers = [
+                CompanyExport(
+                    id=c.id,
+                    name=c.name,
+                    tax_number=c.tax_number,
+                )
+                for c in self._company_repo.get_owners()
+            ]
 
         sellers = [
             CompanyExport(
@@ -115,7 +129,7 @@ class GenerateInvoiceAssignmentService:
                 name=n.name,
                 budget=n.budget,
             )
-            for n in self._cost_node_repo.list_nodes()
+            for n in self._cost_node_repo.list_leaf_nodes_for_active_contracts()
         ]
 
         #  Cost types
@@ -129,21 +143,26 @@ class GenerateInvoiceAssignmentService:
         ]
 
         #  Mapowanie faktur
-        invoice_exports = [
-            InvoiceExport(
-                invoice_number=i.invoice_number,
-                invoice_date=i.invoice_date,
-                selling_date=i.selling_date,
-                buyer_tax_number=self._company_repo.get(i.buyer_id).tax_number,
-                seller_tax_number=self._company_repo.get(i.seller_id).tax_number,
-                payment_method=i.payment_method,
-                payment_status=i.payment_status,
-                status=i.status,
-                due_date=i.due_date,
-                timestamp=i.timestamp,
+        invoice_exports = []
+        for i in updated_invoices:
+            buyer = self._company_repo.get(i.buyer_id) if i.buyer_id else None
+            seller = self._company_repo.get(i.seller_id) if i.seller_id else None
+
+            invoice_exports.append(
+                InvoiceExport(
+                    action=InvoiceCommand.APPLY,
+                    invoice_number=i.invoice_number,
+                    invoice_date=i.invoice_date,
+                    selling_date=i.selling_date,
+                    buyer_tax_number=buyer.tax_number if buyer else None,
+                    seller_tax_number=seller.tax_number if seller else None,
+                    payment_method=i.payment_method,
+                    payment_status=i.payment_status,
+                    status=i.status,
+                    due_date=i.due_date,
+                    timestamp=i.timestamp,
+                )
             )
-            for i in updated_invoices
-        ]
 
         # ⃣Mapowanie linii
         if invoice_lines is not None and len(invoice_lines) > 0:
@@ -158,7 +177,7 @@ class GenerateInvoiceAssignmentService:
                     quantity=l.quantity,
                     unit=l.unit,
                     net=l.amount.value,
-                    vat_rate=l.amount.vat_rate.value,
+                    vat_rate=l.amount.vat_rate,
                     tax_treatment=l.amount.tax_treatment,
                     contract_id=l.contract_id,
                     cost_node_id=l.cost_node_id,
@@ -177,6 +196,13 @@ class GenerateInvoiceAssignmentService:
             contracts=contracts,
             cost_nodes=cost_nodes,
             cost_types=cost_types,
+        )
+
+        logger.info(
+            "Generated invoice assignment Excel: invoices=%d, lines=%d, output=%s",
+            len(updated_invoices),
+            len(line_exports),
+            output_path,
         )
 
         self._exporter.export(bundle,output_path=output_path)

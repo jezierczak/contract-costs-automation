@@ -1,4 +1,3 @@
-from pathlib import Path
 from contract_costs.infrastructure.filesystem.workdir_initializer import (
     WorkDirInitializer,
 )

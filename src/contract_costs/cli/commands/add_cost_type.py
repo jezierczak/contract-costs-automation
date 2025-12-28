@@ -1,7 +1,11 @@
+import logging
+
 from contract_costs.cli.prompts.interactive import interactive_prompt
 from contract_costs.cli.schemas.cost_type import COST_TYPE_FIELDS
 from contract_costs.cli.adapters.cost_type_adapter import create_cost_type_from_cli
 from contract_costs.cli.context import get_services
+
+logger = logging.getLogger(__name__)
 
 
 def handle_add_cost_type() -> None:
@@ -25,4 +29,4 @@ def handle_add_cost_type() -> None:
         create_cost_type_service=services.create_cost_type,
     )
 
-    print("\nCost type added successfully.")
+    logger.info("\nCost type added successfully.")

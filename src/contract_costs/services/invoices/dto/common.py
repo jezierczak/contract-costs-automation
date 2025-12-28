@@ -6,26 +6,49 @@ from uuid import UUID
 from contract_costs.model.amount import Amount
 from contract_costs.model.invoice import PaymentMethod, PaymentStatus, InvoiceStatus
 from contract_costs.model.unit_of_measure import UnitOfMeasure
+from contract_costs.services.invoices.commands.invoice_command import InvoiceCommand
+from contract_costs.services.invoices.dto.export.company_export import CompanyExport
 
 
-# @dataclass(frozen=True)
-# class InvoiceRef:
-#     """
-#     Referencja faktury w Excelu.
-#     """
-#     invoice_id: UUID | None      # jeśli faktura już istnieje
-#     external_ref: str | None     # jeśli faktura nowa (np. "INV-1")
+@dataclass(frozen=True)
+class InvoiceApplyResult:
+    invoice_id: UUID
+    invoice_number: str
+    command: InvoiceCommand
+
 
 
 @dataclass(frozen=True)
 class InvoiceUpdate:
-    # ref: InvoiceRef
-    id: UUID | str | None
+    command: InvoiceCommand              # APPLY | DELETE | MODIFY
+
+    invoice_number: str | None           # nowy numer (None → generator)
+    old_invoice_number: str | None       # tylko dla MODIFY / DELETE
+
+    invoice_date: date | None
+    selling_date: date | None
+
+    buyer_tax_number: str | None
+    seller_tax_number: str | None
+
+    payment_method: PaymentMethod | None
+    due_date: date | None
+    payment_status: PaymentStatus | None
+    status: InvoiceStatus | None
+
+@dataclass(frozen=True)
+class ResolvedInvoiceUpdate:
+    command: InvoiceCommand
+
     invoice_number: str
+    old_invoice_number: str | None
+
     invoice_date: date
     selling_date: date
-    buyer_id: UUID | str | None
-    seller_id: UUID | str | None
+
+    buyer_id: UUID
+    seller_id: UUID
+
     payment_method: PaymentMethod
     due_date: date
     payment_status: PaymentStatus
@@ -36,7 +59,7 @@ class InvoiceUpdate:
 class InvoiceLineUpdate:
     invoice_line_id: UUID | None   # None = nowa linia
 
-    invoice_id: str | None
+    invoice_number: str | None
     item_name: str
     description: str | None
     quantity: Decimal
@@ -52,4 +75,11 @@ class InvoiceExcelBatch:
     invoices: list[InvoiceUpdate]
     lines: list[InvoiceLineUpdate]
 
+    buyers: list[CompanyExport]
+    sellers: list[CompanyExport]
 
+
+@dataclass(frozen=True)
+class InvoiceIngestBatch:
+    invoices: list[ResolvedInvoiceUpdate]
+    lines: list[InvoiceLineUpdate]

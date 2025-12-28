@@ -1,9 +1,11 @@
+import logging
 
 from contract_costs.cli.prompts.interactive import interactive_prompt
 from contract_costs.cli.schemas.company import COMPANY_FIELDS
 from contract_costs.cli.adapters.company_adapter import create_company_from_cli
 from contract_costs.cli.context import get_services
 
+logger = logging.getLogger(__name__)
 
 def handle_add_company() -> None:
     print("\nAdding companies service:\n")
@@ -26,4 +28,4 @@ def handle_add_company() -> None:
         create_company_service=services.create_company,
     )
 
-    print("\nCompany added successfully.")
+    logger.info("\nCompany added successfully.")

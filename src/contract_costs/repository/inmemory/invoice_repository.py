@@ -15,10 +15,10 @@ class InMemoryInvoiceRepository(InvoiceRepository):
         return self._invoices.get(invoice_id)
 
     def get_by_invoice_number(self, invoice_number: str) -> Invoice | None:
-        return [
-            inv for inv in self._invoices.values()
-            if inv.invoice_number == invoice_number
-        ][0]
+        for inv in self._invoices.values():
+            if inv.invoice_number == invoice_number:
+                return inv
+        return None
     def list_invoices(self) -> list[Invoice]:
         return list(self._invoices.values())
 
@@ -28,14 +28,27 @@ class InMemoryInvoiceRepository(InvoiceRepository):
     def exists(self, invoice_id: UUID) -> bool:
         return invoice_id in self._invoices
 
-    def get_for_assignment(self, status: InvoiceStatus | list[InvoiceStatus]) -> list[Invoice]:
+    def get_unique_invoice(self, invoice_number: str, seller_id: UUID) -> Invoice | None:
+        for inv in self._invoices.values():
+            if (
+                    inv.invoice_number == invoice_number
+                    and inv.seller_id == seller_id
+            ):
+                return inv
+        return None
+
+    def get_for_assignment(
+            self,
+            status: InvoiceStatus | list[InvoiceStatus]
+    ) -> list[Invoice]:
+
         if isinstance(status, InvoiceStatus):
-            return [
-                inv for inv in self._invoices.values()
-                if inv.status == status
-            ]
+            statuses = {status}
+        else:
+            statuses = set(status)
+
         return [
             inv for inv in self._invoices.values()
-            if inv.status in {status}
+            if inv.status in statuses
         ]
 

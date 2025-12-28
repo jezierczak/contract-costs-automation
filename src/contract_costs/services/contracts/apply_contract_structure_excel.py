@@ -138,6 +138,7 @@ class ApplyContractStructureExcelService:
                 "quantity": Decimal(str(row["quantity"])) if row.get("quantity") is not None else None,
                 "unit": ApplyContractStructureExcelService._map_unit(row.get("unit")),
                 "children": [],
+                "is_active": bool(row.get("is_active", True)),
             }
 
         # build hierarchy

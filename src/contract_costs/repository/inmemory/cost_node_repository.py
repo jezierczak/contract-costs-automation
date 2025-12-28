@@ -39,6 +39,28 @@ class InMemoryCostNodeRepository(CostNodeRepository):
             if node.contract_id == contract_id
         ]
 
+    def list_leaf_nodes_for_active_contracts(self) -> list[CostNode]:
+        # 1. zbierz wszystkie parent_id
+        parent_ids = {
+            node.parent_id
+            for node in self._nodes.values()
+            if node.parent_id is not None
+        }
+
+        # 2. liście = node.id nie występuje jako parent_id
+        leaf_nodes = [
+            node for node in self._nodes.values()
+            if node.id not in parent_ids
+        ]
+
+        # 3. tylko aktywne kontrakty
+        # UWAGA: tu repo NIE powinno znać ContractRepo,
+        # więc zakładamy, że CostNode ma info pośrednie
+        # albo Contract status jest sprawdzany WYŻEJ
+        #
+        # Najczystsze rozwiązanie:
+        return leaf_nodes
+
     def delete_by_contract(self, contract_id: UUID) -> None:
         to_delete = [
             node_id
@@ -70,7 +92,6 @@ class InMemoryCostNodeRepository(CostNodeRepository):
         )
 
     def node_has_costs(self, cost_node_id: UUID) -> bool:
-        return any(
-            node.id == cost_node_id
-            for node in self._nodes.values()
+        raise NotImplementedError(
+            "node_has_costs requires InvoiceLineRepository"
         )

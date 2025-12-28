@@ -100,6 +100,26 @@ class MySQLCostNodeRepository(CostNodeRepository):
 
         return [self._map_row(r) for r in rows]
 
+    def list_leaf_nodes_for_active_contracts(self) -> list[CostNode]:
+        sql = """
+              SELECT cn.*
+              FROM cost_nodes cn
+                       JOIN contracts c ON c.id = cn.contract_id
+                       LEFT JOIN cost_nodes child ON child.parent_id = cn.id
+              WHERE child.id IS NULL
+                AND c.status = "active" 
+                  ORDER BY
+                    SUBSTRING_INDEX(cn.code, '_', 1),
+                        cn.code
+              """
+
+        conn = get_connection()
+        with conn.cursor(dictionary=True) as cur:
+            cur.execute(sql)
+            rows = cur.fetchall()
+
+        return [self._map_row(r) for r in rows]
+
     def update(self, cost_node: CostNode) -> None:
         sql = """
         UPDATE cost_nodes SET
@@ -141,11 +161,15 @@ class MySQLCostNodeRepository(CostNodeRepository):
         conn.commit()
 
     def delete_many(self, ids: list[UUID]) -> None:
-        sql = "DELETE FROM cost_nodes WHERE id IN (%s)"
+        if not ids:
+            return
+
+        placeholders = ",".join(["%s"] * len(ids))
+        sql = f"DELETE FROM cost_nodes WHERE id IN ({placeholders})"
 
         conn = get_connection()
         with conn.cursor() as cur:
-            cur.execute(sql, (str(ids),))
+            cur.execute(sql, tuple(str(i) for i in ids))
         conn.commit()
 
     def exists(self, cost_node_id: UUID) -> bool:

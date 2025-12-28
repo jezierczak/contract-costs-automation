@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from contract_costs.services.invoices.export.invoice_assignment_exporter import (
     InvoiceAssignmentExporter,
 )
@@ -9,5 +11,5 @@ class FakeInvoiceAssignmentExporter(InvoiceAssignmentExporter):
     def __init__(self) -> None:
         self.bundle: InvoiceAssignmentExportBundle | None = None
 
-    def export(self, bundle: InvoiceAssignmentExportBundle) -> None:
+    def export(self, bundle: InvoiceAssignmentExportBundle,output_path: Path) -> None:
         self.bundle = bundle

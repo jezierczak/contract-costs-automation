@@ -5,8 +5,8 @@ from contract_costs.model.cost_type import (CostType)
 class CostTypeRepository(ABC):
     @abstractmethod
     def add(self, cost_type: CostType) -> None:
-        (...
-    @abstractmethod)
+        ...
+    @abstractmethod
     def get(self, cost_type_id: UUID) -> CostType | None:
         ...
     @abstractmethod

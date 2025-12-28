@@ -38,7 +38,7 @@ class TestInMemoryCompanyRepository:
         repo.add(contract_owner)
         repo.add(contract_company)
 
-        companies = repo.list()
+        companies = repo.list_all()
 
         assert len(companies) == 2
         assert contract_owner in companies
@@ -55,6 +55,7 @@ class TestInMemoryCompanyRepository:
             description=contract_owner.description,
             tax_number=contract_owner.tax_number,
             address=contract_owner.address,
+            contact=contract_owner.contact,
             bank_account=contract_owner.bank_account,
             role=contract_owner.role,
             tags=contract_owner.tags,
@@ -86,6 +87,7 @@ class TestInMemoryCompanyRepository:
             name="My Company",
             tax_number="123",
             address=Address(street="str",city="city",zip_code="34-700",country="PL"),
+            contact=None,
             role=CompanyType.OWN
         )
 

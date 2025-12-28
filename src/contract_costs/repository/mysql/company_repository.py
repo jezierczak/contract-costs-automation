@@ -3,8 +3,12 @@ from uuid import UUID
 from contract_costs.model.company import Company, CompanyType
 from contract_costs.model.company import Address
 from contract_costs.model.company import BankAccount
+from contract_costs.model.company import Contact
+
+
 from contract_costs.repository.company_repository import CompanyRepository
 from contract_costs.infrastructure.db.mysql_connection import get_connection
+
 
 
 class MySQLCompanyRepository(CompanyRepository):
@@ -22,6 +26,10 @@ class MySQLCompanyRepository(CompanyRepository):
                 city=row["city"],
                 zip_code=row["zip_code"],
                 country=row["country"],
+            ),
+            contact=Contact(
+                phone_number=row["phone_number"],
+                email = row["email"],
             ),
             bank_account=(
                 BankAccount(
@@ -46,21 +54,23 @@ class MySQLCompanyRepository(CompanyRepository):
             """
             INSERT INTO companies (
                 id, name, description, tax_number,
-                street, city, zip_code, country,
+                street, city, zip_code, country,phone_number,email,
                 bank_account_number, bank_account_country_code,
                 role, is_active
             )
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """,
             (
                 str(company.id),
                 company.name,
                 company.description,
                 company.tax_number,
-                company.address.street,
-                company.address.city,
-                company.address.zip_code,
-                company.address.country,
+                company.address.street if company.address else None,
+                company.address.city if company.address else None,
+                company.address.zip_code if company.address else None,
+                company.address.country if company.address else None,
+                company.contact.phone_number if company.contact else None,
+                company.contact.email if company.contact else None,
                 company.bank_account.number if company.bank_account else None,
                 company.bank_account.country_code if company.bank_account else None,
                 company.role.value,
@@ -86,6 +96,8 @@ class MySQLCompanyRepository(CompanyRepository):
                 city=%s,
                 zip_code=%s,
                 country=%s,
+                phone_number=%s,
+                email=%s,
                 bank_account_number=%s,
                 bank_account_country_code=%s,
                 role=%s,
@@ -96,10 +108,13 @@ class MySQLCompanyRepository(CompanyRepository):
                 company.name,
                 company.description,
                 company.tax_number,
-                company.address.street,
-                company.address.city,
-                company.address.zip_code,
-                company.address.country,
+                company.address.street if company.address else None,
+                company.address.city if company.address else None,
+                company.address.zip_code if company.address else None,
+                company.address.country if company.address else None,
+                company.contact.phone_number if company.contact else None,
+                company.contact.email if company.contact else None,
+                company.bank_account.number if company.bank_account else None,
                 company.bank_account.number if company.bank_account else None,
                 company.bank_account.country_code if company.bank_account else None,
                 company.role.value,
@@ -127,6 +142,21 @@ class MySQLCompanyRepository(CompanyRepository):
 
         return self._row_to_company(row) if row else None
 
+    def get_owners(self) -> list[Company]:
+        conn = get_connection()
+        cur = conn.cursor(dictionary=True)
+
+        cur.execute(
+            "SELECT * FROM companies WHERE role = %s AND is_active = 1",
+            (str(CompanyType.OWN.value),),
+        )
+        rows = cur.fetchall()
+
+        cur.close()
+        conn.close()
+
+        return [self._row_to_company(row) for row in rows]
+
     def get_by_tax_number(self, tax_number: str) -> Company | None:
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
@@ -142,7 +172,7 @@ class MySQLCompanyRepository(CompanyRepository):
 
         return self._row_to_company(row) if row else None
 
-    def list(self) -> list[Company]:
+    def list_all(self) -> list[Company]:
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
 
@@ -170,12 +200,23 @@ class MySQLCompanyRepository(CompanyRepository):
 
         return exists
 
+    def delete(self, company_id: UUID) -> None:
+        conn = get_connection()
+        cur = conn.cursor()
+
+        cur.execute(
+            "DELETE FROM companies WHERE id = %s LIMIT 1",
+            (str(company_id),),
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
     def exists_owner(self) -> bool:
         conn = get_connection()
         cur = conn.cursor()
 
         cur.execute(
-            "SELECT 1 FROM companies WHERE role = %s LIMIT 1",
+            "SELECT 1 FROM companies WHERE role = %s AND is_active = 1 LIMIT 1",
             (CompanyType.OWN.value,),
         )
 

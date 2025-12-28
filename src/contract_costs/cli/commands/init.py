@@ -1,15 +1,18 @@
-from pathlib import Path
+import logging
+
 
 from contract_costs.services.init.init_application_service import (
     InitApplicationService,
 )
 from contract_costs.config import WORK_DIR
 
+logger = logging.getLogger(__name__)
+
 
 def handle_init() -> None:
-    print("\nInitializing application...\n")
+    logger.info("\nInitializing application...\n")
 
     service = InitApplicationService()
     service.execute()
 
-    print(f"Application initialized in: {WORK_DIR}")
+    logger.info(f"Application initialized in: {WORK_DIR}")

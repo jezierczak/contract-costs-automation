@@ -1,3 +1,4 @@
+import logging
 from datetime import date
 from pathlib import Path
 import contract_costs.config as cfg
@@ -6,6 +7,8 @@ from contract_costs.cli.prompts.interactive import interactive_prompt
 from contract_costs.cli.schemas.contract import CONTRACT_FIELDS
 from contract_costs.cli.context import get_services
 from contract_costs.model.contract import ContractStarter
+
+logger = logging.getLogger(__name__)
 
 
 def handle_add_contract() -> None:
@@ -49,7 +52,7 @@ def handle_add_contract() -> None:
         start_date=_parse_date(data.get("start_date")),
         end_date=_parse_date(data.get("end_date")),
         budget=data.get("budget"),
-        path=_contract_path(cfg.OWNERS_DIR, owner),
+        path=_contract_path(cfg.OWNERS_DIR, owner.name),
         status=data["status"],
     )
 
@@ -57,7 +60,7 @@ def handle_add_contract() -> None:
     service.init(starter)
     service.execute()
 
-    print("\nContract created successfully.")
+    logger.info("\nContract created successfully.")
 
 def _parse_date(value: str | None):
     if not value:

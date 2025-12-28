@@ -8,15 +8,15 @@ from contract_costs.model.cost_node import CostNodeInput
 
 class CostNodeTreeBuilder(ABC):
 
-    @staticmethod
+
     @abstractmethod
-    def build(
-        contract_id: UUID,
-        cost_node_input: Iterable[CostNodeInput],
-        *,
-        existing_nodes: dict[str, CostNode] | None = None,
-        root_code: str | None = None,
-        root_name: str | None = None,
+    def build(self,
+            contract_id: UUID,
+            cost_node_input: Iterable[CostNodeInput],
+            *,
+            existing_nodes: dict[str, CostNode] | None = None,
+            root_code: str | None = None,
+            root_name: str | None = None,
     ) -> list[CostNode]:
         ...
 
@@ -30,14 +30,13 @@ class DefaultCostNodeTreeBuilder(CostNodeTreeBuilder):
        - Jeśli Excel zawiera wiele rootów → są pakowane pod root techniczny
        """
 
-    def build(
-        self,
-        contract_id: UUID,
-        cost_node_input: Iterable[CostNodeInput],
-        *,
-        existing_nodes: dict[str, CostNode] | None = None,
-        root_code: str | None = None,
-        root_name: str | None = None,
+    def build(self,
+            contract_id: UUID,
+            cost_node_input: Iterable[CostNodeInput],
+            *,
+            existing_nodes: dict[str, CostNode] | None = None,
+            root_code: str | None = None,
+            root_name: str | None = None,
     ) -> list[CostNode]:
 
         existing_nodes = existing_nodes or {}
@@ -46,8 +45,13 @@ class DefaultCostNodeTreeBuilder(CostNodeTreeBuilder):
         if not cost_node_input:
             raise ValueError("At least one cost node root is required")
 
-        # --- 1️⃣ dokładnie jeden root z excela ---
-        if len(cost_node_input) == 1:
+        technical_root_code = root_code or "ROOT"
+
+        # ✅ 1 root i JUŻ jest ROOT → OK
+        if (
+                len(cost_node_input) == 1
+                and cost_node_input[0]["code"] == technical_root_code
+        ):
             return self._build_subtree(
                 contract_id,
                 cost_node_input[0],
@@ -55,9 +59,7 @@ class DefaultCostNodeTreeBuilder(CostNodeTreeBuilder):
                 parent_id=None,
             )
 
-        # --- 2️⃣ wiele rootów → techniczny ROOT ---
-        technical_root_code = root_code or "ROOT"
-
+        # ✅ KAŻDY INNY PRZYPADEK → DORABIAMY ROOT
         technical_root_input: CostNodeInput = {
             "code": technical_root_code,
             "name": root_name or "Contract root",
@@ -74,6 +76,7 @@ class DefaultCostNodeTreeBuilder(CostNodeTreeBuilder):
             existing_nodes=existing_nodes,
             parent_id=None,
         )
+
     # ------------------------------------------------------------------
 
     def _build_subtree(
@@ -133,4 +136,4 @@ class DefaultCostNodeTreeBuilder(CostNodeTreeBuilder):
             if child_budget is not None:
                 budgets.append(child_budget)
 
-        return sum(budgets) if budgets else None
+        return sum(budgets, Decimal("0")) if budgets else None

@@ -1,8 +1,11 @@
+from uuid import UUID
+
+from contract_costs.services.invoices.apply_company_excel_batch_service import ApplyCompanyExcelBatchService
 from contract_costs.services.invoices.dto.common import InvoiceExcelBatch
 from contract_costs.services.invoices.excel.invoice_excel_resolver import InvoiceExcelBatchResolver
 from contract_costs.services.invoices.invoice_line_update_service import InvoiceLineUpdateService
 from contract_costs.services.invoices.invoice_update_service import InvoiceUpdateService
-
+from contract_costs.services.invoices.ochestrator.invoice_ingest_orchestrator import InvoiceIngestOrchestrator
 
 
 class ApplyInvoiceExcelBatchService:
@@ -15,13 +18,13 @@ class ApplyInvoiceExcelBatchService:
 
     def __init__(
         self,
-        invoice_service: InvoiceUpdateService,
-        invoice_line_service: InvoiceLineUpdateService,
-            excel_resolver: InvoiceExcelBatchResolver,
+        excel_resolver: InvoiceExcelBatchResolver,
+        company_apply_service: ApplyCompanyExcelBatchService,
+        orchestrator: InvoiceIngestOrchestrator
     ) -> None:
-        self._invoice_service = invoice_service
-        self._invoice_line_service = invoice_line_service
         self._excel_resolver = excel_resolver
+        self._company_apply_service = company_apply_service
+        self._orchestrator = orchestrator
 
     def apply(self, batch: InvoiceExcelBatch) -> None:
         """
@@ -30,14 +33,16 @@ class ApplyInvoiceExcelBatchService:
         - linie bez invoice_id pozostają kosztami nieewidencjonowanymi
         """
 
+        #  Aktualizacja firm (NOWE)
+
+        # Resolver (NIP → UUID)
+
+        self._company_apply_service.apply(batch.buyers)
+        self._company_apply_service.apply(batch.sellers)
+
         batch = self._excel_resolver.resolve(batch)
-        #  Faktury (tworzenie / update + ref_map)
-        ref_map = self._invoice_service.apply(batch.invoices)
 
-        # Linie faktur
-        finalized_invoice_ids = self._invoice_line_service.apply(batch.lines, ref_map)
-
-        # Finalizacja – status PROCESSED
-        self._invoice_service.mark_processed(
-            invoice_ids=list(finalized_invoice_ids)
+        self._orchestrator.ingest_from_excel(
+         batch=batch
         )
+

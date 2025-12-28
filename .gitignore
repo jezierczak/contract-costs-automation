@@ -135,7 +135,6 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
 .envrc
 .venv
 env/
@@ -207,4 +206,11 @@ marimo/_lsp/
 __marimo__/
 
 work_dir/
+.test_work_dir/
 Examples/
+
+.env
+.env.prod
+.env.test
+.env.backup
+.env.local

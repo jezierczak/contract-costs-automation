@@ -1,9 +1,13 @@
+import logging
+
 from contract_costs.cli.prompts.interactive import interactive_prompt
 from contract_costs.cli.schemas.company import COMPANY_FIELDS
 from contract_costs.cli.context import get_services
 from contract_costs.cli.adapters.company_adapter import update_company_from_cli
 from copy import deepcopy
 from contract_costs.model.company import Company
+
+logger = logging.getLogger(__name__)
 
 
 def handle_edit_company() -> None:
@@ -38,7 +42,7 @@ def handle_edit_company() -> None:
         update_company_service=services.update_company_service,
     )
 
-    print("\nCompany updated successfully.")
+    logger.info("\nCompany updated successfully.")
 
 
 def _prefill_company_fields(company: Company) -> list[dict]:
@@ -48,10 +52,12 @@ def _prefill_company_fields(company: Company) -> list[dict]:
         "name": company.name,
         "tax_number": company.tax_number,
         "description": company.description,
-        "address_street": company.address.street,
-        "address_city": company.address.city,
-        "address_zip_code": company.address.zip_code,
-        "address_country": company.address.country,
+        "address_street": company.address.street if company.address else None,
+        "address_city": company.address.city if company.address else None,
+        "address_zip_code": company.address.zip_code if company.address else None,
+        "address_country": company.address.country if company.address else None,
+        "phone_number": company.contact.phone_number if company.contact else None,
+        "email": company.contact.email if company.contact else None,
         "bank_account_number": company.bank_account.number if company.bank_account else None,
         "bank_account_country_code": company.bank_account.country_code if company.bank_account else None,
         "role": company.role,

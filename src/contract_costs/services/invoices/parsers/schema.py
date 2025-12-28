@@ -1,5 +1,5 @@
 
-AI_SCHEMA: dict[str, str] = {
+AI_SCHEMA: dict[str, str | list[dict[str,str]]] = {
     "invoice_number": "string | null",
     "invoice_date": "string | null",
     "selling_date": "string | null",
@@ -14,6 +14,8 @@ AI_SCHEMA: dict[str, str] = {
     "buyer_state": "string | null",
     "buyer_zip_code": "string | null",
     "buyer_country": "string | null",
+    "buyer_phone_number": "string | null",
+    "buyer_email": "string | null",
     "buyer_bank_account": "string | null",
 
     "seller_name": "string | null",
@@ -23,6 +25,8 @@ AI_SCHEMA: dict[str, str] = {
     "seller_state": "string | null",
     "seller_zip_code": "string | null",
     "seller_country": "string | null",
+    "seller_phone_number": "string | null",
+    "seller_email": "string | null",
     "seller_bank_account": "string | null",
 
     "invoice_items": [
@@ -72,6 +76,8 @@ Rules:
 
 
 Text to analyse:
+=== OCR START ===
 {TEXT}
+=== OCR END ===
 """
 

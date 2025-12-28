@@ -47,6 +47,20 @@ COMPANY_FIELDS = [
         "required": True,
     },
 
+# -------- contact --------
+    {
+        "name": "phone_number",
+        "prompt": "Phone number",
+        "type": str,
+        "required": True,
+    },
+    {
+        "name": "email",
+        "prompt": "E-mail",
+        "type": str,
+        "required": True,
+    },
+
     # -------- bank account (optional) --------
     {
         "name": "bank_account",

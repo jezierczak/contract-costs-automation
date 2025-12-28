@@ -32,6 +32,9 @@ class CostNodeRepository(ABC):
     def list_nodes(self) -> list[CostNode]:
         """List all cost nodes"""
         ...
+    @abstractmethod
+    def list_leaf_nodes_for_active_contracts(self) -> list[CostNode]:
+        ...
 
     @abstractmethod
     def list_by_parent(self, parent_id: UUID) -> list[CostNode]:

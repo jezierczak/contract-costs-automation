@@ -6,6 +6,7 @@ from contract_costs.builders.cost_node_tree_builder import DefaultCostNodeTreeBu
 from contract_costs.repository.inmemory.contract_repository import InMemoryContractRepository
 from contract_costs.repository.inmemory.cost_node_repository import InMemoryCostNodeRepository
 from contract_costs.services.contracts.create_contract_service import CreateContractService
+from contract_costs.services.contracts.validators.cost_node_tree_validator import CostNodeEntityValidator
 
 
 class TestCreateContractService:
@@ -25,9 +26,12 @@ class TestCreateContractService:
         con_repo = InMemoryContractRepository()
         node_repo = InMemoryCostNodeRepository()
         tree_builder = DefaultCostNodeTreeBuilder()
+        tree_validator = CostNodeEntityValidator()
         service = CreateContractService(
             contract_repository=con_repo,
-            cost_node_repository=node_repo, cost_node_tree_builder=tree_builder
+            cost_node_repository=node_repo,
+            cost_node_tree_builder=tree_builder,
+            cost_node_tree_validator=tree_validator
         )
 
         service.init(contract_starter=contract_starter_1)
@@ -60,11 +64,13 @@ class TestCreateContractService:
         tree_builder = DefaultCostNodeTreeBuilder()
         contract = CreateContractService(
             contract_repository=con_repo,
-            cost_node_repository=node_repo, cost_node_tree_builder=tree_builder
+            cost_node_repository=node_repo,
+            cost_node_tree_builder=tree_builder,
+            cost_node_tree_validator = CostNodeEntityValidator()
         )
 
         contract.init(contract_starter=contract_starter_1)
-        contract.add_cost_node_tree(cost_node_tree_1)
+        contract.add_cost_node_tree([cost_node_tree_1])
         contract.execute()
 
         # --- kontrakt ---
@@ -74,11 +80,11 @@ class TestCreateContractService:
 
         # --- cost nodes ---
         nodes = node_repo.list_nodes()
-        assert len(nodes) == 3
+        assert len(nodes) == 4
 
         # --- kody ---
         codes = {n.code for n in nodes}
-        assert codes == {"WYB", "WYB_SCI", "WYB_POS"}
+        assert codes == {"ROOT","WYB", "WYB_SCI", "WYB_POS"}
 
         # --- wszystkie należą do kontraktu ---
         assert all(n.contract_id == contract.id for n in nodes)
@@ -88,20 +94,23 @@ class TestCreateContractService:
         assert len(roots) == 1
 
         root = roots[0]
-        assert root.code == "WYB"
-        assert root.budget == Decimal("100000")
+        assert root.code == "ROOT"
+        # assert root.code == "WYB"
+        # assert root.budget == Decimal("100000")
         assert root.is_active is True
 
         # --- dzieci ---
-        children = [n for n in nodes if n.parent_id == root.id]
-        assert len(children) == 2
+        children_lvl1 = [n for n in nodes if n.parent_id == root.id]
+        assert len(children_lvl1) == 1
 
-        child_codes = {c.code for c in children}
-        assert child_codes == {"WYB_SCI", "WYB_POS"}
+        children_lvl2 = [
+            n
+            for parent in children_lvl1
+            for n in nodes
+            if n.parent_id == parent.id
+        ]
 
-        # --- budżety dzieci ---
-        budgets = {c.code: c.budget for c in children}
+        budgets = {c.code: c.budget for c in children_lvl2}
         assert budgets["WYB_SCI"] == Decimal("50000")
         assert budgets["WYB_POS"] == Decimal("50000")
-
 

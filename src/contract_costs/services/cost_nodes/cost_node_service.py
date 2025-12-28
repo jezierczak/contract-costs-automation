@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from contract_costs.model.cost_node import CostNode
 from contract_costs.repository.cost_node_repository import CostNodeRepository
-from contract_costs.services.cost_nodes.validators.cost_node_validator import CostNodeValidator
+from contract_costs.services.cost_nodes.validators.cost_node_validator import CostNodeOperationValidator
 
 
 class CostNodeService:
@@ -12,7 +12,7 @@ class CostNodeService:
     def __init__(
         self,
         repository: CostNodeRepository,
-        validator: CostNodeValidator,
+        validator: CostNodeOperationValidator,
     ) -> None:
         self._repository = repository
         self._validator = validator

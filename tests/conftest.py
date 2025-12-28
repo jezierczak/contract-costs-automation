@@ -6,7 +6,7 @@ import pytest
 
 from contract_costs.builders.cost_node_tree_builder import DefaultCostNodeTreeBuilder
 from contract_costs.model.amount import VatRate, Amount
-from contract_costs.model.company import Company, Address, BankAccount, CompanyType, CompanyTag
+from contract_costs.model.company import Company, Address, BankAccount, CompanyType, Contact
 from contract_costs.model.contract import ContractStarter, ContractStatus, Contract
 from datetime import date
 
@@ -16,6 +16,7 @@ from contract_costs.model.unit_of_measure import UnitOfMeasure
 from contract_costs.repository.inmemory.contract_repository import InMemoryContractRepository
 from contract_costs.repository.inmemory.cost_node_repository import InMemoryCostNodeRepository
 from contract_costs.services.contracts.create_contract_service import CreateContractService
+from contract_costs.services.contracts.validators.cost_node_tree_validator import CostNodeEntityValidator
 
 
 @pytest.fixture
@@ -24,6 +25,7 @@ def create_contract_service():
         contract_repository=InMemoryContractRepository(),
         cost_node_repository=InMemoryCostNodeRepository(),
         cost_node_tree_builder=DefaultCostNodeTreeBuilder(),
+        cost_node_tree_validator=CostNodeEntityValidator()
     )
 
 @pytest.fixture
@@ -38,6 +40,11 @@ def contract_owner() -> Company:
         city =  "City Owner",
         zip_code = "34-700",
         country = "Country_owner"
+    ),
+
+    contact= Contact(
+        phone_number = "+44 555 555 555",
+        email = "example@example.com",
     ),
     bank_account = BankAccount("91221122112211221122221111","PL"),
     role = CompanyType.OWN,
@@ -57,6 +64,10 @@ def contract_company() -> Company:
         city =  "City",
         zip_code = "40-310",
         country = "Country"
+    ),
+    contact=Contact(
+        phone_number="+44 555 555 555",
+        email="email@aa.com",
     ),
     bank_account = BankAccount("1122112211221122112222111122"),
     role = CompanyType.COOPERATIVE,
@@ -112,12 +123,14 @@ def cost_node_tree_1() -> CostNodeInput:
         "quantity": Decimal("1"),
         "unit": None,
         "budget":Decimal("100000"),
+        "is_active":True,
         "children": [
             { "code":"WYB_SCI",
             "name":"wyburzenia scian",
               "quantity": Decimal("10"),
               "unit": UnitOfMeasure.CUBIC_METER,
             "budget":Decimal("50000"),
+              "is_active": True,
             "children": []
             },
             {"code": "WYB_POS",
@@ -125,6 +138,7 @@ def cost_node_tree_1() -> CostNodeInput:
              "quantity": Decimal("100"),
              "unit": UnitOfMeasure.SQUARE_METER,
              "budget": Decimal("50000"),
+             "is_active": True,
              "children": []
              }
         ]

@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 from contract_costs.cli.adapters.company_adapter import update_company_from_cli
-from contract_costs.model.company import Company, CompanyType
+from contract_costs.model.company import Company, CompanyType, Contact
 from contract_costs.model.company import Address
 
 
@@ -14,6 +14,7 @@ def test_update_company_from_cli_updates_company():
         tax_number="123",
         address=Address("Street", "City", "00-000", "PL"),
         bank_account=None,
+        contact=None,
         role=CompanyType.CLIENT,
         tags=set(),
         is_active=True,
@@ -21,11 +22,14 @@ def test_update_company_from_cli_updates_company():
 
     data = {
         "name": "Company A",
+        "tax_number": "123",
         "description": None,
         "address_street": "Street",
         "address_city": "City",
         "address_zip_code": "00-000",
         "address_country": "PL",
+        "phone_number": "123",
+        "email": "email@email.com",
         "bank_account_number": None,
         "bank_account_country_code": None,
         "role": CompanyType.OWN,

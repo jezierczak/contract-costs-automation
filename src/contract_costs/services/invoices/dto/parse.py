@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from contract_costs.services.invoices.dto.common import (
     InvoiceUpdate,
-    InvoiceLineUpdate,
+    InvoiceLineUpdate, ResolvedInvoiceUpdate,
 )
 
 @dataclass(frozen=True)
@@ -13,6 +13,8 @@ class CompanyInput:
     state: str | None
     zip_code: str | None
     country: str | None
+    phone_number: str | None
+    email: str | None
     bank_account: str | None
     role: str | None
 

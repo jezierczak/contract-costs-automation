@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 import sys
 
 from contract_costs.cli.commands.add_company import handle_add_company
@@ -9,12 +10,24 @@ from contract_costs.cli.commands.edit_company import handle_edit_company
 from contract_costs.cli.commands.add_cost_type import handle_add_cost_type
 from contract_costs.cli.commands.add_contract import handle_add_contract
 from contract_costs.cli.commands.init import handle_init
+from contract_costs.cli.commands.report import register_report_commands
 from contract_costs.cli.commands.run import handle_run
 from contract_costs.cli.commands.showexcel_contract import handle_showexcel_contract
 from contract_costs.cli.commands.showexcel_invoices import handle_showexcel_invoices
 
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO"),
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
 
-logging.basicConfig(level=logging.INFO)
+
+def log_unhandled_exception(exc_type, exc, tb):
+    logging.critical(
+        "UNHANDLED EXCEPTION",
+        exc_info=(exc_type, exc, tb),
+    )
+
+sys.excepthook = log_unhandled_exception
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -23,6 +36,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    register_report_commands(subparsers)
 
     subparsers.add_parser("init", help="Initialize application environment")
     subparsers.add_parser("run", help="Run invoice watcher")
@@ -55,7 +70,7 @@ def build_parser() -> argparse.ArgumentParser:
     showexcel_invoice_parser.add_argument(
         "mode",
         nargs="?",
-        help="Show invoice status new, in_progress, open for both",
+        help="Show invoice status new, in_progress, for both",
     )
 
     applyexcel_parser = subparsers.add_parser("applyexcel")
@@ -79,10 +94,26 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
+    import contract_costs.config as cfg  # 🔥 JAWNE: config ładuje się TU
+    logging.info("APP_ENV=%s | WORK_DIR=%s | DB=%s",
+                 cfg.APP_ENV, cfg.WORK_DIR, cfg.DB_CONFIG["database"])
+
+    if os.getenv("APP_ENV", "test") == "prod":
+        print("⚠️  RUNNING IN PRODUCTION MODE ⚠️")
+        confirm = input("Type 'PROD' to continue: ")
+        if confirm != "PROD":
+            print("Aborted.")
+            exit(1)
+
     parser = build_parser()
     args = parser.parse_args(argv)
 
     # ---------- ROUTING ----------
+
+    if hasattr(args, "handler"):
+        args.handler(args)
+        return
+
     if args.command == "init":
         handle_init()
         return
@@ -122,6 +153,7 @@ def main(argv: list[str] | None = None) -> None:
     if args.command == "applyexcel" and args.entity == "invoices":
         handle_applyexcel_invoices(args.file)
         return
+
 
     # fallback (nie powinno się zdarzyć)
     parser.print_help()

@@ -15,7 +15,7 @@ class CompanyRepository(ABC):
         ...
 
     @abstractmethod
-    def list(self) -> list[Company]:
+    def list_all(self) -> list[Company]:
         ...
 
     @abstractmethod
@@ -23,7 +23,16 @@ class CompanyRepository(ABC):
         ...
 
     @abstractmethod
+    def get_owners(self) -> list[Company]:
+        ...
+
+    @abstractmethod
     def update(self, company: Company) -> None:
+        ...
+
+
+    @abstractmethod
+    def delete(self, company_id: UUID) -> None:
         ...
 
     @abstractmethod

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
+
 from contract_costs.services.invoices.dto.parse import InvoiceParseResult
 
 

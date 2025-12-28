@@ -1,7 +1,6 @@
 from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-import time
 
 
 class _Handler(FileSystemEventHandler):
@@ -11,7 +10,10 @@ class _Handler(FileSystemEventHandler):
     def on_created(self, event):
         if event.is_directory:
             return
-        self._on_file_created(Path(event.src_path))
+        path = Path(event.src_path)
+        if path.suffix.lower() != ".pdf":
+            return
+        self._on_file_created(path)
 
 
 class FileWatcher:
@@ -24,12 +26,6 @@ class FileWatcher:
         handler = _Handler(self._on_file_created)
         self._observer.schedule(handler, str(self._path), recursive=False)
         self._observer.start()
-
-        try:
-            while True:
-                time.sleep(1)
-        except KeyboardInterrupt:
-            self.stop()
 
     def stop(self) -> None:
         self._observer.stop()

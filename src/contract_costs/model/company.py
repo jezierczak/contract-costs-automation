@@ -4,12 +4,12 @@ from typing import Literal
 from uuid import UUID
 from enum import Enum
 
-CompanyTag = Literal[
-    "friendly",
-    "important",
-    "blacklisted",
-    "vip"
-]
+# CompanyTag = Literal[
+#     "friendly",
+#     "important",
+#     "blacklisted",
+#     "vip"
+# ]
 
 class CompanyType(Enum):
     OWN = "Own"
@@ -36,6 +36,12 @@ class Address:
     def check_polish_zip_code(zip_code: str) -> None:
         if not re.match(r"^\d{2}-\d{3}$", zip_code):
             raise ValueError("Invalid zip code")
+
+@dataclass(frozen=True)
+class Contact:
+    phone_number: str
+    email: str
+
 
 @dataclass(frozen=True)
 class BankAccount:
@@ -71,10 +77,11 @@ class Company:
     name: str
     description: str | None
     tax_number: str
-    address: Address
+    address: Address | None
+    contact: Contact | None
     bank_account: BankAccount | None
     role: CompanyType
-    tags: set[CompanyTag]
+    tags: set[str] | None
     is_active: bool
 
 

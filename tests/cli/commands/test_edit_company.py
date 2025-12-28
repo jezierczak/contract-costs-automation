@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 from contract_costs.cli.commands.edit_company import handle_edit_company
-from contract_costs.model.company import CompanyType, Company, Address
+from contract_costs.model.company import CompanyType, Company, Address, Contact
 
 
 def test_handle_edit_company_happy_path(monkeypatch):
@@ -19,6 +19,10 @@ def test_handle_edit_company_happy_path(monkeypatch):
             city="City",
             zip_code="00-000",
             country="PL",
+        ),
+        contact=Contact(
+            phone_number="1515215",
+            email="example@email.com"
         ),
         bank_account=None,
         role=CompanyType.CLIENT,

@@ -14,8 +14,12 @@ class InMemoryInvoiceLineRepository(InvoiceLineRepository):
     def get(self, invoice_line_id: UUID) -> InvoiceLine | None:
         return self._lines.get(invoice_line_id)
 
-    def list_by_invoice_ids(self, invoice_line_ids: list[UUID]) -> list[InvoiceLine] | None:
-        return [self.get(id_) for id_ in invoice_line_ids]
+    def list_by_invoice_ids(self, invoice_line_ids: list[UUID]) -> list[InvoiceLine]:
+        return [
+            line
+            for id_ in invoice_line_ids
+            if (line := self.get(id_)) is not None
+        ]
 
     def list_by_null_invoice(self) -> list[InvoiceLine] | None:
         return [
@@ -43,6 +47,27 @@ class InMemoryInvoiceLineRepository(InvoiceLineRepository):
 
     def exists(self, invoice_line_id: UUID) -> bool:
         return invoice_line_id in self._lines
+
+    def delete_not_in_ids(
+            self,
+            invoice_id: UUID,
+            keep_ids: set[UUID],
+    ) -> int:
+        to_delete = []
+
+        for line_id, line in self._lines.items():
+            if line.invoice_id != invoice_id:
+                continue
+
+            if keep_ids and line_id in keep_ids:
+                continue
+
+            to_delete.append(line_id)
+
+        for line_id in to_delete:
+            del self._lines[line_id]
+
+        return len(to_delete)
 
     def get_for_assignment(self) -> list[InvoiceLine]:
         return [

@@ -93,7 +93,7 @@ class MySQLInvoiceLineRepository(InvoiceLineRepository):
 
         return [self._map_row(r) for r in rows]
 
-    def list_by_invoice_ids(self, invoice_line_ids: list[UUID]) -> list[InvoiceLine] | None:
+    def list_by_invoice_ids(self, invoice_line_ids: list[UUID]) -> list[InvoiceLine]:
         result: list[InvoiceLine] = []
 
         for invoice_id in invoice_line_ids:
@@ -156,6 +156,31 @@ class MySQLInvoiceLineRepository(InvoiceLineRepository):
         with conn.cursor() as cur:
             cur.execute(sql, (str(invoice_line_id),))
             return cur.fetchone() is not None
+
+    def delete_not_in_ids(
+            self,
+            invoice_id: UUID,
+            keep_ids: set[UUID],
+    ) -> int:
+
+        if not keep_ids:
+            sql = "DELETE FROM invoice_lines WHERE invoice_id = %s"
+            params = (str(invoice_id),)
+        else:
+            placeholders = ", ".join(["%s"] * len(keep_ids))
+            sql = f"""
+                DELETE FROM invoice_lines
+                WHERE invoice_id = %s
+                AND id NOT IN ({placeholders})
+            """
+            params = (str(invoice_id), *map(str, keep_ids))
+
+        conn = get_connection()
+        with conn.cursor() as cur:
+            cur.execute(sql, params)
+            conn.commit()
+            return cur.rowcount
+
 
     def get_for_assignment(self) -> list[InvoiceLine]:
         sql = """

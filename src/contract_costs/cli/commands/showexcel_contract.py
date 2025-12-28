@@ -1,8 +1,11 @@
+import logging
 
 import contract_costs.config as cfg
 from uuid import UUID
 
 from contract_costs.cli.context import get_services
+
+logger = logging.getLogger(__name__)
 
 
 def handle_showexcel_contract(contract_ref: str | None = None) -> None:
@@ -17,7 +20,7 @@ def handle_showexcel_contract(contract_ref: str | None = None) -> None:
 
     if contract_ref is None:
         service.generate_empty(output_path)
-        print(f"Empty contract structure Excel generated: {output_path}")
+        logger.info(f"Empty contract structure Excel generated: {output_path}")
         return
 
     # próbujemy UUID
@@ -36,11 +39,11 @@ def handle_showexcel_contract(contract_ref: str | None = None) -> None:
         )
 
     if contract is None:
-        print("Contract not found.")
+        logger.warning("Contract not found.")
         return
 
     filename = cfg.CONTRACT_EDIT_EXCEL_TEMPLATE.format(code=contract.code)
     output_path = cfg.INPUTS_CONTRACTS_EDIT_DIR / filename
 
     service.generate_from_contract(contract.id, output_path)
-    print(f"Contract structure Excel generated: {output_path}")
+    logger.info(f"Contract structure Excel generated: {output_path}")
