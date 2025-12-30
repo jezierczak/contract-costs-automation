@@ -6,6 +6,7 @@ from datetime import date, datetime
 
 
 class PaymentMethod(Enum):
+    PRE_PAID = "pre_paid"
     BANK_TRANSFER = "bank_transfer"   # przelew
     CASH = "cash"                     # gotówka
     CARD = "card"                     # karta

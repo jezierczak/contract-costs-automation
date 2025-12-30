@@ -77,4 +77,5 @@ class ApplyCompanyExcelBatchService:
                     name=c.name,
                     tax_number=c.tax_number,
                 )
+                print(updated)
                 self._repo.update(updated)

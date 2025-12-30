@@ -115,7 +115,6 @@ class MySQLCompanyRepository(CompanyRepository):
                 company.contact.phone_number if company.contact else None,
                 company.contact.email if company.contact else None,
                 company.bank_account.number if company.bank_account else None,
-                company.bank_account.number if company.bank_account else None,
                 company.bank_account.country_code if company.bank_account else None,
                 company.role.value,
                 company.is_active,
