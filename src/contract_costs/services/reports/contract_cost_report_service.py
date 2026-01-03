@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Iterable
 from uuid import UUID
 
@@ -49,13 +50,16 @@ class ContractCostReportService:
                 continue
             if line.cost_node_id not in leaf_by_id:
                 continue
+
             node = leaf_by_id[line.cost_node_id]
-            cost_type = cost_types.get(line.cost_type_id)
+            if line.cost_type_id:
+                cost_type = cost_types.get(line.cost_type_id)
+            else: cost_type = None
 
             rows.append(
                 {
                     # --- contract ---
-                    "contract_id": contract.id,
+                    # "contract_id": contract.id,
                     "contract_code": contract.code,
                     "contract_name": contract.name,
 
@@ -70,12 +74,13 @@ class ContractCostReportService:
                     "cost_type_name": cost_type.name if cost_type else None,
 
                     # --- amounts ---
-                    "quantity": line.quantity,
-                    "unit": line.unit.value,
-                    "net_amount": line.amount.net,
+                    # "quantity": line.quantity,
+                    # "unit": line.unit.value,
+                    "net_amount": line.amount.net if line.amount.net else Decimal("0"),
                     "vat_amount": line.amount.tax,
                     "gross_amount": line.amount.gross,
-                    "non_tax_amount": line.amount.non_tax_cost
+                    "non_tax_amount": line.amount.non_tax_cost,
+
                 }
             )
 

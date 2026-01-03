@@ -12,8 +12,8 @@ class InvoiceLineExport:
 
     item_name: str
     description: str | None
-    quantity: Decimal
-    unit: UnitOfMeasure
+    quantity: Decimal | None
+    unit: UnitOfMeasure | None
 
     net: Decimal
     vat_rate: VatRate

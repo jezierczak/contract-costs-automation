@@ -4,7 +4,7 @@ import re
 class CompanyValidator:
 
     @staticmethod
-    def validate_nip(nip: str) -> bool:
+    def validate_nip(nip: str | None) -> bool:
         if not nip:
             return False
 

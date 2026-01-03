@@ -47,3 +47,47 @@ def normalize_required_tax_number(nip: str | int | None) -> str:
     if normalized is None:
         raise ValueError("Tax number is required")
     return normalized
+
+
+def normalize_bank_account(account: str | None) -> str | None:
+    if not account:
+        return None
+
+    value = account.strip().upper()
+
+    # usuwamy spacje i myślniki
+    value = re.sub(r"[\s\-]", "", value)
+
+    # usuwamy prefix PL
+    if value.startswith("PL"):
+        value = value[2:]
+
+    # tylko cyfry
+    if not value.isdigit():
+        return None
+
+    # polskie konto = 26 cyfr
+    if len(value) != 26:
+        return None
+
+    return value
+
+def normalize_phone(phone: str | None) -> str | None:
+    if not phone:
+        return None
+
+    # tylko cyfry
+    digits = re.sub(r"\D", "", phone)
+
+    if not digits:
+        return None
+
+    # prefix PL
+    if digits.startswith("48") and len(digits) > 9:
+        digits = digits[2:]
+
+    # polski numer = 9 cyfr
+    if len(digits) != 9:
+        return None
+
+    return digits

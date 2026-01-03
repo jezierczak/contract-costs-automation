@@ -1,7 +1,7 @@
 import builtins
 from unittest.mock import MagicMock
 
-from contract_costs.cli.commands.add_cost_type import handle_add_cost_type
+from contract_costs.cli.commands.add.add_cost_type import handle_add_cost_type
 
 
 def test_handle_add_cost_type_happy_path(monkeypatch):

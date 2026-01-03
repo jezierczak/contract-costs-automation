@@ -55,6 +55,8 @@ class OpenAIInvoiceClient:
         return self._clean_json(response.output_text)
 
     def _schema_as_text(self) -> str:
+        if not self._schema:
+            return ""
         return ",\n".join(f"{k}: {v}" for k, v in self._schema.items())
 
     def _clean_json(self, raw: str) -> dict:
@@ -67,7 +69,9 @@ class OpenAIInvoiceClient:
             raise ValueError("No JSON in AI response")
 
         parsed = json.loads(match.group(0))
-        return {k: parsed.get(k) for k in self._schema.keys()}
+        if self._schema:
+            return {k: parsed.get(k) for k in self._schema.keys()}
+        else: raise AttributeError("No schema found")
 
     def resolve_company(
             self,

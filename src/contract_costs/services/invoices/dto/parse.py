@@ -6,8 +6,8 @@ from contract_costs.services.invoices.dto.common import (
 
 @dataclass(frozen=True)
 class CompanyInput:
-    name: str
-    tax_number: str            # NIP
+    name: str | None
+    tax_number: str | None           # NIP
     street: str | None
     city: str | None
     state: str | None
@@ -16,7 +16,7 @@ class CompanyInput:
     phone_number: str | None
     email: str | None
     bank_account: str | None
-    role: str | None
+    role: str
 
 
 

@@ -23,9 +23,9 @@ class Amount:
     tax_treatment: TaxTreatment = TaxTreatment.TAX_DEDUCTIBLE
 
     @property
-    def net(self) -> Decimal | None:
+    def net(self) -> Decimal :
         if self.tax_treatment != TaxTreatment.TAX_DEDUCTIBLE:
-            return None
+            return Decimal("0.00")
         return self.value
 
     @property

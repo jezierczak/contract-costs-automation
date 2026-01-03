@@ -30,7 +30,7 @@ def handle_add_contract() -> None:
 
     if client is None:
         print("Client company not found.")
-        return
+        print("Continuing without client.")
 
     data = interactive_prompt(CONTRACT_FIELDS)
 

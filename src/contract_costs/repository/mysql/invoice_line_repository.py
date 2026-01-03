@@ -101,7 +101,7 @@ class MySQLInvoiceLineRepository(InvoiceLineRepository):
 
         return result
 
-    def list_by_null_invoice(self) -> list[InvoiceLine] | None:
+    def list_by_null_invoice(self) -> list[InvoiceLine]:
         sql = "SELECT * FROM invoice_lines WHERE invoice_id is NULL"
 
         conn = get_connection()
@@ -173,7 +173,7 @@ class MySQLInvoiceLineRepository(InvoiceLineRepository):
                 WHERE invoice_id = %s
                 AND id NOT IN ({placeholders})
             """
-            params = (str(invoice_id), *map(str, keep_ids))
+            params = (str(invoice_id), *map(str, keep_ids)) #type: ignore
 
         conn = get_connection()
         with conn.cursor() as cur:

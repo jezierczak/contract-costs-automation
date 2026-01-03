@@ -6,6 +6,19 @@ from contract_costs.services.reports.contract_cost_report_runner import (
 from contract_costs.services.reports.renders.cli import render_stdout
 from contract_costs.services.reports.renders.excel import ExcelReportRenderer
 from uuid import UUID
+from contract_costs.cli.registry import REGISTRY
+
+def build_report_costs(subparsers):
+    p = subparsers.add_parser("costs", help="Contract cost report")
+
+    p.add_argument("contract_ref", help="Contract UUID or code",)
+    p.add_argument("--group-by", nargs="+", choices=["cost_node", "cost_type", "invoice"], default=["cost_node"],help="Grouping fields (default: cost_node)")
+    p.add_argument("--output", choices=["stdout", "excel"], default="stdout",help="Output format")
+    p.add_argument("--invoice", nargs="+", help="Filter by invoice numbers")
+    p.add_argument("--status", nargs="+",choices=["NEW", "IN_PROGRESS","PROCESSED", "PAID","NOT_PAID", "DELETED"],
+        help="Filter by invoice status")
+
+    p.set_defaults(handler=handle_report_costs)
 
 
 def resolve_contract_ref(repo, ref: str):
@@ -33,11 +46,15 @@ def handle_report_costs(args):
     df = runner.run(
         contract_id=contract.id,
         group_by=args.group_by,
+        invoice_numbers=args.invoice,
+        invoice_statuses=args.status,
     )
 
-    if args.format == "excel":
+    if args.output == "excel":
         path = REPORTS_DIR / f"contract_costs_{contract.code}.xlsx"
         ExcelReportRenderer().render(df, output_path=path)
         print(f"Report saved to {path}")
     else:
         render_stdout(df)
+
+REGISTRY.register_group("report", build_report_costs)

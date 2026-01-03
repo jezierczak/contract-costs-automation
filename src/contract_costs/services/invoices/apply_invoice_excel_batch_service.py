@@ -3,8 +3,6 @@ from uuid import UUID
 from contract_costs.services.invoices.apply_company_excel_batch_service import ApplyCompanyExcelBatchService
 from contract_costs.services.invoices.dto.common import InvoiceExcelBatch
 from contract_costs.services.invoices.excel.invoice_excel_resolver import InvoiceExcelBatchResolver
-from contract_costs.services.invoices.invoice_line_update_service import InvoiceLineUpdateService
-from contract_costs.services.invoices.invoice_update_service import InvoiceUpdateService
 from contract_costs.services.invoices.ochestrator.invoice_ingest_orchestrator import InvoiceIngestOrchestrator
 
 
@@ -40,9 +38,9 @@ class ApplyInvoiceExcelBatchService:
         self._company_apply_service.apply(batch.buyers)
         self._company_apply_service.apply(batch.sellers)
 
-        batch = self._excel_resolver.resolve(batch)
+        ingest_batch = self._excel_resolver.resolve(batch)
 
         self._orchestrator.ingest_from_excel(
-         batch=batch
+         batch=ingest_batch
         )
 

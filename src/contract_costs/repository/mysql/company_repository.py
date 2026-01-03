@@ -1,19 +1,16 @@
+from typing import Iterable
 from uuid import UUID
 
 from contract_costs.model.company import Company, CompanyType
-from contract_costs.model.company import Address
-from contract_costs.model.company import BankAccount
-from contract_costs.model.company import Contact
-
-
+from contract_costs.model.company import Address, BankAccount, Contact
 from contract_costs.repository.company_repository import CompanyRepository
 from contract_costs.infrastructure.db.mysql_connection import get_connection
-
 
 
 class MySQLCompanyRepository(CompanyRepository):
 
     # ---------- helpers ----------
+
     @staticmethod
     def _row_to_company(row: dict) -> Company:
         return Company(
@@ -29,7 +26,7 @@ class MySQLCompanyRepository(CompanyRepository):
             ),
             contact=Contact(
                 phone_number=row["phone_number"],
-                email = row["email"],
+                email=row["email"],
             ),
             bank_account=(
                 BankAccount(
@@ -40,11 +37,11 @@ class MySQLCompanyRepository(CompanyRepository):
                 else None
             ),
             role=CompanyType(row["role"]),
-            tags=set(), #TODO dodac pole do bazy danych i wczytywać to
+            tags=set(),  # TODO
             is_active=bool(row["is_active"]),
         )
 
-    # ---------- interface methods ----------
+    # ---------- CRUD ----------
 
     def add(self, company: Company) -> None:
         conn = get_connection()
@@ -54,7 +51,8 @@ class MySQLCompanyRepository(CompanyRepository):
             """
             INSERT INTO companies (
                 id, name, description, tax_number,
-                street, city, zip_code, country,phone_number,email,
+                street, city, zip_code, country,
+                phone_number, email,
                 bank_account_number, bank_account_country_code,
                 role, is_active
             )
@@ -126,6 +124,19 @@ class MySQLCompanyRepository(CompanyRepository):
         cur.close()
         conn.close()
 
+    def delete(self, company_id: UUID) -> None:
+        conn = get_connection()
+        cur = conn.cursor()
+
+        cur.execute(
+            "DELETE FROM companies WHERE id = %s LIMIT 1",
+            (str(company_id),),
+        )
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
     def get(self, company_id: UUID) -> Company | None:
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
@@ -134,38 +145,8 @@ class MySQLCompanyRepository(CompanyRepository):
             "SELECT * FROM companies WHERE id = %s",
             (str(company_id),),
         )
+
         row = cur.fetchone()
-
-        cur.close()
-        conn.close()
-
-        return self._row_to_company(row) if row else None
-
-    def get_owners(self) -> list[Company]:
-        conn = get_connection()
-        cur = conn.cursor(dictionary=True)
-
-        cur.execute(
-            "SELECT * FROM companies WHERE role = %s AND is_active = 1",
-            (str(CompanyType.OWN.value),),
-        )
-        rows = cur.fetchall()
-
-        cur.close()
-        conn.close()
-
-        return [self._row_to_company(row) for row in rows]
-
-    def get_by_tax_number(self, tax_number: str) -> Company | None:
-        conn = get_connection()
-        cur = conn.cursor(dictionary=True)
-
-        cur.execute(
-            "SELECT * FROM companies WHERE tax_number = %s",
-            (tax_number,),
-        )
-        row = cur.fetchone()
-
         cur.close()
         conn.close()
 
@@ -193,23 +174,43 @@ class MySQLCompanyRepository(CompanyRepository):
         )
 
         exists = cur.fetchone() is not None
-
         cur.close()
         conn.close()
 
         return exists
 
-    def delete(self, company_id: UUID) -> None:
+    # ---------- identity ----------
+
+    def get_by_tax_number(self, tax_number: str) -> Company | None:
         conn = get_connection()
-        cur = conn.cursor()
+        cur = conn.cursor(dictionary=True)
 
         cur.execute(
-            "DELETE FROM companies WHERE id = %s LIMIT 1",
-            (str(company_id),),
+            "SELECT * FROM companies WHERE tax_number = %s",
+            (tax_number,),
         )
-        conn.commit()
+
+        row = cur.fetchone()
         cur.close()
         conn.close()
+
+        return self._row_to_company(row) if row else None
+
+    def get_owners(self) -> list[Company]:
+        conn = get_connection()
+        cur = conn.cursor(dictionary=True)
+
+        cur.execute(
+            "SELECT * FROM companies WHERE role = %s AND is_active = 1",
+            (CompanyType.OWN.value,),
+        )
+
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        return [self._row_to_company(row) for row in rows]
+
     def exists_owner(self) -> bool:
         conn = get_connection()
         cur = conn.cursor()
@@ -220,8 +221,98 @@ class MySQLCompanyRepository(CompanyRepository):
         )
 
         exists = cur.fetchone() is not None
-
         cur.close()
         conn.close()
 
         return exists
+
+    # ---------- candidate search ----------
+
+    def find_by_bank_account(self, bank_account: str) -> list[Company]:
+        conn = get_connection()
+        cur = conn.cursor(dictionary=True)
+
+        cur.execute(
+            "SELECT * FROM companies WHERE bank_account_number = %s",
+            (bank_account,),
+        )
+
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        return [self._row_to_company(row) for row in rows]
+
+    def find_by_email(self, email: str) -> list[Company]:
+        conn = get_connection()
+        cur = conn.cursor(dictionary=True)
+
+        cur.execute(
+            "SELECT * FROM companies WHERE email = %s",
+            (email,),
+        )
+
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        return [self._row_to_company(row) for row in rows]
+
+    def find_by_phone(self, phone_number: str) -> list[Company]:
+        conn = get_connection()
+        cur = conn.cursor(dictionary=True)
+
+        cur.execute(
+            "SELECT * FROM companies WHERE phone_number = %s",
+            (phone_number,),
+        )
+
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        return [self._row_to_company(row) for row in rows]
+
+    def find_by_name_like(self, name: str) -> list[Company]:
+        conn = get_connection()
+        cur = conn.cursor(dictionary=True)
+
+        cur.execute(
+            "SELECT * FROM companies WHERE name LIKE %s",
+            (f"%{name}%",),
+        )
+
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        return [self._row_to_company(row) for row in rows]
+
+    def find_by_street_tokens(self, tokens: list[str]) -> list[Company]:
+        if not tokens:
+            return []
+
+        conn = get_connection()
+        cur = conn.cursor(dictionary=True)
+
+        where_clauses = []
+        params = []
+
+        for token in tokens:
+            where_clauses.append("LOWER(street) LIKE %s")
+            params.append(f"%{token.lower()}%")
+
+        sql = f"""
+            SELECT *
+            FROM companies
+            WHERE street IS NOT NULL
+              AND {' AND '.join(where_clauses)}
+        """
+
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+
+        cur.close()
+        conn.close()
+
+        return [self._row_to_company(row) for row in rows]

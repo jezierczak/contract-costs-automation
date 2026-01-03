@@ -11,3 +11,4 @@ class UnitOfMeasure(Enum):
     HOUR = "h"           # godzina
     DAY = "day"          # dzień
     SERVICE = "services"  # usługa
+    UNKNOWN = "unknown"

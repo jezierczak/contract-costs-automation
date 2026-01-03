@@ -76,7 +76,7 @@ class MySQLCostProgressSnapshotRepository(CostProgressSnapshotRepository):
             ORDER BY snapshot_date DESC
             LIMIT 1
             """
-            params = (str(contract_id), str(cost_node_id))
+            params = (str(contract_id), str(cost_node_id)) #type: ignore
 
         conn = get_connection()
         with conn.cursor(dictionary=True) as cur:

@@ -31,6 +31,9 @@ class GenerateContractStructureExcelService:
         output_path: Path,
     ) -> None:
         contract = self._contracts.get(contract_id)
+        if not contract:
+            raise Exception(f"Contract with id {contract_id} not found")
+
         cost_nodes = self._cost_nodes.list_by_contract(contract_id)
 
         contract_row = ContractStructureExcelGenerator.map_contract_to_row(contract)

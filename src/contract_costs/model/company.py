@@ -21,10 +21,10 @@ class CompanyType(Enum):
 
 @dataclass(frozen=True)
 class Address:
-    street: str
-    city: str
-    zip_code: str
-    country: str
+    street: str | None
+    city: str | None
+    zip_code: str | None
+    country: str | None
 
     def __post_init__(self):
         country = self.country.strip().upper()
@@ -38,13 +38,13 @@ class Address:
 
 @dataclass(frozen=True)
 class Contact:
-    phone_number: str
-    email: str
+    phone_number: str | None
+    email: str | None
 
 
 @dataclass(frozen=True)
 class BankAccount:
-    number: str
+    number: str | None
     country_code: str | None = None
 
     def __post_init__(self):

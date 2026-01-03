@@ -175,6 +175,7 @@ class InvoiceUpdateService:
         update: ResolvedInvoiceUpdate,
     ) -> Invoice | None:
         ref = update.invoice_number
+        if not ref: return None
         return self._invoice_repository.get_unique_invoice(
             ref,
             update.seller_id,

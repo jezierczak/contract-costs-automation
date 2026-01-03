@@ -54,8 +54,9 @@ class InvoiceLineUpdateService:
         }
 
         for update in lines:
-
-            ref_result = ref_map.get(update.invoice_number)
+            if update.invoice_number:
+                ref_result = ref_map.get(update.invoice_number)
+            else: ref_result = None
 
             resolved_invoice_id: UUID | None = (
                 ref_result.invoice_id if ref_result else None
@@ -101,18 +102,18 @@ class InvoiceLineUpdateService:
                 "CostType",
             )
 
+            if resolved_invoice_id:
+                if update.invoice_line_id is None:
+                    new_id = self._create_line(update, resolved_invoice_id, contract_id, cost_node_id, cost_type_id)
+                    invoice_lines_ids_updated[resolved_invoice_id].append(new_id)  # adding updated invoice lines ids by invoice_id
+                else:
+                    self._update_line(update, resolved_invoice_id, contract_id, cost_node_id, cost_type_id)
+                    invoice_lines_ids_updated[resolved_invoice_id].append(update.invoice_line_id) #adding updated invoice lines ids by invoice_id
 
-            if update.invoice_line_id is None:
-                new_id = self._create_line(update, resolved_invoice_id, contract_id, cost_node_id, cost_type_id)
-                invoice_lines_ids_updated[resolved_invoice_id].append(new_id)  # adding updated invoice lines ids by invoice_id
-            else:
-                self._update_line(update, resolved_invoice_id, contract_id, cost_node_id, cost_type_id)
-                invoice_lines_ids_updated[resolved_invoice_id].append(update.invoice_line_id) #adding updated invoice lines ids by invoice_id
-
-            if resolved_invoice_id is not None:
-                invoice_line_states[resolved_invoice_id].append(
-                    self._is_line_complete(update)
-                )
+                if resolved_invoice_id is not None:
+                    invoice_line_states[resolved_invoice_id].append(
+                        self._is_line_complete(update)
+                    )
 
         self._delete_items_erased_from_excel(invoice_ids_from_excel,invoice_lines_ids_updated)
 
@@ -194,9 +195,11 @@ class InvoiceLineUpdateService:
         cost_node_id: UUID | None,
         cost_type_id: UUID | None
     ) -> None:
-        line = self._invoice_line_repository.get(update.invoice_line_id)
-        if line is None:
-            raise ValueError("Invoice line not found")
+        if update.invoice_line_id:
+            line = self._invoice_line_repository.get(update.invoice_line_id)
+            if line is None:
+                raise ValueError("Invoice line not found")
+        else: raise ValueError("Invoice line not found")
 
         updated = replace(
             line,

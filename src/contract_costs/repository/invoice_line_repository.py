@@ -20,7 +20,7 @@ class InvoiceLineRepository(ABC):
         ...
 
     @abstractmethod
-    def list_by_null_invoice(self) -> list[InvoiceLine] | None:
+    def list_by_null_invoice(self) -> list[InvoiceLine]:
         ...
 
     @abstractmethod

@@ -22,7 +22,7 @@ class InvoiceApplyResult:
 class InvoiceUpdate:
     command: InvoiceCommand              # APPLY | DELETE | MODIFY
 
-    invoice_number: str | None           # nowy numer (None → generator)
+    invoice_number: str           # nowy numer (None → generator)
     old_invoice_number: str | None       # tylko dla MODIFY / DELETE
 
     invoice_date: date | None
@@ -31,10 +31,10 @@ class InvoiceUpdate:
     buyer_tax_number: str | None
     seller_tax_number: str | None
 
-    payment_method: PaymentMethod | None
+    payment_method: PaymentMethod
     due_date: date | None
-    payment_status: PaymentStatus | None
-    status: InvoiceStatus | None
+    payment_status: PaymentStatus
+    status: InvoiceStatus
 
 @dataclass(frozen=True)
 class ResolvedInvoiceUpdate:
@@ -43,14 +43,14 @@ class ResolvedInvoiceUpdate:
     invoice_number: str
     old_invoice_number: str | None
 
-    invoice_date: date
-    selling_date: date
+    invoice_date: date | None
+    selling_date: date | None
 
     buyer_id: UUID
     seller_id: UUID
 
     payment_method: PaymentMethod
-    due_date: date
+    due_date: date | None
     payment_status: PaymentStatus
     status: InvoiceStatus
 

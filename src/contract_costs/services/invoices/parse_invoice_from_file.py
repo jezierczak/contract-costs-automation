@@ -1,14 +1,15 @@
 import logging
 from dataclasses import replace
+from datetime import datetime
 from pathlib import Path
 
-from contract_costs.infrastructure.openai_invoice_client import OpenAIInvoiceClient
 from contract_costs.model.company import CompanyType
 from contract_costs.repository.company_repository import CompanyRepository
 from contract_costs.services.catalogues.invoice_file_organizer import InvoiceFileOrganizer
+from contract_costs.services.companies.company_evaluate_orchestrator import CompanyEvaluateOrchestrator
 from contract_costs.services.invoices.commands.invoice_command import InvoiceCommand
 
-from contract_costs.services.invoices.company_resolve_service import CompanyResolveService
+
 from contract_costs.services.invoices.dto.common import InvoiceLineUpdate, ResolvedInvoiceUpdate, \
     InvoiceIngestBatch
 
@@ -28,7 +29,7 @@ class ParseInvoiceFromFileService:
     def __init__(
         self,
         parser: InvoiceParser,
-        company_resolve_service: CompanyResolveService,
+        company_evaluate_orchestrator: CompanyEvaluateOrchestrator,
         invoice_file_organizer: InvoiceFileOrganizer,
         company_repository: CompanyRepository,
         normalizer: InvoiceParseNormalizer,
@@ -36,7 +37,7 @@ class ParseInvoiceFromFileService:
 
     ) -> None:
         self._parser = parser
-        self._company_resolver = company_resolve_service
+        self._company_evaluate_orchestrator = company_evaluate_orchestrator
         self._invoice_file_organizer = invoice_file_organizer
         self._company_repository = company_repository
         self._normalizer = normalizer
@@ -50,28 +51,11 @@ class ParseInvoiceFromFileService:
         # Parsowanie dokumentu (DTO!)
 
         logger.info("Parsing invoice file: %s", file_path)
-
         parse_result = self._parser.parse(file_path)
-
         parse_result = self._normalizer.normalize(parse_result)
 
-        # Resolve firm (NIP → Company.id)
-        try:
-            buyer_id = self._company_resolver.resolve(parse_result.buyer)
-            seller_id = self._company_resolver.resolve(parse_result.seller)
-        except ValueError as e:
-            self._invoice_file_organizer.move_to_failed(
-                file_path=file_path,
-                reason="company_resolve_failed",
-            )
-            logger.warning(
-                "Invoice skipped: company resolve failed (%s). File moved to failed.",
-                str(e),
-            )
-            return
-
-        buyer = self._company_repository.get(buyer_id)
-        seller = self._company_repository.get(seller_id)
+        buyer= self._company_evaluate_orchestrator.evaluate(parse_result.buyer)
+        seller = self._company_evaluate_orchestrator.evaluate(parse_result.seller)
 
         ## CASE 1: faktura kosztowa (buyer = OWN) działamy:
         if buyer.role == CompanyType.OWN and buyer.is_active:
@@ -91,8 +75,8 @@ class ParseInvoiceFromFileService:
                     invoice_date=parse_result.invoice.invoice_date,
                     selling_date=parse_result.invoice.selling_date,
 
-                    buyer_id=buyer_id,
-                    seller_id=seller_id,
+                    buyer_id=buyer.id,
+                    seller_id=seller.id,
 
                     payment_method=parse_result.invoice.payment_method,
                     due_date=parse_result.invoice.due_date,
@@ -136,9 +120,9 @@ class ParseInvoiceFromFileService:
                 self._invoice_file_organizer.move_to_owner(
                     file_path=file_path,
                     owner=buyer,
-                    issue_date=parse_result.invoice.invoice_date,
+                    issue_date=parse_result.invoice.invoice_date if parse_result.invoice.invoice_date else datetime.now(),
                     seller_name = seller.name.strip() if seller.name and seller.name.strip() else "FAKTURA",
-                    invoice_number = invoice_ref
+                    invoice_number = invoice_ref if invoice_ref else "UNKNOWN_INVOICE_NUMBER",
                 )
             except Exception:
                 logger.exception(

@@ -102,11 +102,12 @@ class InvoiceParseNormalizer:
             "TRANSFER": PaymentMethod.BANK_TRANSFER,
             "CASH": PaymentMethod.CASH,
             "CARD": PaymentMethod.CARD,
-        }.get(str(value).upper(), PaymentMethod.BANK_TRANSFER)
+        }.get(str(value).upper(), PaymentMethod.UNKNOWN)
 
     @staticmethod
     def _payment_status(value) -> PaymentStatus:
         return {
             "PAID": PaymentStatus.PAID,
             "UNPAID": PaymentStatus.UNPAID,
+            "PARTIALLY_PAID": PaymentStatus.PARTIALLY_PAID,
         }.get(str(value).upper(), PaymentStatus.UNPAID)

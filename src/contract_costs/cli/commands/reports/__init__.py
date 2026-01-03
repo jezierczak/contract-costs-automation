@@ -1,0 +1,1 @@
+from contract_costs.cli.commands.reports.costs import build_report_costs  # noqa

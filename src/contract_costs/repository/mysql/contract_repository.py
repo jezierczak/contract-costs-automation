@@ -27,7 +27,7 @@ class MySQLContractRepository(ContractRepository):
                 contract.name,
                 contract.description,
                 str(contract.owner.id),
-                str(contract.client.id),
+                str(contract.client.id) if contract.client else None,
                 contract.start_date,
                 contract.end_date,
                 contract.budget,
@@ -64,7 +64,7 @@ class MySQLContractRepository(ContractRepository):
                 contract.name,
                 contract.description,
                 str(contract.owner.id),
-                str(contract.client.id),
+                str(contract.client.id) if contract.client else None,
                 contract.start_date,
                 contract.end_date,
                 contract.budget,
@@ -146,10 +146,13 @@ class MySQLContractRepository(ContractRepository):
         company_repo = MySQLCompanyRepository()
 
         owner = company_repo.get(UUID(row["owner_id"]))
-        client = company_repo.get(UUID(row["client_id"]))
+        if row["client_id"]:
+            client = company_repo.get(UUID(row["client_id"]))
+        else:
+            client = None
 
-        if not owner or not client:
-            raise RuntimeError("Owner or client not found in database for contract %s" % row["code"])
+        if not owner:
+            raise RuntimeError("Owner not found in database for contract %s" % row["code"])
 
         return Contract(
             id=UUID(row["id"]),

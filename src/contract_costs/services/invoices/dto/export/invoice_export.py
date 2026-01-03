@@ -10,15 +10,15 @@ from contract_costs.services.invoices.commands.invoice_command import InvoiceCom
 class InvoiceExport:
     action: InvoiceCommand | None
     invoice_number: str
-    invoice_date: date
-    selling_date: date
+    invoice_date: date | None
+    selling_date: date | None
 
-    buyer_tax_number: str
-    seller_tax_number: str
+    buyer_tax_number: str | None
+    seller_tax_number: str | None
 
     payment_method: PaymentMethod
     payment_status: PaymentStatus
     status: InvoiceStatus
 
-    due_date: date
+    due_date: date | None
     timestamp: datetime

@@ -35,7 +35,7 @@ class Contract:
     code: str
     name: str
     owner: Company
-    client: Company
+    client: Company | None
     description: str | None
 
     start_date: date | None

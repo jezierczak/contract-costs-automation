@@ -372,15 +372,15 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
 
     @staticmethod
     def autosize_columns(ws: Worksheet, max_width: int = 50) -> None:
-        for col in ws.columns:
+        for idx, col in enumerate(ws.columns, start=1):
             max_length = 0
-            col_letter = col[0].column_letter
+            col_letter = get_column_letter(idx)
 
             for cell in col:
                 if cell.value:
                     max_length = max(max_length, len(str(cell.value)))
 
-            ws.column_dimensions[col_letter].width = min(max_length + 4, max_width +1)
+            ws.column_dimensions[col_letter].width = min(max_length + 4, max_width + 1)
 
 
     @staticmethod

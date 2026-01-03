@@ -6,17 +6,16 @@ from typing import Any
 import pandas as pd
 
 import contract_costs.config as cfg
+from contract_costs.model.company import CompanyType
 
 from contract_costs.model.contract import ContractStarter, ContractStatus
 from contract_costs.model.cost_node import CostNodeInput
 from contract_costs.model.unit_of_measure import UnitOfMeasure
+from contract_costs.services.companies.company_evaluate_orchestrator import CompanyEvaluateOrchestrator
 from contract_costs.services.contracts.create_contract_service import CreateContractService
 from contract_costs.services.contracts.update_contract_structure_service import (
     UpdateContractStructureService,
 )
-
-from contract_costs.services.invoices.company_resolve_service import CompanyResolveService
-
 
 class ApplyContractStructureExcelService:
     """
@@ -31,12 +30,14 @@ class ApplyContractStructureExcelService:
         self,
         create_contract_service: CreateContractService,
         update_contract_structure_service: UpdateContractStructureService,
-        company_resolve_service: CompanyResolveService,
+        company_evaluate_orchestrator: CompanyEvaluateOrchestrator,
+        # company_resolve_service: CompanyResolveService,
         # validator: CostNodeTreeValidator,
     ) -> None:
         self._create_contract = create_contract_service
         self._update_contract = update_contract_structure_service
-        self._company_resolver = company_resolve_service
+        self._company_evaluate_orchestrator=company_evaluate_orchestrator
+        # self._company_resolver = company_resolve_service
         # self._validator = validator
 
     # ===================== PUBLIC API =====================
@@ -109,8 +110,8 @@ class ApplyContractStructureExcelService:
     # ===================== BUILDERS =====================
 
     def _build_contract_starter(self, row: dict) -> ContractStarter:
-        owner = self._company_resolver.find_by_tax_number(row["owner_nip"])
-        client = self._company_resolver.find_by_tax_number(row["client_nip"])
+        owner = self._company_evaluate_orchestrator.evaluate_from_tax(row["owner_nip"],CompanyType.BUYER)
+        client = self._company_evaluate_orchestrator.evaluate_from_tax(row["client_nip"],CompanyType.SELLER)
 
         return ContractStarter(
             name=row["name"],

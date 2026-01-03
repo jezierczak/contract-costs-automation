@@ -21,7 +21,7 @@ class InMemoryInvoiceLineRepository(InvoiceLineRepository):
             if (line := self.get(id_)) is not None
         ]
 
-    def list_by_null_invoice(self) -> list[InvoiceLine] | None:
+    def list_by_null_invoice(self) -> list[InvoiceLine]:
         return [
             line for line in self._lines.values()
             if line.invoice_id is None

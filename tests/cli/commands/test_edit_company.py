@@ -2,7 +2,7 @@ import builtins
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-from contract_costs.cli.commands.edit_company import handle_edit_company
+from contract_costs.cli.commands.edit.edit_company import handle_edit_company
 from contract_costs.model.company import CompanyType, Company, Address, Contact
 
 

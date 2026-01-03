@@ -15,7 +15,7 @@ class InvoiceLine:
     cost_type_id: UUID | None
     item_name: str
     quantity: Decimal | None
-    unit: UnitOfMeasure
+    unit: UnitOfMeasure | None
     amount: Amount
     description: str | None
 

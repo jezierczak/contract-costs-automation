@@ -65,6 +65,8 @@ def _prefill_company_fields(company: Company) -> list[dict]:
     }
 
     for field in fields:
-        field["default"] = defaults.get(field["name"])
+        name = field["name"]
+        assert isinstance(name, str)
+        field["default"] = defaults.get(name)
 
     return fields

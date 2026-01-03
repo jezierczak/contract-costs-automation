@@ -1,7 +1,15 @@
 from contract_costs.builders.cost_node_tree_builder import DefaultCostNodeTreeBuilder
 from contract_costs.config import INVOICE_INPUT_DIR
 from contract_costs.services.catalogues.invoice_file_organizer import InvoiceFileOrganizer
+from contract_costs.services.companies.company_evaluate_orchestrator import CompanyEvaluateOrchestrator
+from contract_costs.services.companies.providers.address import AddressCandidateProvider
+from contract_costs.services.companies.providers.bank import BankAccountCandidateProvider
+from contract_costs.services.companies.providers.composite import CompositeCompanyCandidateProvider
+from contract_costs.services.companies.providers.email import EmailCandidateProvider
+from contract_costs.services.companies.providers.excact_nip import ExactNipCandidateProvider
 from contract_costs.services.companies.create_company_service import CreateCompanyService
+from contract_costs.services.companies.providers.name import NameCandidateProvider
+from contract_costs.services.companies.providers.phone import PhoneCandidateProvider
 from contract_costs.services.companies.update_company_service import UpdateCompanyService
 from contract_costs.services.contracts.create_contract_service import CreateContractService
 from contract_costs.services.contracts.update_contract_service import UpdateContractService
@@ -21,8 +29,9 @@ from contract_costs.services.contracts.validators.cost_node_tree_validator impor
     CostNodeEntityValidator,
 )
 from contract_costs.services.cost_types.create_cost_type_service import CreateCostTypeService
-from contract_costs.services.invoices.company_resolve_service import CompanyResolveService
+
 from contract_costs.services.invoices.excel.invoice_excel_resolver import InvoiceExcelBatchResolver
+from contract_costs.services.invoices.invoice_details_query_service import InvoiceDetailsQueryService
 from contract_costs.services.invoices.invoice_update_service import InvoiceUpdateService
 from contract_costs.services.invoices.invoice_line_update_service import InvoiceLineUpdateService
 from contract_costs.services.invoices.ochestrator.invoice_ingest_orchestrator import (
@@ -51,7 +60,6 @@ from contract_costs.repository.factory.repository_factory import (
 )
 from typing import Dict
 
-from contract_costs.services.watcher.invoice_watcher import InvoiceWatcherService
 from contract_costs.services.workers.ai_invoice_worker import InvoiceAIWorker
 
 
@@ -69,7 +77,7 @@ class Services:
         self._cost_progress_snapshot_repo = None
 
         # services
-        self._company_resolver = None
+        # self._company_resolver = None
         self._invoice_ingest_orchestrator = None
         self._parse_invoice_from_file = None
         self._apply_invoice_excel_batch = None
@@ -86,6 +94,10 @@ class Services:
         self._invoice_ai_worker = None
 
         self._contract_cost_report =None
+        self._open_ai_invoice_service = None
+        self._company_evaluate_orchestrator =None
+
+        self._invoice_query_service = None
 
         self._normalizer = InvoiceParseNormalizer()
 
@@ -135,15 +147,23 @@ class Services:
 
 
     # ---------- domain services ----------
-
     @property
-    def company_resolver(self):
-        if self._company_resolver is None:
+    def open_ai_invoice_service(self):
+        if self._open_ai_invoice_service is None:
             from contract_costs.services.invoices.parsers.ocr_pdf_invoice_parser import (
                 OpenAIInvoiceClient,
             )
-            self._company_resolver = CompanyResolveService(self.company_repository,OpenAIInvoiceClient())
-        return self._company_resolver
+            self._open_ai_invoice_service = OpenAIInvoiceClient()
+        return self._open_ai_invoice_service
+
+
+    # @property
+    # def company_resolver(self):
+    #     if self._company_resolver is None:
+    #         self._company_resolver = CompanyResolveService(
+    #             self.company_repository,
+    #             ExactNipCandidateProvider(self.company_repository),self.open_ai_invoice_service)
+    #     return self._company_resolver
 
     @property
     def invoice_ingest_orchestrator(self):
@@ -160,6 +180,22 @@ class Services:
         return self._invoice_ingest_orchestrator
 
     @property
+    def company_evaluate_orchestrator(self):
+        if self._company_evaluate_orchestrator is None:
+            self._company_evaluate_orchestrator = CompanyEvaluateOrchestrator(
+                self.company_repository,
+                CompositeCompanyCandidateProvider(
+                    [ExactNipCandidateProvider(self.company_repository),
+                     BankAccountCandidateProvider(self.company_repository),
+                     EmailCandidateProvider(self.company_repository),
+                     AddressCandidateProvider(self.company_repository),
+                     NameCandidateProvider(self.company_repository),
+                     PhoneCandidateProvider(self.company_repository)
+                     ]
+                ),  self.open_ai_invoice_service )
+        return self._company_evaluate_orchestrator
+
+    @property
     def parse_invoice_from_file(self):
         if self._parse_invoice_from_file is None:
             from contract_costs.services.invoices.parsers.ocr_pdf_invoice_parser import (
@@ -168,7 +204,9 @@ class Services:
 
             self._parse_invoice_from_file = ParseInvoiceFromFileService(
                 parser=OCRAIAgentInvoiceParser(),
-                company_resolve_service=self.company_resolver,
+                company_evaluate_orchestrator=self.company_evaluate_orchestrator,
+
+                # company_resolve_service=self.company_resolver,
                 invoice_file_organizer=InvoiceFileOrganizer(),
                 company_repository=self.company_repository,
                 normalizer=self._normalizer,
@@ -180,7 +218,7 @@ class Services:
     def apply_invoice_excel_batch(self):
         if self._apply_invoice_excel_batch is None:
             self._apply_invoice_excel_batch = ApplyInvoiceExcelBatchService(
-                InvoiceExcelBatchResolver(self.company_resolver),
+                InvoiceExcelBatchResolver( company_evaluate_orchestrator=self.company_evaluate_orchestrator),
                 ApplyCompanyExcelBatchService(self.company_repository),
                 self.invoice_ingest_orchestrator,
             )
@@ -287,7 +325,7 @@ class Services:
             self._apply_contract_structure_excel = ApplyContractStructureExcelService(
                 self.create_contract,
                 self.update_contract_structure_service,
-                self.company_resolver,
+                self.company_evaluate_orchestrator,
             )
         return self._apply_contract_structure_excel
 
@@ -304,6 +342,19 @@ class Services:
                 self.cost_type_repository
             )
         return self._contract_cost_report
+
+    @property
+    def invoice_query_service(self):
+        if self._invoice_query_service is None:
+            self._invoice_query_service = InvoiceDetailsQueryService(
+                invoice_repo=self.invoice_repository,
+                invoice_line_repo=self.invoice_line_repository,
+                company_repo=self.company_repository,
+                contract_repo=self.contract_repository,
+                cost_node_repo=self.cost_node_repository,
+                cost_type_repo=self.cost_type_repository,
+            )
+        return self._invoice_query_service
 
 
 _services: Dict[str, Services] = {}

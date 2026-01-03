@@ -4,6 +4,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import uuid4
 
+from contract_costs.model.company import CompanyType
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 from contract_costs.services.common.resolve_utils import normalize_tax_number
 from contract_costs.services.invoices.commands.invoice_command import InvoiceCommand
@@ -48,8 +49,8 @@ class AIInvoiceMapper:
             due_date=self.parse_date(data.get("due_date")),
             buyer_tax_number=None,
             seller_tax_number=None,
-            payment_method=self.parse_enum(PaymentMethod,data.get("payment_method")),
-            payment_status=self.parse_enum(PaymentStatus,data.get("payment_status")),
+            payment_method=self.parse_enum(PaymentMethod,data.get("payment_method")) or PaymentMethod.UNKNOWN,
+            payment_status=self.parse_enum(PaymentStatus,data.get("payment_status")) or PaymentStatus.UNKNOWN,
             status=InvoiceStatus.NEW,
         )
 
@@ -60,7 +61,7 @@ class AIInvoiceMapper:
                 item_name=item.get("item_name") or "-----",
                 description=item.get("description"),
                 quantity=item.get("quantity") or Decimal("0"),
-                unit=item.get("unit") or UnitOfMeasure.PIECE,
+                unit=item.get("unit") or UnitOfMeasure.UNKNOWN,
                 amount=Amount(
                     value=item.get("net_total") or Decimal("0"),
                     vat_rate=item.get("vat_rate") or VatRate.VAT_23,
@@ -83,7 +84,7 @@ class AIInvoiceMapper:
             phone_number=data.get("buyer_phone_number"),
             email=data.get("buyer_email"),
             bank_account=data.get("buyer_bank_account"),
-            role="Buyer",
+            role=CompanyType.BUYER.value,
         )
 
         seller = CompanyInput(
@@ -97,7 +98,7 @@ class AIInvoiceMapper:
             phone_number=data.get("seller_phone_number"),
             email=data.get("seller_email"),
             bank_account=data.get("seller_bank_account"),
-            role="Seller",
+            role=CompanyType.SELLER.value,
         )
 
         return InvoiceParseResult(

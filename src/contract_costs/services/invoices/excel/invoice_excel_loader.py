@@ -59,31 +59,58 @@ def load_invoice_excel_batch(path: Path) -> InvoiceExcelBatch:
 
     df_invoices = df_invoices.dropna(how="all")
 
-    # 2. tylko logiczne faktury
-    df_invoices = df_invoices[df_invoices["invoice_number"].notna()]
-    df_invoices = df_invoices[df_invoices["invoice_number"].astype(str).str.strip() != ""]
+    col = df_invoices["invoice_number"]
 
-    # 3. odetnij wszystko po pierwszej dziurze
+    invalid_mask = col.isna() | (col.astype(str).str.strip() == "")
+
+    if invalid_mask.any():
+        bad_rows = list(invalid_mask[invalid_mask].index + 1)  # +1 = numer wiersza dla usera
+        raise ValueError(
+            f"Invoice sheet contains empty invoice_number in rows: {bad_rows}. "
+            "Please fill all invoice numbers."
+        )
+
     df_invoices = df_invoices.reset_index(drop=True)
-    mask = df_invoices["invoice_number"].notna()
-    if not mask.all():
+
+    col = df_lines["item_name"]
+
+    invalid_mask = col.isna() | (col.astype(str).str.strip() == "")
+
+    if invalid_mask.any():
+        bad_rows = list(invalid_mask[invalid_mask].index + 1)
         raise ValueError(
-            "Invoice sheet contains empty rows between invoices. "
-            "Please remove empty rows."
+            f"[{cfg.INVOICE_METADATA_SHEET_NAME}] "
+            f"Empty invoice_number in rows: {bad_rows}. "
+            "Please fill all invoice numbers."
         )
 
-    df_lines = df_lines.dropna(how="all")
-    df_lines = df_lines[df_lines["item_name"].notna()]
-    df_lines = df_lines[df_lines["item_name"].astype(str).str.strip() != ""]
-
-    # 3. odetnij wszystko po pierwszej dziurze
     df_lines = df_lines.reset_index(drop=True)
-    mask = df_lines["item_name"].notna()
-    if not mask.all():
-        raise ValueError(
-            "Invoice Line sheet contains empty rows between lines. "
-            "Please remove empty rows."
-        )
+
+    # # 2. tylko logiczne faktury
+    # df_invoices = df_invoices[df_invoices["invoice_number"].notna()]
+    # df_invoices = df_invoices[df_invoices["invoice_number"].astype(str).str.strip() != ""]
+    #
+    # # 3. odetnij wszystko po pierwszej dziurze
+    # df_invoices = df_invoices.reset_index(drop=True)
+    # mask = df_invoices["invoice_number"].notna()
+    # if not mask.all():
+    #     raise ValueError(
+    #         "Invoice sheet contains empty rows between invoices. "
+    #         "Please remove empty rows."
+    #     )
+    #
+    # df_lines = df_lines.dropna(how="all")
+    # df_lines = df_lines[df_lines["item_name"].notna()]
+    # df_lines = df_lines[df_lines["item_name"].astype(str).str.strip() != ""]
+    #
+    # # 3. odetnij wszystko po pierwszej dziurze
+    # df_lines = df_lines.reset_index(drop=True)
+    # mask = df_lines["item_name"].notna()
+    # if not mask.all():
+    #     raise ValueError(
+    #         "Invoice Line sheet contains empty rows between lines. "
+    #         "Please remove empty rows."
+    #     )
 
     invoices: list[InvoiceUpdate] = []
     for _, row in df_invoices.iterrows():
@@ -91,7 +118,7 @@ def load_invoice_excel_batch(path: Path) -> InvoiceExcelBatch:
         invoices.append(
             InvoiceUpdate(
                 command=InvoiceCommand(str(row["action"])) if not pd.isna(row["action"]) else InvoiceCommand.APPLY,
-                invoice_number=str(row["invoice_number"]) if not pd.isna(row["invoice_number"]) else None,
+                invoice_number=str(row["invoice_number"]) ,
                 old_invoice_number=str(row["old_invoice_number"]) if not pd.isna(row["old_invoice_number"]) else None,
                 invoice_date=_parse_date(row["invoice_date"]),
                 selling_date=_parse_date(row["selling_date"]),
@@ -99,11 +126,11 @@ def load_invoice_excel_batch(path: Path) -> InvoiceExcelBatch:
                 seller_tax_number=normalize_tax_number(row["seller_NIP"]) if not pd.isna(row["seller_NIP"]) else None,
                 payment_method=PaymentMethod(row["payment_method"])
                 if not pd.isna(row["payment_method"])
-                else PaymentMethod.CASH,
+                else PaymentMethod.UNKNOWN,
                 due_date=_parse_date(row["due_date"]),
                 payment_status=PaymentStatus(row["payment_status"])
                 if not pd.isna(row["payment_status"])
-                else PaymentStatus.PAID,
+                else PaymentStatus.UNKNOWN,
                 status=InvoiceStatus.IN_PROGRESS, ## OR PROCESSED
             )
         )

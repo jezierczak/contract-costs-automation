@@ -5,7 +5,7 @@ import re
 import cv2
 import numpy as np
 
-import pytesseract
+import pytesseract #typed: ignore
 from pathlib import Path
 from pdf2image import convert_from_path
 from PIL import Image
@@ -62,7 +62,7 @@ class PdfTextExtractor:
         return text
     @staticmethod
     def extract_with_pdfplumber_safe(pdf_path: Path, timeout: int = 5) -> str:
-        q = Queue()
+        q: Queue = Queue()
         p = Process(target=PdfTextExtractor._pdfplumber_worker, args=(pdf_path, q))
         p.start()
         p.join(timeout)
