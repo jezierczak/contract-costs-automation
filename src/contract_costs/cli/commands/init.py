@@ -23,4 +23,4 @@ def handle_init(args) -> None:
 
     logger.info(f"Application initialized in: {WORK_DIR}")
 
-REGISTRY.register_simple("init", handle_init)
+REGISTRY.register_simple("init;Initiates folder infrastructure for project.", handle_init)

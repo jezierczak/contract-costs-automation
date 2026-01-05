@@ -1,19 +1,13 @@
 import json
 import os
 import re
-from openai import OpenAI
-
-
-import json
-import os
-import re
 import time
 import logging
 from openai import OpenAI
 from openai import RateLimitError
 
 from contract_costs.model.company import Company
-from contract_costs.services.invoices.dto.parse import CompanyInput
+from contract_costs.services.invoices.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
 
 logger = logging.getLogger(__name__)
 

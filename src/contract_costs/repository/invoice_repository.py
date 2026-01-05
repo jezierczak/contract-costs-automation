@@ -2,6 +2,7 @@ from uuid import UUID
 from abc import ABC, abstractmethod
 
 from contract_costs.model.invoice import Invoice, InvoiceStatus
+from contract_costs.services.invoices.review.dto.invoice_review_query import InvoiceReviewQuery
 
 
 class InvoiceRepository(ABC):
@@ -41,4 +42,12 @@ class InvoiceRepository(ABC):
         Return invoices that require assignment
         (status NEW or IN_PROGRESS)
         """
+        ...
+
+    @abstractmethod
+    def list_by_seller_id(self, seller_id: UUID) -> list[Invoice]:
+        ...
+
+    @abstractmethod
+    def list_for_review(self, query: InvoiceReviewQuery) -> list[Invoice]:
         ...

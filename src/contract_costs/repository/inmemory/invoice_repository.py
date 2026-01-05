@@ -1,6 +1,7 @@
 from uuid import UUID
 from contract_costs.model.invoice import Invoice, InvoiceStatus
 from contract_costs.repository.invoice_repository import InvoiceRepository
+from contract_costs.services.invoices.review.dto.invoice_review_query import InvoiceReviewQuery
 
 
 class InMemoryInvoiceRepository(InvoiceRepository):
@@ -52,3 +53,44 @@ class InMemoryInvoiceRepository(InvoiceRepository):
             if inv.status in statuses
         ]
 
+    def list_by_seller_id(self, seller_id: UUID) -> list[Invoice]:
+        return NotImplemented
+
+    def list_for_review(self, query: InvoiceReviewQuery) -> list[Invoice]:
+        result = self._invoices.values()
+
+        if query.statuses:
+            result = [
+                i for i in result
+                if i.status in query.statuses
+            ]
+
+        if query.payment_statuses:
+            result = [
+                i for i in result
+                if i.payment_status in query.payment_statuses
+            ]
+
+        if query.invoice_date_from:
+            result = [
+                i for i in result
+                if i.invoice_date and i.invoice_date >= query.invoice_date_from
+            ]
+
+        if query.invoice_date_to:
+            result = [
+                i for i in result
+                if i.invoice_date and i.invoice_date <= query.invoice_date_to
+            ]
+
+        if query.only_ready_for_accountant:
+            result = [
+                i for i in result
+                if i.status == InvoiceStatus.PROCESSED
+            ]
+
+        return sorted(
+            result,
+            key=lambda i: (i.invoice_date or i.timestamp),
+            reverse=True,
+        )

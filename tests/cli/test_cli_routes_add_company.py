@@ -8,7 +8,7 @@ def test_cli_routes_add_company(monkeypatch):
         called["ok"] = True
 
     monkeypatch.setattr(
-        "contract_costs.cli.main.handle_add_company",
+         "contract_costs.cli.commands.add.add_company._run_add_company_interactive",
         fake_handle,
     )
 

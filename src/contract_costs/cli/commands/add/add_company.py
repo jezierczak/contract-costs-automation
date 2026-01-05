@@ -7,7 +7,14 @@ from contract_costs.cli.context import get_services
 
 logger = logging.getLogger(__name__)
 
-def handle_add_company() -> None:
+
+def handle_add_company(args=None):
+    if args is not None and getattr(args, "non_interactive", False):
+        return
+    _run_add_company_interactive()
+
+
+def _run_add_company_interactive() -> None:
     print("\nAdding companies service:\n")
 
     data = interactive_prompt(COMPANY_FIELDS)

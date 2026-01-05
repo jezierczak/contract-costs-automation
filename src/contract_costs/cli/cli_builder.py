@@ -13,7 +13,12 @@ def build_cli_parser() -> argparse.ArgumentParser:
 
     # ---------- SIMPLE COMMANDS ----------
     for name, handler in REGISTRY.simples():
-        p = subparsers.add_parser(name)
+        p_data = name.split(";")
+
+        if len(p_data) ==2:
+            p = subparsers.add_parser(p_data[0], description=p_data[1])
+        else:
+            p = subparsers.add_parser(p_data[0])
         p.set_defaults(handler=handler)
 
     # ---------- GROUP COMMANDS ----------

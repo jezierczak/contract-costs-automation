@@ -1,4 +1,4 @@
-from  dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from enum import Enum
 from uuid import UUID
@@ -24,6 +24,7 @@ class InvoiceStatus(Enum):
     IN_PROGRESS = "in_progress"
     PROCESSED = "processed"
     DELETED = "deleted"
+    SENT_TO_ACCOUNTANT ="sent_to_accountant"
     MODIFIED = "modified"
     # REFERENCE = "reference"
 
@@ -49,4 +50,26 @@ class Invoice:
     timestamp: datetime
 
 
+    def mark_paid(self, paid_at: date | None = None) -> "Invoice":
+        return replace(
+            self,
+            payment_status=PaymentStatus.PAID,
+        )
 
+    def mark_unpaid(self) -> "Invoice":
+        return replace(
+            self,
+            payment_status=PaymentStatus.UNPAID,
+        )
+
+    def mark_sent_to_accountant(self) -> "Invoice":
+        return replace(
+            self,
+            status=InvoiceStatus.SENT_TO_ACCOUNTANT,
+        )
+
+    def reopen(self) -> "Invoice":
+        return replace(
+            self,
+            status=InvoiceStatus.IN_PROGRESS,
+        )

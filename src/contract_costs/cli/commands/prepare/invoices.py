@@ -2,6 +2,9 @@ import logging
 from pathlib import Path
 
 import contract_costs.config as cfg
+from contract_costs.cli.commands.prepare.invoices_for_accountant import build_prepare_invoices_for_accountant
+from contract_costs.cli.commands.prepare.invoices_for_review import build_prepare_invoices_for_review
+from contract_costs.cli.commands.prepare.invoices_unpaid import build_prepare_invoices_unpaid
 from contract_costs.cli.context import get_services
 from contract_costs.cli.registry import REGISTRY
 from contract_costs.model.invoice import InvoiceStatus
@@ -13,15 +16,32 @@ logger = logging.getLogger(__name__)
 # Builder (argparse)
 # =========================================================
 
+
 def build_prepare_invoices(subparsers):
+    p = subparsers.add_parser(
+        "invoices",
+        help="Prepare invoices workflows",
+    )
+
+    invoice_sub = p.add_subparsers(
+        dest="workflow",
+        required=True,
+    )
+
+    build_prepare_invoices_for_assignment(invoice_sub)
+    build_prepare_invoices_for_accountant(invoice_sub)
+    build_prepare_invoices_unpaid(invoice_sub)
+    build_prepare_invoices_for_review(invoice_sub)
+
+def build_prepare_invoices_for_assignment(subparsers):
     """
-    prepare invoices [mode]
+    prepare invoices
 
     Generates Excel with invoices prepared for editing.
     """
     p = subparsers.add_parser(
-        "invoices",
-        help="Prepare invoices for editing (Excel)",
+        "for-assignment",
+        help="Prepare invoices for assignment/editing",
     )
 
     p.add_argument(
@@ -63,14 +83,16 @@ def handle_prepare_invoices(args) -> None:
         cfg.INPUTS_INVOICES_NEW_DIR / cfg.INVOICES_EXCEL_FILENAME
     )
 
-    services.generate_invoice_assignment_excel.execute(
+    bundle = services.generate_invoice_assignment_bundle.execute(
         invoice_status=statuses,
-        output_path=output_path,
         # contract_ref=args.contract,
     )
+    services.export_invoice_assignment_excel_service.execute(
+        bundle=bundle,
+        output_path=output_path )
 
     logger.info("Invoices prepared for editing: %s", output_path)
-    print(f"Excel generated: {output_path}")
+    logger.info(f"Excel generated: {output_path}")
 
 
 # =========================================================

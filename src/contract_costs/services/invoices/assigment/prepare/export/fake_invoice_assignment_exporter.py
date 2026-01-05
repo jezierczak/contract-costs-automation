@@ -1,0 +1,15 @@
+from pathlib import Path
+
+from contract_costs.services.invoices.assigment.prepare.export.invoice_assignment_exporter import (
+    InvoiceAssignmentExporter,
+)
+from contract_costs.services.invoices.assigment.prepare.dto.assignment_export_bundle import (
+    InvoiceAssignmentExportBundle,
+)
+
+class FakeInvoiceAssignmentExporter(InvoiceAssignmentExporter):
+    def __init__(self) -> None:
+        self.bundle: InvoiceAssignmentExportBundle | None = None
+
+    def export(self, bundle: InvoiceAssignmentExportBundle,output_path: Path) -> None:
+        self.bundle = bundle

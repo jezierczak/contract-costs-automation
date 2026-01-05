@@ -1,7 +1,7 @@
 from contract_costs.model.company import Company
 from contract_costs.repository.company_repository import CompanyRepository
 from contract_costs.services.companies.providers.candidate_provider import CompanyCandidateProvider
-from contract_costs.services.invoices.dto.parse import CompanyInput
+from contract_costs.services.invoices.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
 from contract_costs.services.companies.normalize.name import normalize_company_name
 
 class NameCandidateProvider(CompanyCandidateProvider):
@@ -10,7 +10,7 @@ class NameCandidateProvider(CompanyCandidateProvider):
         self._repo = company_repository
 
     def find_candidates(self, input_: CompanyInput) -> list[Company]:
-        if not input_.name or len(input_.name) < 3:
+        if not input_.name or len(input_.name) < 2:
             return []
 
         normalized_input = normalize_company_name(input_.name)

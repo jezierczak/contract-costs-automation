@@ -5,9 +5,6 @@ from queue import Empty
 from multiprocessing import Process
 
 from contract_costs.services.queue.invoice_queue import invoice_queue
-from contract_costs.services.invoices.parse_invoice_from_file import (
-    ParseInvoiceFromFileService,
-)
 
 logger = logging.getLogger(__name__)
 

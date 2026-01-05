@@ -36,7 +36,7 @@ def test_handle_edit_company_happy_path(monkeypatch):
 
     # interactive prompt
     monkeypatch.setattr(
-        "contract_costs.cli.commands.edit_company.interactive_prompt",
+        "contract_costs.cli.commands.edit.edit_company.interactive_prompt",
         lambda _: {
             "name": "Updated",
             "description": "Desc",
@@ -55,14 +55,14 @@ def test_handle_edit_company_happy_path(monkeypatch):
     services.company_repository.get_by_tax_number.return_value = company
 
     monkeypatch.setattr(
-        "contract_costs.cli.commands.edit_company.get_services",
+        "contract_costs.cli.commands.edit.edit_company.get_services",
         lambda: services,
     )
 
     # MOCKUJEMY ADAPTER
     adapter = MagicMock()
     monkeypatch.setattr(
-        "contract_costs.cli.commands.edit_company.update_company_from_cli",
+        "contract_costs.cli.commands.edit.edit_company.update_company_from_cli",
         adapter,
     )
 

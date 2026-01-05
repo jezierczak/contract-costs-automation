@@ -23,7 +23,7 @@ class TestAmount:
             tax_treatment = TaxTreatment.NON_DEDUCTIBLE,
         )
 
-        assert amount.net is None
+        assert amount.net == Decimal("0.00")
         assert amount.tax == Decimal("0.00")
         assert amount.gross == Decimal("100.00")
         assert amount.non_tax_cost == Decimal("100.00")

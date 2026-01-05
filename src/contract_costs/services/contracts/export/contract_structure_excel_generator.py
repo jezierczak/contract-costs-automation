@@ -5,13 +5,16 @@ import contract_costs.config as cfg
 
 from contract_costs.model.contract import Contract
 from contract_costs.model.cost_node import CostNode
+from contract_costs.services.contracts.export.dto.contract_structure_bundle import CostNodeStructureRow, \
+    ContractStructureRow
+
 
 class ContractStructureExcelGenerator:
 
     def generate(
         self,
-        contract_row: dict | None,
-        cost_node_rows: list[dict],
+        contract_row: ContractStructureRow | None,
+        cost_node_rows: list[CostNodeStructureRow],
         output_path: Path,
     ) -> None:
         with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
@@ -67,7 +70,7 @@ class ContractStructureExcelGenerator:
 
 
     @staticmethod
-    def map_contract_to_row( contract: Contract) -> dict:
+    def map_contract_to_row( contract: Contract) -> ContractStructureRow:
         return {
             "code": contract.code,
             "name": contract.name,
@@ -81,7 +84,7 @@ class ContractStructureExcelGenerator:
             "status": contract.status.name,
         }
     @staticmethod
-    def flatten_cost_nodes(nodes: list[CostNode]) -> list[dict]:
+    def flatten_cost_nodes(nodes: list[CostNode]) -> list[CostNodeStructureRow]:
         node_by_id = {node.id: node for node in nodes}
         rows = []
 

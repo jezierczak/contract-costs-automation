@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Iterable
-from contract_costs.services.invoices.dto.parse import CompanyInput
+from contract_costs.services.invoices.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
 from contract_costs.model.company import Company
 
 

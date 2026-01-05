@@ -1,4 +1,3 @@
-from unittest import skip
 from unittest.mock import MagicMock
 from uuid import uuid4
 
@@ -15,7 +14,7 @@ from contract_costs.services.companies.providers.email import EmailCandidateProv
 from contract_costs.services.companies.providers.excact_nip import ExactNipCandidateProvider
 from contract_costs.services.companies.providers.name import NameCandidateProvider
 from contract_costs.services.companies.providers.phone import PhoneCandidateProvider
-from contract_costs.services.invoices.dto.parse import CompanyInput
+from contract_costs.services.invoices.assigment.invoice_sources.dto import CompanyInput
 
 
 

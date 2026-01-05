@@ -1,5 +1,6 @@
 import logging
 from dataclasses import replace
+from enum import Enum
 from uuid import uuid4
 
 from contract_costs.infrastructure.openai_invoice_client import OpenAIInvoiceClient
@@ -11,11 +12,16 @@ from contract_costs.services.companies.confidence.quality_default import Default
 from contract_costs.services.companies.normalize.normalize_service import CompanyNormalizeService
 
 from contract_costs.services.companies.providers.candidate_provider import CompanyCandidateProvider
-from contract_costs.services.invoices.dto.parse import CompanyInput
+from contract_costs.services.invoices.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
 
 logger = logging.getLogger(__name__)
 
 FULL_UPDATE_THRESHOLD = 85
+
+class EvaluateMode(Enum):
+    NO_CREATE = 0
+    NORMAL = 1
+    AUTHORITATIVE = 2
 
 class CompanyEvaluateOrchestrator:
 
@@ -31,7 +37,8 @@ class CompanyEvaluateOrchestrator:
         self._candidate_provider = candidate_provider
         self._normalizator = CompanyNormalizeService()
 
-    def evaluate_from_tax(self, input_tax_number: str | None, role: CompanyType) -> Company:
+    def evaluate_from_tax(self, input_tax_number: str | None, role: CompanyType,mode: EvaluateMode = EvaluateMode.NORMAL) -> Company:
+
         if not input_tax_number:
             raise ValueError("No tax number provided, unable to evaluate company")
         return self.evaluate(
@@ -47,10 +54,10 @@ class CompanyEvaluateOrchestrator:
                 country=None,
                 bank_account=None,
                 role=role.value,
-            )
+            ),mode
         )
 
-    def evaluate(self, input_: CompanyInput) -> Company:
+    def evaluate(self, input_: CompanyInput,mode: EvaluateMode = EvaluateMode.NORMAL) -> Company:
         """
         Main entry point for company resolution.
 
@@ -68,10 +75,12 @@ class CompanyEvaluateOrchestrator:
             logger.info(f"Candidate: {candidate.name}")
 
         if not candidates:
+            if mode == EvaluateMode.NO_CREATE:
+                raise RuntimeError(f"({mode.value} mode) No candidates found for NIP: {input_.tax_number}")
             logger.info("No candidates found → creating new company")
             return self._create_company(input_)
 
-            # 🔹 2️⃣ Preferuj OWN (jeśli są)
+        # 🔹 2️⃣ Preferuj OWN (jeśli są)
         own_candidates = [
             c for c in candidates
             if c.role == CompanyType.OWN and c.is_active
@@ -84,7 +93,7 @@ class CompanyEvaluateOrchestrator:
             key=lambda c: DefaultCompanyQuality.from_company(c).get_overall_score()
         )
 
-        return self._maybe_update(best, input_)
+        return self._maybe_update(best, input_,mode)
 
     # ---- hooks / extension points ----
 
@@ -188,7 +197,7 @@ class CompanyEvaluateOrchestrator:
 
         return company
 
-    def _maybe_update(self, company: Company, input_: CompanyInput) -> Company:
+    def _maybe_update(self, company: Company, input_: CompanyInput, mode: EvaluateMode) -> Company:
         """
         Updates company data based on input quality.
 
@@ -217,6 +226,8 @@ class CompanyEvaluateOrchestrator:
         updated_company = company
         changed = False
 
+        force_full_update = full_update or mode == EvaluateMode.AUTHORITATIVE
+
         for field in CompanyField:
 
             if not input_quality.has_field(field):
@@ -225,16 +236,14 @@ class CompanyEvaluateOrchestrator:
             input_score = input_quality.get_field_score(field)
             company_score = company_quality.get_field_score(field)
 
-            # 🔴 SOFT UPDATE
-            if not full_update:
+            if not force_full_update:
+                # 🔴 SOFT UPDATE
                 if input_score <= company_score:
                     continue
-
-            # 🔥 FULL UPDATE
             else:
+                # 🔥 FULL UPDATE
                 if input_score <= 0:
                     continue
-
             input_value = input_quality.get_value(field)
             company_value = company_quality.get_value(field)
 

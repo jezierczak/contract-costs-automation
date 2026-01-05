@@ -4,7 +4,7 @@ from typing import Mapping
 from contract_costs.model.company import Company
 from contract_costs.services.companies.confidence.fields import CompanyField
 from contract_costs.services.companies.confidence.fields import CompanyDataSource
-from contract_costs.services.invoices.dto.parse import CompanyInput
+from contract_costs.services.invoices.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
 
 
 

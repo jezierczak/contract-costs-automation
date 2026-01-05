@@ -11,4 +11,4 @@ def handle_run(args):
     run_watcher(get_services())
 
 
-REGISTRY.register_simple("run", handle_run)
+REGISTRY.register_simple("run;Starts watching for invices in input folder.", handle_run)

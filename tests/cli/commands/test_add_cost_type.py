@@ -7,7 +7,7 @@ from contract_costs.cli.commands.add.add_cost_type import handle_add_cost_type
 def test_handle_add_cost_type_happy_path(monkeypatch):
     # --- mock interactive_prompt ---
     monkeypatch.setattr(
-        "contract_costs.cli.commands.add_cost_type.interactive_prompt",
+        "contract_costs.cli.commands.add.add_cost_type.interactive_prompt",
         lambda _: {
             "code": "MAT",
             "name": "Material",
@@ -25,7 +25,7 @@ def test_handle_add_cost_type_happy_path(monkeypatch):
     services.create_cost_type = MagicMock()
 
     monkeypatch.setattr(
-        "contract_costs.cli.commands.add_cost_type.get_services",
+        "contract_costs.cli.commands.add.add_cost_type.get_services",
         lambda: services,
     )
 
@@ -42,7 +42,7 @@ def test_handle_add_cost_type_happy_path(monkeypatch):
 
 def test_handle_add_cost_type_cancel(monkeypatch):
     monkeypatch.setattr(
-        "contract_costs.cli.commands.add_cost_type.interactive_prompt",
+        "contract_costs.cli.commands.add.add_cost_type.interactive_prompt",
         lambda _: {
             "code": "MAT",
             "name": "Material",
@@ -58,7 +58,7 @@ def test_handle_add_cost_type_cancel(monkeypatch):
     services.create_cost_type = MagicMock()
 
     monkeypatch.setattr(
-        "contract_costs.cli.commands.add_cost_type.get_services",
+        "contract_costs.cli.commands.add.add_cost_type.get_services",
         lambda: services,
     )
 

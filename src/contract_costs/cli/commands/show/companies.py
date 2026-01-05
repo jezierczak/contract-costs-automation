@@ -1,6 +1,7 @@
 from contract_costs.cli.context import get_services
 from contract_costs.cli.registry import REGISTRY
 from contract_costs.model.company import CompanyType
+from contract_costs.services.companies.confidence.quality_default import DefaultCompanyQuality
 
 
 def build_show_companies(subparsers):
@@ -32,8 +33,9 @@ def handle_show_companies(args):
         return
 
     for c in companies:
+        c_quality = DefaultCompanyQuality.from_company(c)
         print(
-            f"{c.id} | {c.name} | {c.tax_number} | {c.role.value} | active={c.is_active}"
+            f"{c_quality.get_overall_score()} |{c.name} | {c.tax_number} | {c.role.value} | {c.is_active} |{c.address} | {c.bank_account}"
         )
 
 

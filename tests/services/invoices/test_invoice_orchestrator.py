@@ -6,8 +6,8 @@ from contract_costs.model.amount import Amount, VatRate
 from contract_costs.model.invoice import PaymentMethod, PaymentStatus, InvoiceStatus, Invoice
 from contract_costs.model.invoice_line import InvoiceLine
 from contract_costs.model.unit_of_measure import UnitOfMeasure
-from contract_costs.services.invoices.commands.invoice_command import InvoiceCommand
-from contract_costs.services.invoices.dto.common import InvoiceIngestBatch, ResolvedInvoiceUpdate, InvoiceLineUpdate
+from contract_costs.services.invoices.assigment.apply.commands.invoice_command import InvoiceCommand
+from contract_costs.services.invoices.assigment.invoice_sources.dto import InvoiceIngestBatch, ResolvedInvoiceUpdate, InvoiceLineUpdate
 
 
 def test_ingest_from_pdf_creates_invoice_and_lines_without_finalization(

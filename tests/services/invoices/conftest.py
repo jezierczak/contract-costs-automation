@@ -41,11 +41,11 @@ from contract_costs.repository.inmemory.invoice_repository import InMemoryInvoic
 # SERWISY
 # ============================================================
 
-from contract_costs.services.invoices.invoice_line_update_service import (
+from contract_costs.services.invoices.assigment.ingest.invoice_line_update_service import (
     InvoiceLineUpdateService,
 )
-from contract_costs.services.invoices.invoice_update_service import InvoiceUpdateService
-from contract_costs.services.invoices.ochestrator.invoice_ingest_orchestrator import InvoiceIngestOrchestrator
+from contract_costs.services.invoices.assigment.ingest.invoice_update_service import InvoiceUpdateService
+from contract_costs.services.invoices.assigment.ingest.invoice_ingest_orchestrator import InvoiceIngestOrchestrator
 
 
 # ============================================================

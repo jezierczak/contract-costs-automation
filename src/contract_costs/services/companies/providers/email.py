@@ -1,9 +1,7 @@
-from typing import Iterable
-
 from contract_costs.model.company import Company
 from contract_costs.repository.company_repository import CompanyRepository
 from contract_costs.services.companies.providers.candidate_provider import CompanyCandidateProvider
-from contract_costs.services.invoices.dto.parse import CompanyInput
+from contract_costs.services.invoices.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
 
 
 class EmailCandidateProvider(CompanyCandidateProvider):

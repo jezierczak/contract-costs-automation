@@ -38,7 +38,7 @@ def handle_prepare_contract(args) -> None:
     contract_ref = args.ref
     services = get_services()
 
-    service = services.generate_contract_structure_excel
+    service = services.generate_contract_structure_bundle
 
     # ---------------- NEW CONTRACT ----------------
 
@@ -54,7 +54,7 @@ def handle_prepare_contract(args) -> None:
                 "Apply or remove it before preparing a new one."
             )
 
-        service.generate_empty(output_path)
+        bundle = service.generate_empty()
         logger.info("Empty contract structure Excel generated: %s", output_path)
         print(f"Prepared NEW contract Excel:\n{output_path}")
         return
@@ -72,7 +72,9 @@ def handle_prepare_contract(args) -> None:
             "Apply or remove it before preparing again."
         )
 
-    service.generate_from_contract(contract.id, output_path)
+    bundle = service.generate_from_contract(contract.id)
+
+    services.export_contract_structure_excel.execute(bundle, output_path)
 
     logger.info(
         "Contract structure Excel generated: contract=%s path=%s",

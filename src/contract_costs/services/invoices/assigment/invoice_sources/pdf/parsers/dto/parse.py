@@ -1,0 +1,28 @@
+from dataclasses import dataclass
+from contract_costs.services.invoices.assigment.invoice_sources.dto.common import (
+    InvoiceUpdate,
+    InvoiceLineUpdate, )
+
+@dataclass(frozen=True)
+class CompanyInput:
+    name: str | None
+    tax_number: str | None           # NIP
+    street: str | None
+    city: str | None
+    state: str | None
+    zip_code: str | None
+    country: str | None
+    phone_number: str | None
+    email: str | None
+    bank_account: str | None
+    role: str
+
+
+
+@dataclass(frozen=True)
+class InvoiceParseResult:
+    invoice: InvoiceUpdate
+    lines: list[InvoiceLineUpdate]
+
+    buyer: CompanyInput
+    seller: CompanyInput

@@ -4,7 +4,6 @@ from pathlib import Path
 from dotenv import load_dotenv
 import os
 
-
 # -------------------------------------------------
 # ENV RESOLUTION (SAFE BY DEFAULT)
 # -------------------------------------------------
@@ -101,6 +100,11 @@ INPUTS_INVOICES_DIR = INPUTS_DIR / "invoices"
 INPUTS_INVOICES_NEW_DIR = INPUTS_INVOICES_DIR / "new"
 INPUTS_INVOICES_ASSIGN_DIR = INPUTS_INVOICES_DIR / "assign"
 INPUTS_INVOICES_PROCESSED_DIR = INPUTS_INVOICES_DIR / "processed"
+
+INPUTS_INVOICES_REVIEW_DIR = INPUTS_INVOICES_DIR / "review"
+INPUTS_INVOICES_UNPAID_DIR = INPUTS_INVOICES_DIR / "unpaid"
+INPUTS_INVOICES_ACCOUNTANT_DIR = INPUTS_INVOICES_DIR / "accountant"
+
 
 # --- output ---
 REPORTS_DIR = WORK_DIR / "reports"

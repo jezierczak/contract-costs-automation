@@ -2,7 +2,7 @@ import logging
 
 from dotenv import load_dotenv
 
-from contract_costs.services.invoices.parsers.ocr_pdf_invoice_parser import OCRAIAgentInvoiceParser
+from contract_costs.services.invoices.assigment.invoice_sources.pdf.parsers.ocr_pdf_invoice_parser import OCRAIAgentInvoiceParser
 
 import os
 

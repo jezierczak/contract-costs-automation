@@ -9,7 +9,7 @@ from contract_costs.services.companies.confidence.fields import (
 )
 from contract_costs.services.companies.confidence.quality import CompanyDataQuality
 from contract_costs.services.companies.validators.company import CompanyValidator
-from contract_costs.services.invoices.dto.parse import CompanyInput
+from contract_costs.services.invoices.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +110,17 @@ class DefaultCompanyQuality(CompanyDataQuality):
             return 0
 
         upper = value.strip().upper()
-        if upper.startswith("AI_") or upper in {"UNKNOWN", "N/A", "-", "?"}:
+
+        PLACEHOLDER_PREFIXES = (
+            "AI_",
+            "TMP_",
+            "UNKNOWN",
+            "UNRECOGNIZED",
+            "N/A",
+            "BRAK",
+        )
+
+        if any(upper.startswith(p) for p in PLACEHOLDER_PREFIXES):
             return 0
 
         if len(upper) < 3:

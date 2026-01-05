@@ -1,4 +1,3 @@
-from datetime import datetime
 from decimal import Decimal
 from uuid import uuid4
 
@@ -8,8 +7,8 @@ from contract_costs.model.invoice_line import InvoiceLine
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 from contract_costs.model.amount import Amount, VatRate
 
-from contract_costs.services.invoices.dto.common import InvoiceLineUpdate
-from contract_costs.services.invoices.dto.apply import (
+from contract_costs.services.invoices.assigment.invoice_sources.dto import InvoiceLineUpdate
+from contract_costs.services.invoices.assigment.invoice_sources.dto import (
     InvoiceRefResult,
     InvoiceApplyAction,
 )

@@ -1,5 +1,4 @@
 from uuid import UUID
-from datetime import datetime
 
 from contract_costs.model.invoice import (
     Invoice,
@@ -9,6 +8,7 @@ from contract_costs.model.invoice import (
 )
 from contract_costs.repository.invoice_repository import InvoiceRepository
 from contract_costs.infrastructure.db.mysql_connection import get_connection
+from contract_costs.services.invoices.review.dto.invoice_review_query import InvoiceReviewQuery
 
 
 class MySQLInvoiceRepository(InvoiceRepository):
@@ -179,3 +179,65 @@ class MySQLInvoiceRepository(InvoiceRepository):
             status=InvoiceStatus(row["status"]),
             timestamp=row["timestamp"],
         )
+
+    def list_by_seller_id(self, seller_id: UUID) -> list[Invoice]:
+        sql = "SELECT * FROM invoices WHERE seller_id = %s"
+
+        conn = get_connection()
+        with conn.cursor(dictionary=True) as cur:
+            cur.execute(sql, (str(seller_id),))
+            rows = cur.fetchall()
+
+        return [self._map_row(r) for r in rows]
+
+    def list_for_review(self, query: InvoiceReviewQuery) -> list[Invoice]:
+        conditions: list[str] = []
+        params: list[object] = []
+
+        # ---- STATUS ----
+        if query.only_ready_for_accountant:
+            conditions.append("status = %s")
+            params.append(InvoiceStatus.PROCESSED.value)
+
+        elif query.statuses:
+            placeholders = ", ".join(["%s"] * len(query.statuses))
+            conditions.append(f"status IN ({placeholders})")
+            params.extend(s.value for s in query.statuses)
+
+        # ---- PAYMENT STATUS ----
+        if query.payment_statuses:
+            placeholders = ", ".join(["%s"] * len(query.payment_statuses))
+            conditions.append(f"payment_status IN ({placeholders})")
+            params.extend(p.value for p in query.payment_statuses)
+
+        # ---- DATE FROM ----
+        if query.from_date:
+            conditions.append("invoice_date >= %s")
+            params.append(query.from_date)
+
+        # ---- DATE TO ----
+        if query.to_date:
+            conditions.append("invoice_date <= %s")
+            params.append(query.to_date)
+
+        # # ---- ONLY READY FOR ACCOUNTANT ----
+        # if query.only_ready_for_accountant:
+        #     conditions.append("status = %s")
+        #     params.append(InvoiceStatus.PROCESSED.value)
+
+        # ---- BUILD SQL ----
+        sql = "SELECT * FROM invoices"
+
+        if conditions:
+            sql += " WHERE " + " AND ".join(conditions)
+
+        sql += " ORDER BY invoice_date DESC, timestamp DESC"
+
+        # ---- EXECUTE ----
+        conn = get_connection()
+        with conn.cursor(dictionary=True) as cur:
+            cur.execute(sql, params)
+            rows = cur.fetchall()
+
+        return [self._map_row(row) for row in rows]
+

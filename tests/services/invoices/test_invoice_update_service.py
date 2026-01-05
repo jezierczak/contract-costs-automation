@@ -5,10 +5,10 @@ import pytest
 
 from contract_costs.model.invoice import InvoiceStatus, Invoice, PaymentMethod, PaymentStatus
 from contract_costs.repository.inmemory.invoice_repository import InMemoryInvoiceRepository
-from contract_costs.services.invoices.commands.invoice_command import InvoiceCommand
-from contract_costs.services.invoices.dto.apply import InvoiceApplyAction
-from contract_costs.services.invoices.dto.common import ResolvedInvoiceUpdate
-from contract_costs.services.invoices.invoice_update_service import InvoiceUpdateService
+from contract_costs.services.invoices.assigment.apply.commands.invoice_command import InvoiceCommand
+from contract_costs.services.invoices.assigment.invoice_sources.dto import InvoiceApplyAction
+from contract_costs.services.invoices.assigment.invoice_sources.dto import ResolvedInvoiceUpdate
+from contract_costs.services.invoices.assigment.ingest.invoice_update_service import InvoiceUpdateService
 
 @pytest.fixture
 def invoice_repo():
