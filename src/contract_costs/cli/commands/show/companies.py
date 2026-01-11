@@ -1,7 +1,8 @@
 from contract_costs.cli.context import get_services
+from contract_costs.cli.printers.company_printer import CompanyTablePrinter
 from contract_costs.cli.registry import REGISTRY
 from contract_costs.model.company import CompanyType
-from contract_costs.services.companies.confidence.quality_default import DefaultCompanyQuality
+from contract_costs.services.companies.query.dto.company_query import CompanyQuery
 
 
 def build_show_companies(subparsers):
@@ -10,33 +11,41 @@ def build_show_companies(subparsers):
         help="Show companies",
     )
 
-    p.add_argument("--own", action="store_true")
-    p.add_argument("--inactive", action="store_true")
+    p.add_argument("--own", action="store_true", help="Show own companies only")
+    p.add_argument("--inactive", action="store_true", help="Include inactive companies")
+    p.add_argument("--nip", help="Filter by tax number (strict)")
+    p.add_argument("--search", help="Search in name, description, address, email")
+    p.add_argument("--role", help="Filter by company role")
 
     p.set_defaults(handler=handle_show_companies)
 
+REGISTRY.register_group("show", build_show_companies)
 
-def handle_show_companies(args):
+def handle_show_companies(args) -> None:
     services = get_services()
-    repo = services.company_repository
 
-    companies = repo.list_all()
+    role = None
+    if args.role:
+        try:
+            role = CompanyType[args.role.upper()]
+        except KeyError:
+            print(f"Invalid role: {args.role}")
+            return
 
-    if args.own:
-        companies = [c for c in companies if c.role == CompanyType.OWN]
+    query = CompanyQuery(
+        tax_number=args.nip,
+        own_only=args.own,
+        include_inactive=args.inactive,
+        search=args.search,
+        role=role,
+    )
 
-    if not args.inactive:
-        companies = [c for c in companies if c.is_active]
+    companies = services.company_query_service.list_companies(query)
 
     if not companies:
         print("No companies found.")
         return
 
-    for c in companies:
-        c_quality = DefaultCompanyQuality.from_company(c)
-        print(
-            f"{c_quality.get_overall_score()} |{c.name} | {c.tax_number} | {c.role.value} | {c.is_active} |{c.address} | {c.bank_account}"
-        )
+    CompanyTablePrinter.print(companies)
 
 
-REGISTRY.register_group("show", build_show_companies)

@@ -1,4 +1,6 @@
+import logging
 from decimal import Decimal
+from uuid import UUID
 
 from contract_costs.repository.invoice_repository import InvoiceRepository
 from contract_costs.repository.invoice_line_repository import InvoiceLineRepository
@@ -8,6 +10,7 @@ from contract_costs.repository.cost_node_repository import CostNodeRepository
 from contract_costs.repository.cost_type_repository import CostTypeRepository
 from contract_costs.services.invoices.queries.dto.invoice_query import InvoiceDetailsView, InvoiceLineView
 
+logger= logging.getLogger(__name__)
 
 class InvoiceDetailsQueryService:
 
@@ -28,9 +31,24 @@ class InvoiceDetailsQueryService:
         self._cost_type_repo = cost_type_repo
 
     def get_by_invoice_number(self, invoice_number: str) -> InvoiceDetailsView:
-        invoice = self._invoice_repo.get_by_invoice_number(invoice_number)
+        invoices = self._invoice_repo.get_by_invoice_number(invoice_number)
+
+        if not invoices:
+            raise RuntimeError(f"No invoice found for {invoice_number}")
+
+        if len(invoices) > 1:
+            logger.warning(
+                f"Multiple invoices found for {invoice_number}. "
+                f"Please specify invoice ID. Provided first match!"
+            )
+
+        return self.get_invoice(invoices[0].id)
+
+    def get_invoice(self,invoice_id: UUID) -> InvoiceDetailsView:
+        invoice=self._invoice_repo.get(invoice_id)
+
         if not invoice:
-            raise RuntimeError(f"Invoice not found: {invoice_number}")
+            raise RuntimeError(f"Invoice not found: {invoice_id}")
 
         lines = self._invoice_line_repo.list_by_invoice(invoice.id)
 

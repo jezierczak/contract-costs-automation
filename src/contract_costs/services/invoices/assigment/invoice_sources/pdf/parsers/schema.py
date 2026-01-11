@@ -3,9 +3,9 @@ AI_SCHEMA: dict[str, str | list[dict[str,str]]] = {
     "invoice_number": "string | null",
     "invoice_date": "string | null",
     "selling_date": "string | null",
-    "payment_method": "string | null",
+    "payment_method": 'Literal["pre_paid", "bank_transfer", "card", "cash", "blik"]] | null',
     "due_date": "string | null",
-    "payment_status": 'Literal["PAID", "UNPAID"] | null',
+    "payment_status": 'Literal["paid", "unpaid", "partially_paid" | null',
 
     "buyer_name": "string | null",
     "buyer_tax_number": "string | null",

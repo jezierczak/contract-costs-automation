@@ -18,6 +18,7 @@ class UnpaidInvoiceView(BaseModel):
     seller_bank_account: str | None
 
     payment_method: str
+    payment_status:str
     due_date: date | None
 
     total_net: Decimal

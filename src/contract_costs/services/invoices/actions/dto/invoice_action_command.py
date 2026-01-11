@@ -1,16 +1,40 @@
 from enum import Enum
-from typing import Any
+from typing import Any, ClassVar
 from uuid import UUID
 
 from pydantic import BaseModel, model_validator
 
+from contract_costs.infrastructure.excel.invoice_excel_context import InvoiceExcelContext
 
-class InvoiceAction(str, Enum):
+
+class InvoiceAction(Enum):
     MARK_PAID = "mark_paid"
     MARK_UNPAID = "mark_unpaid"
     MARK_SENT_TO_ACCOUNTANT = "mark_sent_to_accountant"
     REOPEN = "reopen"
 
+def invoice_action_from_excel(
+        *,
+        context: InvoiceExcelContext,
+        raw: str,
+) -> InvoiceAction:
+    if not raw:
+        raise ValueError("Empty excel action")
+
+    key = f"{raw.strip().lower()}-{context.value.lower()}"
+
+    mapping: dict[str, InvoiceAction] = {
+        "approved-accountant": InvoiceAction.MARK_SENT_TO_ACCOUNTANT,
+        "x-unpaid": InvoiceAction.MARK_PAID,
+        "reopen-accountant": InvoiceAction.REOPEN,
+    }
+
+    try:
+        return mapping[key]
+    except KeyError:
+        raise ValueError(
+            f"Unknown excel action '{raw}' for context '{context.value}'"
+        )
 
 
 class InvoiceSelector(BaseModel):

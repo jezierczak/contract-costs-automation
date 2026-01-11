@@ -45,7 +45,7 @@ def extract_street_tokens(street: str) -> list[str]:
         if len(t) >= 3 and t not in STOPWORDS
     ]
 
-class AddressCandidateProvider(CompanyCandidateProvider):
+class StreetCandidateProvider(CompanyCandidateProvider):
     def __init__(self, repo: CompanyRepository) -> None:
         self._repo = repo
 

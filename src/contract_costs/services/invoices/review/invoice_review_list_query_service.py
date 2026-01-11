@@ -20,6 +20,7 @@ class InvoiceReviewListQueryService:
         self._invoice_line_repo = invoice_line_repo
 
     def list_for_review(self, review_query: InvoiceReviewQuery) -> list[InvoiceReviewItemView]:
+
         invoices = self._invoice_repo.list_for_review(review_query)
 
         result = []

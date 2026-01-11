@@ -45,8 +45,8 @@ class InvoiceParseNormalizer:
             buyer=parsed.buyer,
             seller=parsed.seller,
         )
-
-    def _normalize_invoice(self, invoice):
+    @staticmethod
+    def _normalize_invoice(invoice):
         invoice_date = _safe_date(invoice.invoice_date)
         selling_date = _safe_date(invoice.selling_date) or invoice_date
         due_date = _safe_date(invoice.due_date)
@@ -56,8 +56,8 @@ class InvoiceParseNormalizer:
             invoice_date=invoice_date,
             selling_date=selling_date,
             due_date=due_date,
-            payment_method=self._payment_method(invoice.payment_method),
-            payment_status=self._payment_status(invoice.payment_status),
+            # payment_method=invoice.payment_method,
+            # payment_status=self._payment_status(invoice.payment_status),
             status=invoice.status or InvoiceStatus.NEW,
         )
 
@@ -83,6 +83,7 @@ class InvoiceParseNormalizer:
             "kg": UnitOfMeasure.KILOGRAM,
             "m": UnitOfMeasure.METER,
             "m2": UnitOfMeasure.SQUARE_METER,
+            "m3": UnitOfMeasure.CUBIC_METER,
             "h": UnitOfMeasure.HOUR,
         }.get(str(value).lower(), UnitOfMeasure.PIECE)
 
@@ -95,19 +96,19 @@ class InvoiceParseNormalizer:
             "0": VatRate.VAT_0,
         }.get(str(value), VatRate.VAT_23)
 
-    @staticmethod
-    def _payment_method(value) -> PaymentMethod:
-        return {
-            "PAYU": PaymentMethod.BANK_TRANSFER,
-            "TRANSFER": PaymentMethod.BANK_TRANSFER,
-            "CASH": PaymentMethod.CASH,
-            "CARD": PaymentMethod.CARD,
-        }.get(str(value).upper(), PaymentMethod.UNKNOWN)
-
-    @staticmethod
-    def _payment_status(value) -> PaymentStatus:
-        return {
-            "PAID": PaymentStatus.PAID,
-            "UNPAID": PaymentStatus.UNPAID,
-            "PARTIALLY_PAID": PaymentStatus.PARTIALLY_PAID,
-        }.get(str(value).upper(), PaymentStatus.UNPAID)
+    # @staticmethod
+    # def _payment_method(value) -> PaymentMethod:
+    #     return {
+    #         "PAYU": PaymentMethod.BANK_TRANSFER,
+    #         "TRANSFER": PaymentMethod.BANK_TRANSFER,
+    #         "CASH": PaymentMethod.CASH,
+    #         "CARD": PaymentMethod.CARD,
+    #     }.get(str(value).upper(), PaymentMethod.UNKNOWN)
+    #
+    # @staticmethod
+    # def _payment_status(value) -> PaymentStatus:
+    #     return {
+    #         "PAID": PaymentStatus.PAID,
+    #         "UNPAID": PaymentStatus.UNPAID,
+    #         "PARTIALLY_PAID": PaymentStatus.PARTIALLY_PAID,
+    #     }.get(str(value).upper(), PaymentStatus.UNPAID)

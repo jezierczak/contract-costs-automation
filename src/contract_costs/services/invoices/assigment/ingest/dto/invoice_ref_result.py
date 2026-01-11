@@ -2,7 +2,9 @@ from dataclasses import dataclass
 from enum import Enum
 from uuid import UUID
 
-
+class InvoiceSource(Enum):
+    PDF_IMAGE = "pdf_image"
+    EXCEL = "excel"
 
 class InvoiceApplyAction(str, Enum):
     APPLIED = "applied"

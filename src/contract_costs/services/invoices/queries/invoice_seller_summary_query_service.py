@@ -58,7 +58,6 @@ class InvoiceSellerSummaryQueryService:
             if inv.status != InvoiceStatus.PROCESSED:
                 continue
             lines = self._line_repo.list_by_invoice_ids([inv.id])
-
             net = sum(l.amount.net for l in lines)
             vat = sum(l.amount.tax for l in lines)
             gross = sum(l.amount.gross for l in lines)

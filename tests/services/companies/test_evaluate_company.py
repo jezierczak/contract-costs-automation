@@ -6,15 +6,15 @@ import pytest
 from contract_costs.infrastructure.openai_invoice_client import OpenAIInvoiceClient
 from contract_costs.model.company import Company, Address, Contact, CompanyType
 from contract_costs.repository.inmemory.company_repository import InMemoryCompanyRepository
-from contract_costs.services.companies.company_evaluate_orchestrator import CompanyEvaluateOrchestrator
-from contract_costs.services.companies.providers.address import AddressCandidateProvider
+from contract_costs.services.companies.company_evaluate_orchestrator import CompanyEvaluateOrchestrator, EvaluateMode
+from contract_costs.services.companies.providers.street import StreetCandidateProvider
 from contract_costs.services.companies.providers.bank import BankAccountCandidateProvider
 from contract_costs.services.companies.providers.composite import CompositeCompanyCandidateProvider
 from contract_costs.services.companies.providers.email import EmailCandidateProvider
 from contract_costs.services.companies.providers.excact_nip import ExactNipCandidateProvider
 from contract_costs.services.companies.providers.name import NameCandidateProvider
 from contract_costs.services.companies.providers.phone import PhoneCandidateProvider
-from contract_costs.services.invoices.assigment.invoice_sources.dto import CompanyInput
+from contract_costs.services.invoices.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
 
 
 
@@ -32,7 +32,7 @@ def repo():
 def provider(repo: InMemoryCompanyRepository):
     return CompositeCompanyCandidateProvider([
         NameCandidateProvider(repo),
-        AddressCandidateProvider(repo),
+        StreetCandidateProvider(repo),
         ExactNipCandidateProvider(repo),
         PhoneCandidateProvider(repo),
         EmailCandidateProvider(repo),
@@ -392,7 +392,7 @@ def test_soft_update_updates_only_better_fields(orchestrator: CompanyEvaluateOrc
         state=None,
     )
 
-    updated = orchestrator._maybe_update(company, input_)
+    updated = orchestrator._maybe_update(company, input_,EvaluateMode.NORMAL)
 
     assert updated.address.street == "Rynek 1"
     assert updated.name == "ACME Sp. z o.o."
@@ -426,7 +426,7 @@ def test_full_update_replaces_all_fields(orchestrator: CompanyEvaluateOrchestrat
         state=None,
     )
 
-    updated = orchestrator._maybe_update(company, input_)
+    updated = orchestrator._maybe_update(company, input_,EvaluateMode.NORMAL)
 
     assert updated.tax_number == "7352597495"
     assert updated.address.city == "Kraków"
@@ -461,7 +461,7 @@ def test_does_not_overwrite_good_data_with_bad(orchestrator: CompanyEvaluateOrch
         state=None,
     )
 
-    updated = orchestrator._maybe_update(company, input_)
+    updated = orchestrator._maybe_update(company, input_,EvaluateMode.NORMAL)
 
     assert updated.contact.email == "biuro@acme.pl"
 

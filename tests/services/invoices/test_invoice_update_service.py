@@ -6,9 +6,11 @@ import pytest
 from contract_costs.model.invoice import InvoiceStatus, Invoice, PaymentMethod, PaymentStatus
 from contract_costs.repository.inmemory.invoice_repository import InMemoryInvoiceRepository
 from contract_costs.services.invoices.assigment.apply.commands.invoice_command import InvoiceCommand
-from contract_costs.services.invoices.assigment.invoice_sources.dto import InvoiceApplyAction
-from contract_costs.services.invoices.assigment.invoice_sources.dto import ResolvedInvoiceUpdate
+from contract_costs.services.invoices.assigment.ingest.dto.invoice_ref_result import InvoiceApplyAction, InvoiceSource
+
 from contract_costs.services.invoices.assigment.ingest.invoice_update_service import InvoiceUpdateService
+from contract_costs.services.invoices.assigment.invoice_sources.dto.common import ResolvedInvoiceUpdate
+
 
 @pytest.fixture
 def invoice_repo():
@@ -39,7 +41,7 @@ def resolved_update(**kwargs):
 def test_create_new_invoice(service, invoice_repo):
     update = resolved_update()
 
-    result = service.apply([update])
+    result = service.apply([update],InvoiceSource.PDF_IMAGE)
 
     assert result["FV/1"].action == InvoiceApplyAction.APPLIED
     invoices = invoice_repo.list_invoices()
@@ -70,7 +72,7 @@ def test_update_existing_invoice(service, invoice_repo):
         status=InvoiceStatus.PROCESSED,
     )
 
-    result = service.apply([update])
+    result = service.apply([update],InvoiceSource.EXCEL)
 
     updated = invoice_repo.get(existing.id)
     assert updated.status == InvoiceStatus.PROCESSED
@@ -98,7 +100,7 @@ def test_skip_processed_invoice(service, invoice_repo):
         seller_id=inv.seller_id,
     )
 
-    result = service.apply([update])
+    result = service.apply([update],InvoiceSource.EXCEL)
 
     assert result["FV/1"].action == InvoiceApplyAction.SKIPPED
 
@@ -108,7 +110,7 @@ def test_delete_non_existing_invoice_is_skipped(service):
         command=InvoiceCommand.DELETE,
     )
 
-    result = service.apply([update])
+    result = service.apply([update],InvoiceSource.EXCEL)
 
     assert result["FV/404"].action == InvoiceApplyAction.SKIPPED
 
@@ -134,7 +136,7 @@ def test_invoice_number_change_creates_new_and_deletes_old(service, invoice_repo
         seller_id=old.seller_id,
     )
 
-    result = service.apply([update])
+    result = service.apply([update],InvoiceSource.EXCEL)
 
     # nowa faktura utworzona
     assert result["FV/NEW"].action == InvoiceApplyAction.APPLIED
@@ -154,7 +156,7 @@ def test_missing_invoice_number_raises():
     update = resolved_update(invoice_number="   ")
 
     with pytest.raises(ValueError):
-        service.apply([update])
+        service.apply([update],InvoiceSource.EXCEL)
 
 def test_duplicate_invoice_number_in_batch():
     service = InvoiceUpdateService(InMemoryInvoiceRepository())
@@ -163,4 +165,4 @@ def test_duplicate_invoice_number_in_batch():
     u2 = resolved_update(invoice_number="FV/1")
 
     with pytest.raises(ValueError):
-        service.apply([u1, u2])
+        service.apply([u1, u2],InvoiceSource.PDF_IMAGE)

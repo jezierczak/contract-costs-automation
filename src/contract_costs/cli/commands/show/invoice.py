@@ -67,7 +67,7 @@ def _print_invoice_header(inv):
     print(f"  VAT:           {inv.total_vat}")
     print(f"  Gross:         {inv.total_gross}")
     print(f"  Not evidenced: {inv.total_not_evidenced}")
-    print("=" * 120)
+    print("=" * 132)
 
 
 
@@ -87,9 +87,10 @@ def _print_invoice_lines(inv):
         f"{fmt('Gross', 10)} "
         f"{fmt('Contract', 12)} "
         f"{fmt('Cost node', 12)}"
+        f"{fmt('Cost type', 12)}"
     )
 
-    print("-" * 120)
+    print("-" * 132)
 
     for l in inv.lines:
 
@@ -103,4 +104,5 @@ def _print_invoice_lines(inv):
             f"{fmt(l.gross, 10)} "
             f"{fmt(l.contract_code, 12)} "
             f"{fmt(l.cost_node_code, 12)}"
+            f"{fmt(l.cost_type_code, 12)}"
         )

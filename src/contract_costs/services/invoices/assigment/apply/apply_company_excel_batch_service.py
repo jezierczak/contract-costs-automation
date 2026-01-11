@@ -21,7 +21,7 @@ class ApplyCompanyExcelBatchService:
         for c in companies:
             existing = self._repo.get(c.id)
 
-            normalized_tax = self._normalizator.normalize_tax_number(c.tax_number)
+            normalized_tax = self._normalizator.normalize_tax_number(str(c.tax_number))
             if normalized_tax is None:
                 raise ValueError(
                     f"Company from Excel must have valid tax_number. "

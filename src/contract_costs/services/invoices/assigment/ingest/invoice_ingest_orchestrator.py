@@ -1,3 +1,4 @@
+from contract_costs.services.invoices.assigment.ingest.dto.invoice_ref_result import InvoiceSource
 from contract_costs.services.invoices.assigment.invoice_sources.dto.common import  InvoiceIngestBatch
 
 from contract_costs.services.invoices.assigment.ingest.invoice_line_update_service import InvoiceLineUpdateService
@@ -21,7 +22,7 @@ class InvoiceIngestOrchestrator:
         - brak DELETE / MODIFY
         """
 
-        ref_map = self._invoice_service.apply(batch.invoices)
+        ref_map = self._invoice_service.apply(batch.invoices, InvoiceSource.PDF_IMAGE)
 
         self._invoice_line_service.apply(
             batch.lines,
@@ -36,7 +37,7 @@ class InvoiceIngestOrchestrator:
 
 
 
-        ref_map = self._invoice_service.apply(batch.invoices)
+        ref_map = self._invoice_service.apply(batch.invoices,InvoiceSource.EXCEL)
 
         finalized_invoice_ids = self._invoice_line_service.apply(
             batch.lines,

@@ -20,9 +20,9 @@ class MySQLCostNodeRepository(CostNodeRepository):
         INSERT INTO cost_nodes (
             id, contract_id, parent_id,
             code, name,
-            budget, quantity, unit
+            budget, quantity, unit,is_active
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s)
         """
 
         values = [
@@ -35,6 +35,7 @@ class MySQLCostNodeRepository(CostNodeRepository):
                 n.budget,
                 n.quantity,
                 n.unit.value if n.unit else None,
+                n.is_active
             )
             for n in cost_nodes
         ]
@@ -128,7 +129,8 @@ class MySQLCostNodeRepository(CostNodeRepository):
             name = %s,
             budget = %s,
             quantity = %s,
-            unit = %s
+            unit = %s,
+            is_active = %s
         WHERE id = %s
         """
 
@@ -144,6 +146,7 @@ class MySQLCostNodeRepository(CostNodeRepository):
                     cost_node.quantity,
                     cost_node.unit.value if cost_node.unit else None,
                     str(cost_node.id),
+                    cost_node.is_active
                 ),
             )
         conn.commit()

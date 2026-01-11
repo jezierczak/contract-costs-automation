@@ -88,6 +88,7 @@ class UpdateContractStructureService:
             "HARD replace: deleting all cost nodes for contract_id=%s",
             contract_id,
         )
+
         self._cost_node_repository.delete_by_contract(contract_id)
 
         # --- zbuduj nową strukturę ---

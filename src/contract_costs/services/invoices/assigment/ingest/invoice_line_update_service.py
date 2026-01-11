@@ -42,7 +42,9 @@ class InvoiceLineUpdateService:
         lines: list[InvoiceLineUpdate],
         ref_map: dict[str, InvoiceRefResult],
     ) ->  set[UUID]:
-
+        # Excel is the source of truth for invoice-line relations.
+        # If invoice_number is changed, line references MUST be updated in the batch.
+        # The system does not auto-migrate invoice lines.
         invoice_line_states: dict[UUID, list[bool]] = defaultdict(list)
 
         invoice_lines_ids_updated: defaultdict[UUID,list[UUID]] = defaultdict(list) #fist is invoice id, second updated invoice_line_ids,

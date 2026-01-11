@@ -66,6 +66,6 @@ def test_handle_edit_company_happy_path(monkeypatch):
         adapter,
     )
 
-    handle_edit_company()
+    handle_edit_company(args=None)
 
     adapter.assert_called_once()

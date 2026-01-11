@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 from uuid import UUID
 
@@ -6,6 +7,7 @@ from contract_costs.repository.invoice_repository import InvoiceRepository
 from contract_costs.services.invoices.actions.dto.invoice_action_command import InvoiceActionCommand, InvoiceAction
 from contract_costs.services.invoices.actions.invoice_selector_resolver import InvoiceSelectorResolver
 
+logger = logging.getLogger(__name__)
 
 class InvoiceActionService:
     def __init__(self, invoice_repository: InvoiceRepository):
@@ -55,10 +57,13 @@ class InvoiceActionService:
             invoice = self._require_invoice(invoice_id)
 
             if invoice.status != InvoiceStatus.PROCESSED:
-                raise ValueError(
-                    f"Invoice {invoice.invoice_number} "
-                    f"cannot be sent to accountant from status {invoice.status}"
-                )
+                logger.warning( f"Invoice {invoice.invoice_number} "
+                    f"cannot be sent to accountant from status {invoice.status}, SKIPPED")
+                continue
+                # raise ValueError(
+                #     f"Invoice {invoice.invoice_number} "
+                #     f"cannot be sent to accountant from status {invoice.status}"
+                # )
 
             updated = invoice.mark_sent_to_accountant()
             self._invoice_repo.update(updated)
@@ -78,9 +83,12 @@ class InvoiceActionService:
         for invoice_id in invoice_ids:
             invoice = self._require_invoice(invoice_id)
 
-            if invoice.status != InvoiceStatus.SENT_TO_ACCOUNTANT:
+            if invoice.status not in (
+                    InvoiceStatus.SENT_TO_ACCOUNTANT,
+                    InvoiceStatus.PROCESSED,
+            ):
                 raise ValueError(
-                    f"Invoice {invoice.invoice_number} is not closed"
+                    f"Invoice {invoice.invoice_number} is not closed or processed"
                 )
 
             updated = invoice.reopen()

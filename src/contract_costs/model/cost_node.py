@@ -27,3 +27,34 @@ class CostNode:
     unit: UnitOfMeasure | None
     budget: Decimal | None
     is_active: bool
+
+
+
+    @staticmethod
+    def calculate_budget_from_leaves(
+        node_id: UUID,
+        nodes_by_parent: dict[UUID | None, list["CostNode"]],
+    ) -> Decimal:
+        children = [
+            c for c in nodes_by_parent.get(node_id, [])
+            if c.is_active
+        ]
+
+        # 1 jeśli są aktywne dzieci → liczymy TYLKO dzieci
+        if children:
+            total = Decimal("0")
+            for child in children:
+                total += CostNode.calculate_budget_from_leaves(
+                    child.id, nodes_by_parent
+                )
+            return total
+
+        # 2 jeśli brak dzieci → liść → jego własny budżet
+        node = next(
+            n
+            for nodes in nodes_by_parent.values()
+            for n in nodes
+            if n.id == node_id
+        )
+
+        return node.budget or Decimal("0")

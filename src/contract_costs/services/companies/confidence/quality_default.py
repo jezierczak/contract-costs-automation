@@ -193,7 +193,7 @@ class DefaultCompanyQuality(CompanyDataQuality):
     # ---------- public API ----------
 
     def get_field_score(self, field: CompanyField) -> int:
-        logger.info(f"Getting field score: {field} , score: {self._field_scores.get(field,0)}")
+        logger.debug(f"Getting field score: {field} , score: {self._field_scores.get(field,0)}")
         return self._field_scores.get(field, 0)
 
     def get_field_scores(self) -> Mapping[str, int]:
@@ -203,7 +203,7 @@ class DefaultCompanyQuality(CompanyDataQuality):
         score = 0.0
         for field, weight in FIELD_WEIGHTS.items():
             score += self.get_field_score(field) * weight
-        logger.info(f"Overall score: {int(round(score))}")
+        logger.debug(f"Overall score: {int(round(score))}")
         return int(round(score))
 
     def get_value(self, field: CompanyField) -> str | None:

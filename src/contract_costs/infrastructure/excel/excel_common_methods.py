@@ -8,13 +8,13 @@ from openpyxl.worksheet.worksheet import Worksheet
 class ExcelCommonMethods:
 
     @staticmethod
-    def _apply_one_dropdown(max_rows: int,
-                            dict_ws: Worksheet,
-                            dict_ws_name: str,
-                            source_ws: Worksheet,
-                            target_column: str,
-                            source_column: str = "A"
-                            ) -> None:
+    def apply_one_dropdown(max_rows: int,
+                           dict_ws: Worksheet,
+                           dict_ws_name: str,
+                           source_ws: Worksheet,
+                           target_column: str,
+                           source_column: str = "A"
+                           ) -> None:
         data_range = f"{dict_ws_name}!${source_column}$2:${source_column}${dict_ws.max_row}"
         dv = DataValidation(
             type="list",

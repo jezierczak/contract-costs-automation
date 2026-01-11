@@ -12,8 +12,8 @@ logging.basicConfig(level=logging.INFO)
 from pathlib import Path
 
 from contract_costs.services.invoices.assigment.invoice_sources.pdf.parsers.invoice_parser import InvoiceParser
-from contract_costs.services.invoices.assigment.invoice_sources.dto import InvoiceParseResult
-from contract_costs.infrastructure.pdf_text_extractor import PdfTextExtractor
+from contract_costs.services.invoices.assigment.invoice_sources.pdf.parsers.dto.parse import InvoiceParseResult
+from contract_costs.infrastructure.pdf_text_extractor import PdfImageTextExtractor
 from contract_costs.infrastructure.openai_invoice_client import OpenAIInvoiceClient
 from contract_costs.services.invoices.assigment.invoice_sources.pdf.parsers.ai_invoice_mapper import AIInvoiceMapper
 from contract_costs.services.invoices.assigment.invoice_sources.pdf.parsers.schema import AI_SCHEMA, AI_PROMPT
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 class OCRAIAgentInvoiceParser(InvoiceParser):
 
     def __init__(self):
-        self._text_extractor = PdfTextExtractor()
+        self._text_extractor = PdfImageTextExtractor()
         self._ai_client = OpenAIInvoiceClient(AI_SCHEMA, AI_PROMPT)
         self._mapper = AIInvoiceMapper()
 

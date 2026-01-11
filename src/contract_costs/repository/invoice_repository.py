@@ -29,7 +29,7 @@ class InvoiceRepository(ABC):
         ...
 
     @abstractmethod
-    def get_by_invoice_number(self, invoice_number: str) -> Invoice | None:
+    def get_by_invoice_number(self, invoice_number: str) -> list[Invoice]:
         ...
 
     @abstractmethod

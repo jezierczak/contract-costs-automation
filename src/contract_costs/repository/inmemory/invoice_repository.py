@@ -15,11 +15,12 @@ class InMemoryInvoiceRepository(InvoiceRepository):
     def get(self, invoice_id: UUID) -> Invoice | None:
         return self._invoices.get(invoice_id)
 
-    def get_by_invoice_number(self, invoice_number: str) -> Invoice | None:
+    def get_by_invoice_number(self, invoice_number: str) -> list[Invoice]:
+        result = []
         for inv in self._invoices.values():
-            if inv.invoice_number == invoice_number:
-                return inv
-        return None
+            if inv.invoice_number == invoice_number and inv.status != InvoiceStatus.DELETED:
+                result.append(inv)
+        return result
     def list_invoices(self) -> list[Invoice]:
         return list(self._invoices.values())
 
@@ -34,6 +35,7 @@ class InMemoryInvoiceRepository(InvoiceRepository):
             if (
                     inv.invoice_number == invoice_number
                     and inv.seller_id == seller_id
+                    and inv.status != InvoiceStatus.DELETED
             ):
                 return inv
         return None
@@ -57,35 +59,35 @@ class InMemoryInvoiceRepository(InvoiceRepository):
         return NotImplemented
 
     def list_for_review(self, query: InvoiceReviewQuery) -> list[Invoice]:
-        result = self._invoices.values()
-
+        input_values = self._invoices.values()
+        result = list(input_values)
         if query.statuses:
             result = [
-                i for i in result
+                i for i in input_values
                 if i.status in query.statuses
             ]
 
         if query.payment_statuses:
             result = [
-                i for i in result
+                i for i in input_values
                 if i.payment_status in query.payment_statuses
             ]
 
-        if query.invoice_date_from:
+        if query.from_date:
             result = [
-                i for i in result
-                if i.invoice_date and i.invoice_date >= query.invoice_date_from
+                i for i in input_values
+                if i.invoice_date and i.invoice_date >= query.from_date
             ]
 
-        if query.invoice_date_to:
+        if query.to_date:
             result = [
-                i for i in result
-                if i.invoice_date and i.invoice_date <= query.invoice_date_to
+                i for i in input_values
+                if i.invoice_date and i.invoice_date <= query.to_date
             ]
 
         if query.only_ready_for_accountant:
             result = [
-                i for i in result
+                i for i in input_values
                 if i.status == InvoiceStatus.PROCESSED
             ]
 

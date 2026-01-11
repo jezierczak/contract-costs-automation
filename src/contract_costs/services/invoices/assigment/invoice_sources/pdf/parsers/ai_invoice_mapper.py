@@ -1,7 +1,8 @@
 import logging
 from datetime import date
 from decimal import Decimal
-from typing import Any
+from enum import Enum
+from typing import Any, Type
 from uuid import uuid4
 
 from contract_costs.model.company import CompanyType
@@ -40,6 +41,23 @@ class AIInvoiceMapper:
                 invoice_number,
             )
 
+        payment_method: PaymentMethod = (
+                self.parse_enum(PaymentMethod, data.get("payment_method"))
+                or PaymentMethod.UNKNOWN
+        )
+
+        payment_status: PaymentStatus = (
+            PaymentStatus.PAID
+            if payment_method in {
+                PaymentMethod.PRE_PAID,
+                PaymentMethod.CASH,
+                PaymentMethod.BLIK,
+                PaymentMethod.CARD,
+            }
+            else self.parse_enum(PaymentStatus, data.get("payment_status"))
+                 or PaymentStatus.UNKNOWN
+        )
+
         invoice = InvoiceUpdate(
             command=InvoiceCommand.APPLY,
             old_invoice_number=None,
@@ -49,8 +67,8 @@ class AIInvoiceMapper:
             due_date=self.parse_date(data.get("due_date")),
             buyer_tax_number=None,
             seller_tax_number=None,
-            payment_method=self.parse_enum(PaymentMethod,data.get("payment_method")) or PaymentMethod.UNKNOWN,
-            payment_status=self.parse_enum(PaymentStatus,data.get("payment_status")) or PaymentStatus.UNKNOWN,
+            payment_method=payment_method,
+            payment_status=payment_status,
             status=InvoiceStatus.NEW,
         )
 
@@ -116,8 +134,9 @@ class AIInvoiceMapper:
         except ValueError:
             logger.warning("Invalid date from AI: %s", value)
             return None
+
     @staticmethod
-    def parse_enum(enum_cls, value: str | None):
+    def parse_enum[E: Enum](enum_cls: Type[E], value: str | None) -> E | None:
         if not value:
             return None
         try:

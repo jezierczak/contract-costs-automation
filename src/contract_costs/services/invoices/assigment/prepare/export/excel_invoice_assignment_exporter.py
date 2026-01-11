@@ -262,7 +262,7 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
 
         max_rows = 2000  # bezpieczny limit
 
-        self._apply_one_dropdown(
+        ExcelCommonMethods.apply_one_dropdown(
             max_rows,
             actions_ws,
             cfg.DICTS_ACTIONS,
@@ -270,7 +270,7 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
             "A"
         )
 
-        self._apply_one_dropdown(
+        ExcelCommonMethods.apply_one_dropdown(
             max_rows,
             buyers_ws,
             cfg.DICTS_BUYERS,
@@ -278,21 +278,21 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
             "F"
         )
 
-        self._apply_one_dropdown(
+        ExcelCommonMethods.apply_one_dropdown(
             max_rows,
             sellers_ws,
             cfg.DICTS_SELLERS,
             invoices_ws,
             "G"
         )
-        self._apply_one_dropdown(
+        ExcelCommonMethods.apply_one_dropdown(
             max_rows,
             payment_method_ws,
             cfg.DICTS_PAYMENT_METHODS,
             invoices_ws,
             "H"
         )
-        self._apply_one_dropdown(
+        ExcelCommonMethods.apply_one_dropdown(
             max_rows,
             payment_status_ws,
             cfg.DICTS_PAYMENT_STATUS,
@@ -300,7 +300,7 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
             "I"
         )
 
-        self._apply_one_dropdown(
+        ExcelCommonMethods.apply_one_dropdown(
             max_rows,
             units_ws,
             cfg.DICTS_UNITS,
@@ -309,7 +309,7 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
         )
 
 
-        self._apply_one_dropdown(
+        ExcelCommonMethods.apply_one_dropdown(
             max_rows,
             vat_rates_ws,
             cfg.DICTS_VAT_RATES,
@@ -318,7 +318,7 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
             "B"
         )
 
-        self._apply_one_dropdown(
+        ExcelCommonMethods.apply_one_dropdown(
             max_rows,
             tax_treatments_ws,
             cfg.DICTS_TAX_TREATMENTS,
@@ -326,7 +326,7 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
             "I"
         )
 
-        self._apply_one_dropdown(
+        ExcelCommonMethods.apply_one_dropdown(
             max_rows,
             contracts_ws,
             cfg.DICTS_CONTRACTS,
@@ -334,7 +334,7 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
             "J"
         )
 
-        self._apply_one_dropdown(
+        ExcelCommonMethods.apply_one_dropdown(
             max_rows,
             cost_nodes_ws,
             cfg.DICTS_COST_NODES,
@@ -342,7 +342,7 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
             "K"
         )
 
-        self._apply_one_dropdown(
+        ExcelCommonMethods.apply_one_dropdown(
             max_rows,
             cost_types_ws,
             cfg.DICTS_COST_TYPES,

@@ -9,3 +9,4 @@ from contract_costs.cli.commands import init     # noqa
 from contract_costs.cli.commands import run      # noqa
 from contract_costs.cli.commands import reports   # noqa
 from contract_costs.cli.commands import show   # noqa
+from contract_costs.cli.commands import set   # noqa

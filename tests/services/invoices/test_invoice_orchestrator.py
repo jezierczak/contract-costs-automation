@@ -7,7 +7,8 @@ from contract_costs.model.invoice import PaymentMethod, PaymentStatus, InvoiceSt
 from contract_costs.model.invoice_line import InvoiceLine
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 from contract_costs.services.invoices.assigment.apply.commands.invoice_command import InvoiceCommand
-from contract_costs.services.invoices.assigment.invoice_sources.dto import InvoiceIngestBatch, ResolvedInvoiceUpdate, InvoiceLineUpdate
+from contract_costs.services.invoices.assigment.invoice_sources.dto.common import InvoiceIngestBatch, \
+    ResolvedInvoiceUpdate, InvoiceLineUpdate
 
 
 def test_ingest_from_pdf_creates_invoice_and_lines_without_finalization(
@@ -218,9 +219,13 @@ def test_ingest_from_excel_delete_existing_invoice(
 
     orchestrator.ingest_from_excel(batch)
 
-    invoice = invoice_repo.get_unique_invoice("FV/XLS/DEL", seller_id)
-    assert invoice is not None
-    assert invoice.status == InvoiceStatus.DELETED
+    invoices = invoice_repo.get_by_invoice_number("FV/XLS/DEL")
+    assert invoices is not None
+
+    #only one invoice so first is always deleted
+    for invoice in invoices:
+        assert invoice.status == InvoiceStatus.DELETED
+        assert invoice.invoice_number == "FV/XLS/DEL"
 
 def test_ingest_from_excel_changes_invoice_number_and_deletes_old(
     orchestrator,

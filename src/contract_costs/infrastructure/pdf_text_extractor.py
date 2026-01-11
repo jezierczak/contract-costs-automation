@@ -1,7 +1,6 @@
 import logging
 import re
 
-
 import cv2
 import numpy as np
 
@@ -21,8 +20,29 @@ custom_config = r"""
 -c preserve_interword_spaces=1
 """
 
-class PdfTextExtractor:
-    def extract(self, pdf_path: Path) -> str:
+class PdfImageTextExtractor:
+
+    def extract(self, path: Path) -> str:
+        suffix = path.suffix.lower()
+
+        if suffix == ".pdf":
+            return self.extract_from_pdf_path(path)
+
+        if suffix in {".png", ".jpg", ".jpeg", ".tiff", ".bmp"}:
+            return self.extract_from_image_path(path)
+
+        raise ValueError(f"Unsupported file type: {suffix}")
+
+    def extract_from_image_path(self, image_path: Path) -> str:
+        try:
+            with Image.open(image_path) as img:
+                img = img.convert("RGB")  # ważne!
+                return self._extract_with_ocr(img)
+        except Exception:
+            logger.exception("Failed to open image: %s", image_path)
+            return ""
+
+    def extract_from_pdf_path(self, pdf_path: Path) -> str:
         text = self.extract_with_pdfplumber_safe(pdf_path, timeout=5)
         if text.strip():
             logger.info("PDF extractor used pdfplumber")
@@ -63,7 +83,7 @@ class PdfTextExtractor:
     @staticmethod
     def extract_with_pdfplumber_safe(pdf_path: Path, timeout: int = 5) -> str:
         q: Queue = Queue()
-        p = Process(target=PdfTextExtractor._pdfplumber_worker, args=(pdf_path, q))
+        p = Process(target=PdfImageTextExtractor._pdfplumber_worker, args=(pdf_path, q))
         p.start()
         p.join(timeout)
 
@@ -127,6 +147,7 @@ class PdfTextExtractor:
         except Exception:
             logger.exception("OCR failed completely")
             return ""
+
     @staticmethod
     def _split_companies_by_nip(text: str) -> str:
         nips = re.findall(r"\b\d{10}\b", text)

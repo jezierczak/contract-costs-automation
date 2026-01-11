@@ -8,7 +8,7 @@ from contract_costs.repository.invoice_repository import InvoiceRepository
 from contract_costs.services.invoices.assigment.apply.commands.invoice_command import InvoiceCommand
 from contract_costs.services.invoices.assigment.ingest.dto.invoice_ref_result import (
     InvoiceRefResult,
-    InvoiceApplyAction,
+    InvoiceApplyAction, InvoiceSource,
 )
 from contract_costs.services.invoices.assigment.invoice_sources.dto.common import ResolvedInvoiceUpdate
 
@@ -29,11 +29,15 @@ class InvoiceUpdateService:
     def apply(
         self,
         invoices: list[ResolvedInvoiceUpdate],
+            source: InvoiceSource,
     ) -> dict[str, InvoiceRefResult]:
         """
         Zwraca mapę:
         invoice_ref (old lub new) -> InvoiceRefResult
         """
+        # Excel is the source of truth for invoice-line relations.
+        # If invoice_number is changed, line references MUST be updated in the batch.
+        # The system does not auto-migrate invoice lines.
         results: dict[str, InvoiceRefResult] = {}
         for update in invoices:
             if not update.invoice_number or not update.invoice_number.strip():
@@ -41,19 +45,40 @@ class InvoiceUpdateService:
                     f"Missing invoice_number for row with seller_id={update.seller_id}"
                 )
 
+
+
+            existing = self._get_existing_invoice(update)
+            #if existing but pdf source, change invoice number to {number}-duplicate and go
+            is_ocr_collision = (
+                    existing is not None
+                    and source == InvoiceSource.PDF_IMAGE
+            )
+            if is_ocr_collision:
+                update = replace(
+                    update,
+                    # old_invoice_number=update.invoice_number,
+                    invoice_number=f"{update.invoice_number}-duplicate",
+                )
+                #ocr collision but changed name to duplicate, and resolved existing invoice set to none for workflow
+                existing = None
+
+            # if existing and source != InvoiceSource.PDF_IMAGE:
+            #     logger.warning(
+            #         "Detected existing invoice!! %s",
+            #         existing.invoice_number,
+            #     )
+
             ref_key = update.invoice_number
 
             if ref_key in results:
                 raise ValueError(
                     f"Duplicate invoice reference in batch: {ref_key}"
                 )
-
-            existing = self._get_existing_invoice(update)
-
             # -----------------------------
             # SKIP PROCESSED
             # -----------------------------
-            if existing and existing.status == InvoiceStatus.PROCESSED:
+            if (existing and
+               (existing.status == InvoiceStatus.PROCESSED or existing.status == InvoiceStatus.SENT_TO_ACCOUNTANT)):
                 results[ref_key] = InvoiceRefResult(
                     invoice_id=existing.id,
                     action=InvoiceApplyAction.SKIPPED,
@@ -61,7 +86,7 @@ class InvoiceUpdateService:
                     old_invoice_number=update.old_invoice_number,
                 )
                 logger.warning(
-                    "Skipping PROCESSED invoice %s",
+                    "Skipping PROCESSED or SENT_TO_ACCOUNTANT invoice %s",
                     existing.invoice_number,
                 )
                 continue
@@ -162,10 +187,13 @@ class InvoiceUpdateService:
                     replace(old, status=InvoiceStatus.DELETED)
                 )
 
+            # logger.info(f"ref key: {ref_key} Updated invoice: {invoice.invoice_number}")
+
             results[ref_key] = InvoiceRefResult(
                 invoice_id=new_id,
                 action=InvoiceApplyAction.APPLIED,
                 invoice_number=invoice.invoice_number,
+                # old_invoice_number=update.old_invoice_number,
             )
 
         return results

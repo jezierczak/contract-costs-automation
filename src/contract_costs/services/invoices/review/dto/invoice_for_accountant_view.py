@@ -19,3 +19,4 @@ class InvoiceForAccountantView(BaseModel):
     total_net: Decimal
     total_vat: Decimal
     total_gross: Decimal
+    total_not_evidenced: Decimal

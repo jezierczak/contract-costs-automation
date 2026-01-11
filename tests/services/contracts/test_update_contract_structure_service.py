@@ -12,7 +12,7 @@ from contract_costs.model.cost_node import CostNode
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 from contract_costs.repository.inmemory.contract_repository import InMemoryContractRepository
 from contract_costs.repository.inmemory.cost_node_repository import InMemoryCostNodeRepository
-from contract_costs.services.contracts.update_contract_structure_service import (
+from contract_costs.services.contracts.apply.update_contract_structure_service import (
     UpdateContractStructureService,
 )
 from contract_costs.services.contracts.validators.cost_node_tree_validator import (

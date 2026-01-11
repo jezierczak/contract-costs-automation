@@ -38,50 +38,88 @@ def handle_prepare_contract(args) -> None:
     contract_ref = args.ref
     services = get_services()
 
-    service = services.generate_contract_structure_bundle
+    # service = services.generate_contract_structure_bundle
+    exporter = services.contract_prepare_excel_exporter
 
     # ---------------- NEW CONTRACT ----------------
 
+    # if contract_ref == "new":
+    #     output_path = (
+    #         cfg.INPUTS_CONTRACTS_NEW_DIR /
+    #         cfg.CONTRACT_EXCEL_FILENAME
+    #     )
+    #
+    #     if output_path.exists():
+    #         raise RuntimeError(
+    #             f"Contract Excel already exists: {output_path}\n"
+    #             "Apply or remove it before preparing a new one."
+    #         )
+    #
+    #     bundle = service.generate_empty()
+    #     logger.info("Empty contract structure Excel generated: %s", output_path)
+    #     print(f"Prepared NEW contract Excel:\n{output_path}")
+    #     return
+
     if contract_ref == "new":
-        output_path = (
+        out = (
             cfg.INPUTS_CONTRACTS_NEW_DIR /
             cfg.CONTRACT_EXCEL_FILENAME
         )
 
+        if out.exists():
+            raise RuntimeError(
+                f"Contract Excel already exists: {out}\n"
+                "Apply or remove it before preparing a new one."
+            )
+        exporter.export_new(output_path=out)
+        logger.info("Empty contract structure Excel generated: %s", output_path)
+        print(f"Prepared NEW contract Excel:\n{out}")
+        return
+    else:
+        contract = _resolve_contract(contract_ref, services)
+        filename = cfg.CONTRACT_EDIT_EXCEL_TEMPLATE.format(code=contract.code)
+        output_path = cfg.INPUTS_CONTRACTS_EDIT_DIR / filename
         if output_path.exists():
             raise RuntimeError(
                 f"Contract Excel already exists: {output_path}\n"
-                "Apply or remove it before preparing a new one."
+                "Apply or remove it before preparing again."
             )
+        exporter.export_existing(
+            contract=contract,
+            cost_nodes=services.cost_node_repository.list_by_contract(contract.id),
+            output_path=output_path,
+        )
 
-        bundle = service.generate_empty()
-        logger.info("Empty contract structure Excel generated: %s", output_path)
-        print(f"Prepared NEW contract Excel:\n{output_path}")
-        return
+        logger.info(
+            "Contract structure Excel generated: contract=%s path=%s",
+            contract.code,
+            output_path,
+        )
+        print(f"Prepared contract '{contract.code}' for editing:\n{output_path}")
 
     # ---------------- EDIT CONTRACT ----------------
 
-    contract = _resolve_contract(contract_ref, services)
-
-    filename = cfg.CONTRACT_EDIT_EXCEL_TEMPLATE.format(code=contract.code)
-    output_path = cfg.INPUTS_CONTRACTS_EDIT_DIR / filename
-
-    if output_path.exists():
-        raise RuntimeError(
-            f"Contract Excel already exists: {output_path}\n"
-            "Apply or remove it before preparing again."
-        )
-
-    bundle = service.generate_from_contract(contract.id)
-
-    services.export_contract_structure_excel.execute(bundle, output_path)
-
-    logger.info(
-        "Contract structure Excel generated: contract=%s path=%s",
-        contract.code,
-        output_path,
-    )
-    print(f"Prepared contract '{contract.code}' for editing:\n{output_path}")
+    # contract = _resolve_contract(contract_ref, services)
+    #
+    # filename = cfg.CONTRACT_EDIT_EXCEL_TEMPLATE.format(code=contract.code)
+    # output_path = cfg.INPUTS_CONTRACTS_EDIT_DIR / filename
+    #
+    # if output_path.exists():
+    #     raise RuntimeError(
+    #         f"Contract Excel already exists: {output_path}\n"
+    #         "Apply or remove it before preparing again."
+    #     )
+    #
+    # bundle = service.generate_from_contract(contract.id)
+    #
+    # services.export_contract_structure_excel.execute(bundle, output_path)
+    #
+    # logger.info(
+    #     "Contract structure Excel generated: contract=%s path=%s",
+    #     contract.code,
+    #     output_path,
+    # )
+    # print(f"Prepared contract '{contract.code}' for editing:\n{output_path}")
 
 
 # =========================================================

@@ -24,14 +24,21 @@ class InvoiceSelectorResolver:
                 continue
 
             if selector.invoice_number:
-                invoice = self._invoice_repo.get_by_invoice_number(
+                invoices = self._invoice_repo.get_by_invoice_number(
                     selector.invoice_number
                 )
-                if not invoice:
+                if not invoices:
                     raise ValueError(
                         f"Invoice with number {selector.invoice_number} not found"
                     )
-                invoice_ids.append(invoice.id)
+
+                if len(invoices) > 1:
+                    raise RuntimeError(
+                        f"Ambiguous invoice number {selector.invoice_number}. "
+                        f"Found {len(invoices)} invoices. "
+                        f"Specify invoice ID (not implemented yet)."
+                    )
+                invoice_ids.append(invoices[0].id)
                 continue
 
             # teoretycznie nieosiągalne przez Pydantic

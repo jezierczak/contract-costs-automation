@@ -1,3 +1,4 @@
+import logging
 import re
 from dataclasses import dataclass
 from uuid import UUID
@@ -9,6 +10,8 @@ from enum import Enum
 #     "blacklisted",
 #     "vip"
 # ]
+
+logger = logging.getLogger(__name__)
 
 class CompanyType(Enum):
     OWN = "Own"
@@ -27,14 +30,18 @@ class Address:
     country: str | None
 
     def __post_init__(self):
+        if not self.country:
+            return
         country = self.country.strip().upper()
         if country in ("PL", "POLAND","POLSKA"):
-            Address.check_polish_zip_code(self.zip_code)
+            if self.zip_code:
+                Address.check_polish_zip_code(self.zip_code)
 
     @staticmethod
     def check_polish_zip_code(zip_code: str) -> None:
         if not re.match(r"^\d{2}-\d{3}$", zip_code):
-            raise ValueError("Invalid zip code")
+            logger.warning(f"Invalid zip code: {zip_code}")
+            # raise ValueError("Invalid zip code")
 
 @dataclass(frozen=True)
 class Contact:
@@ -61,7 +68,8 @@ class BankAccount:
 
             if country_code == "PL":
                 if len(number) != 26 or not number.isdigit():
-                    raise ValueError("Polish account number must have 26 digits")
+                    logger.warning(f"Polish account number must have 26 digits")
+                    # raise ValueError("Polish account number must have 26 digits")
 
     @property
     def iban(self) -> str | None:

@@ -3,8 +3,11 @@ from contract_costs.config import INVOICE_INPUT_DIR
 from contract_costs.infrastructure.excel.base_excel_exporter import BaseExcelExporter
 from contract_costs.infrastructure.excel.invoice_action_excel_loader import InvoiceActionExcelLoader
 from contract_costs.services.catalogues.invoice_file_organizer import InvoiceFileOrganizer
+from contract_costs.services.companies.activate_company_service import ActivateCompanyService
+from contract_costs.services.companies.apply.apply_companies_from_excel_service import ApplyCompaniesFromExcelService
 from contract_costs.services.companies.company_evaluate_orchestrator import CompanyEvaluateOrchestrator
-from contract_costs.services.companies.providers.address import AddressCandidateProvider
+from contract_costs.services.companies.deactivate_company_service import DeactivateCompanyService
+from contract_costs.services.companies.providers.street import StreetCandidateProvider
 from contract_costs.services.companies.providers.bank import BankAccountCandidateProvider
 from contract_costs.services.companies.providers.composite import CompositeCompanyCandidateProvider
 from contract_costs.services.companies.providers.email import EmailCandidateProvider
@@ -12,27 +15,34 @@ from contract_costs.services.companies.providers.excact_nip import ExactNipCandi
 from contract_costs.services.companies.create_company_service import CreateCompanyService
 from contract_costs.services.companies.providers.name import NameCandidateProvider
 from contract_costs.services.companies.providers.phone import PhoneCandidateProvider
+from contract_costs.services.companies.query.company_query_service import CompanyQueryService
 from contract_costs.services.companies.update_company_service import UpdateCompanyService
+from contract_costs.services.contracts.apply.set_contract_status_service import SetContractStatusService
 from contract_costs.services.contracts.create_contract_service import CreateContractService
-from contract_costs.services.contracts.export.export_contract_structure_excel_service import \
-    ExportContractStructureExcelService
+# from contract_costs.services.contracts.export.export_contract_structure_excel_service import \
+#     ExportContractStructureExcelService
+from contract_costs.services.contracts.prepare.contract_prepare_excel_exporter import ContractPrepareExcelExporter
 from contract_costs.services.contracts.update_contract_service import UpdateContractService
-from contract_costs.services.contracts.update_contract_structure_service import (
+from contract_costs.services.contracts.apply.update_contract_structure_service import (
     UpdateContractStructureService,
 )
-from contract_costs.services.contracts.apply_contract_structure_excel import (
+from contract_costs.services.contracts.apply.apply_contract_structure_excel import (
     ApplyContractStructureExcelService,
 )
-from contract_costs.services.contracts.generate_contract_structure_excel import (
-    GenerateContractStructureBundleService,
-)
-from contract_costs.services.contracts.export.contract_structure_excel_generator import (
-    ContractStructureExcelGenerator,
-)
+# from contract_costs.services.contracts.generate_contract_structure_excel import (
+#     GenerateContractStructureBundleService,
+# )
+# from contract_costs.services.contracts.export.contract_structure_excel_generator import (
+#     ContractStructureExcelGenerator,
+# )
 from contract_costs.services.contracts.validators.cost_node_tree_validator import (
     CostNodeEntityValidator,
 )
+from contract_costs.services.cost_types.apply.change_cost_type_code_service import ChangeCostTypeCodeService
+from contract_costs.services.cost_types.apply.deactivate_cost_type_service import DeactivateCostTypeService
+from contract_costs.services.cost_types.apply.update_cost_type_service import UpdateCostTypeService
 from contract_costs.services.cost_types.create_cost_type_service import CreateCostTypeService
+from contract_costs.services.cost_types.query.cost_type_query_service import CostTypeQueryService
 from contract_costs.services.invoices.actions.invoice_action_service import InvoiceActionService
 
 from contract_costs.services.invoices.assigment.invoice_sources.excel.invoice_excel_resolver import InvoiceExcelBatchResolver
@@ -117,7 +127,19 @@ class Services:
 
         self._invoice_action_service = None
         self._invoice_action_excel_loader = None
+        self._review_query_service = None
+        self._apply_companies_from_excel_service = None
 
+        self._company_query_service = None
+
+        self._activate_company_service = None
+        self._deactivate_company_service = None
+        self._cost_type_query_service = None
+        self._deactivate_cost_type_service = None
+        self._update_cost_type_service = None
+        self._change_cost_type_code_service = None
+        self._contract_prepare_excel_exporter =None
+        self._set_contract_status_service = None
 
         self._normalizer = InvoiceParseNormalizer()
 
@@ -208,7 +230,7 @@ class Services:
                     [ExactNipCandidateProvider(self.company_repository),
                      BankAccountCandidateProvider(self.company_repository),
                      EmailCandidateProvider(self.company_repository),
-                     AddressCandidateProvider(self.company_repository),
+                     StreetCandidateProvider(self.company_repository),
                      NameCandidateProvider(self.company_repository),
                      PhoneCandidateProvider(self.company_repository)
                      ]
@@ -336,22 +358,22 @@ class Services:
             )
         return self._update_contract_structure_service
 
-    @property
-    def generate_contract_structure_bundle(self):
-        if self._generate_contract_structure_bundle is None:
-            self._generate_contract_structure_bundle = GenerateContractStructureBundleService(
-                self.contract_repository,
-                self.cost_node_repository,
-            )
-        return self._generate_contract_structure_bundle
+    # @property
+    # def generate_contract_structure_bundle(self):
+    #     if self._generate_contract_structure_bundle is None:
+    #         self._generate_contract_structure_bundle = GenerateContractStructureBundleService(
+    #             self.contract_repository,
+    #             self.cost_node_repository,
+    #         )
+    #     return self._generate_contract_structure_bundle
 
-    @property
-    def export_contract_structure_excel(self):
-        if self._export_contract_structure_excel is None:
-            self._export_contract_structure_excel = ExportContractStructureExcelService(
-                excel=   ContractStructureExcelGenerator()
-            )
-        return self._export_contract_structure_excel
+    # @property
+    # def export_contract_structure_excel(self):
+    #     if self._export_contract_structure_excel is None:
+    #         self._export_contract_structure_excel = ExportContractStructureExcelService(
+    #             excel=   ContractStructureExcelGenerator()
+    #         )
+    #     return self._export_contract_structure_excel
 
     @property
     def apply_contract_structure_excel(self):
@@ -391,14 +413,20 @@ class Services:
         return self._invoice_query_service
 
     @property
+    def review_query_service(self):
+        if self._review_query_service is None:
+            self._review_query_service = InvoiceReviewListQueryService(
+                invoice_repo=self.invoice_repository,
+                invoice_line_repo=self.invoice_line_repository,
+                company_repo=self.company_repository,
+            )
+        return self._review_query_service
+
+    @property
     def invoice_excel_export_service(self):
         if self._invoice_excel_export_service is None:
             self._invoice_excel_export_service = InvoiceExcelExportService(
-                review_query_service=InvoiceReviewListQueryService(
-                    invoice_repo=self.invoice_repository,
-                    invoice_line_repo=self.invoice_line_repository,
-                    company_repo=self.company_repository,
-                ),
+                review_query_service=self.review_query_service,
                 exporter=BaseExcelExporter()
             )
         return self._invoice_excel_export_service
@@ -412,6 +440,7 @@ class Services:
                 company_repo=self.company_repository,
             )
         return self._invoice_seller_summary_query_service
+
 
     @property
     def invoice_action_service(self):
@@ -427,6 +456,86 @@ class Services:
             self._invoice_action_excel_loader = InvoiceActionExcelLoader()
         return self._invoice_action_excel_loader
 
+    @property
+    def company_query_service(self):
+        if self._company_query_service is None:
+            self._company_query_service = CompanyQueryService(
+                self.company_repository
+            )
+        return self._company_query_service
+    @property
+    def activate_company_service(self):
+        if self._activate_company_service is None:
+            self._activate_company_service = ActivateCompanyService(
+                self.company_repository
+            )
+        return self._activate_company_service
+    @property
+    def deactivate_company_service(self):
+        if self._deactivate_company_service is None:
+            self._deactivate_company_service = DeactivateCompanyService(
+                self.company_repository
+            )
+        return self._deactivate_company_service
+
+
+    @property
+    def apply_companies_from_excel_service(self):
+        if self._apply_companies_from_excel_service is None:
+            self._apply_companies_from_excel_service = ApplyCompaniesFromExcelService(
+                create_company_service=self.create_company,
+                update_company_service=self.update_company_service,
+                activate_company_service=self.activate_company_service,
+                deactivate_company_service=self.deactivate_company_service,
+            )
+        return self._apply_companies_from_excel_service
+
+    @property
+    def cost_type_query_service(self):
+        if self._cost_type_query_service is None:
+            self._cost_type_query_service = CostTypeQueryService(
+                self.cost_type_repository
+            )
+        return self._cost_type_query_service
+
+    @property
+    def deactivate_cost_type_service(self):
+        if self._deactivate_cost_type_service is None:
+            self._deactivate_cost_type_service = DeactivateCostTypeService(
+                self.cost_type_repository
+            )
+        return self._deactivate_cost_type_service
+
+    @property
+    def update_cost_type_service(self):
+        if self._update_cost_type_service is None:
+            self._update_cost_type_service = UpdateCostTypeService(
+                self.cost_type_repository
+            )
+        return self._update_cost_type_service
+
+    @property
+    def change_cost_type_code_service(self):
+        if self._change_cost_type_code_service is None:
+            self._change_cost_type_code_service = ChangeCostTypeCodeService(
+                self.cost_type_repository
+            )
+        return self._change_cost_type_code_service
+
+    @property
+    def contract_prepare_excel_exporter(self):
+        if self._contract_prepare_excel_exporter is None:
+            self._contract_prepare_excel_exporter = ContractPrepareExcelExporter()
+        return self._contract_prepare_excel_exporter
+
+    @property
+    def set_contract_status_service(self):
+        if self._set_contract_status_service is None:
+            self._set_contract_status_service = SetContractStatusService(
+                self.contract_repository
+            )
+        return self._set_contract_status_service
+
 _services: Dict[str, Services] = {}
 
 def get_services(env: str = "prod") -> Services:
@@ -438,101 +547,3 @@ def get_services(env: str = "prod") -> Services:
         )
         _services[env] = Services(backend=backend)
     return _services[env]
-
-
-
-
-# from contract_costs.builders.cost_node_tree_builder import DefaultCostNodeTreeBuilder
-# from contract_costs. import INVOICE_INPUT_DIR
-# from contract_costs.repository.cost_progress_snapshot_repository import CostProgressSnapshotRepository
-# from contract_costs.repository.mysql.cost_node_repository import MySQLCostNodeRepository
-# from contract_costs.repository.mysql.cost_progress_snapshot_repository import MySQLCostProgressSnapshotRepository
-# from contract_costs.repository.mysql.cost_type_repository import MySQLCostTypeRepository
-#
-# from contract_costs.repository.mysql.invoice_line_repository import MySQLInvoiceLineRepository
-# from contract_costs.repository.mysql.invoice_repository import MySQLInvoiceRepository
-# from contract_costs.repository.mysql.company_repository import MySQLCompanyRepository
-# from contract_costs.repository.mysql.contract_repository import MySQLContractRepository
-# from contract_costs.services.catalogues.invoice_file_organizer import InvoiceFileOrganizer
-# from contract_costs.services.companies.update_company_service import UpdateCompanyService
-#
-# from contract_costs.services.companies.create_company_service import (
-#     CreateCompanyService,
-# )
-# from contract_costs.services.contracts.apply_contract_structure_excel import ApplyContractStructureExcelService
-# from contract_costs.services.contracts.create_contract_service import CreateContractService
-# from contract_costs.services.contracts.export.contract_structure_excel_generator import ContractStructureExcelGenerator
-# from contract_costs.services.contracts.generate_contract_structure_excel import GenerateContractStructureExcelService
-#
-# from contract_costs.services.contracts.update_contract_structure_service import UpdateContractStructureService
-# from contract_costs.services.contracts.validators.cost_node_tree_validator import CostNodeEntityValidator
-#
-# from contract_costs.services.cost_types.create_cost_type_service import (
-#     CreateCostTypeService,
-# )
-# from contract_costs.services.invoices.apply_company_excel_batch_service import ApplyCompanyExcelBatchService
-#
-# from contract_costs.services.invoices.apply_invoice_excel_batch_service import (
-#     ApplyInvoiceExcelBatchService,
-# )
-#
-# from contract_costs.services.invoices.company_resolve_service import CompanyResolveService
-# from contract_costs.services.invoices.excel.invoice_excel_resolver import InvoiceExcelBatchResolver
-# from contract_costs.services.invoices.export.excel_invoice_assignment_exporter import ExcelInvoiceAssignmentExporter
-# from contract_costs.services.invoices.generate_assignment_service import GenerateInvoiceAssignmentService
-# from contract_costs.services.invoices.invoice_line_update_service import InvoiceLineUpdateService
-# from contract_costs.services.invoices.invoice_update_service import InvoiceUpdateService
-# from contract_costs.services.invoices.normalization.invoice_parser_normalizer import InvoiceParseNormalizer
-# from contract_costs.services.invoices.ochestrator.invoice_ingest_orchestrator import InvoiceIngestOrchestrator
-# from contract_costs.services.invoices.parse_invoice_from_file import ParseInvoiceFromFileService
-# from contract_costs.services.workers.ai_invoice_worker import InvoiceAIWorker
-
-# class Services:
-#     def __init__(self) -> None:
-#         self._company_repository = None
-#         self._create_company = None
-#         self._update_company_service = None
-#
-#         self._invoice_repository = None
-#         self._invoice_line_repository = None
-#
-#         self._cost_type_repository = None
-#         self._create_cost_type = None
-#
-#         self._contract_repository = None
-#         self._cost_node_repository = None
-#         self._create_contract = None
-#         self._update_contract_service = None
-#
-#         self._company_resolver = None
-#         self._parse_invoice_from_file = None
-#         self._invoice_repo = None
-#         self._invoice_line_repo = None
-#
-#         self._invoice_watcher_service = None
-#         self._create_cost_type = None
-#         self._cost_type_repository = None
-#
-#         self._generate_contract_structure_excel = None
-#
-#         self._apply_contract_structure_excel = None
-#         self._update_contract_structure_service= None
-#
-#         self._cost_progress_snapshot_repository = None
-#
-#         self._generate_invoice_assignment_excel = None
-#
-#         self._normalizer = None
-#         self._invoice_ai_worker = None
-#
-#         self._invoice_ingest_orchestrator = None
-
-
-# _services: Services | None = None
-#
-#
-# def get_services() -> Services:
-#     global _services
-#     if _services is None:
-#         _services = Services()
-#     return _services

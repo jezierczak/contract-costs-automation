@@ -1,25 +1,65 @@
 from pathlib import Path
+from typing import Generic, TypeVar
+
 from openpyxl import Workbook
 from openpyxl.styles import Protection, Alignment
 from openpyxl.utils import get_column_letter
 
-from contract_costs.infrastructure.excel.excel_column import ExcelColumn, ExcelColumnType
-from contract_costs.infrastructure.excel.excel_common_methods import ExcelCommonMethods
+from contract_costs.infrastructure.excel.excel_column import (
+    ExcelColumn,
+    ExcelColumnType,
+)
+from contract_costs.infrastructure.excel.excel_common_methods import (
+    ExcelCommonMethods,
+)
+
+T = TypeVar("T")
 
 
-class BaseExcelExporter[T]:
+class BaseExcelExporter(Generic[T]):
+    """
+    Excel exporter supporting:
+    - single-sheet export (static API)
+    - multi-sheet export (instance API)
 
-    @staticmethod
-    def export(
+    Workbook lifecycle:
+    - created once per exporter instance
+    - multiple sheets can be added
+    - saved explicitly via save()
+    """
+
+    # =========================================================
+    # INIT
+    # =========================================================
+
+    def __init__(self) -> None:
+        self._wb = Workbook()
+        self._initialized = False
+
+    # =========================================================
+    # PUBLIC API (INSTANCE – MULTI SHEET)
+    # =========================================================
+
+    def add_sheet(
+        self,
         *,
         items: list[T],
         columns: list[ExcelColumn[T]],
-        output_path: Path,
-        sheet_name: str = "data",
+        sheet_name: str,
+        style: bool = True,
     ) -> None:
+        """
+        Add a sheet to the workbook.
 
-        wb = Workbook()
-        ws = wb.active
+        Does NOT save the file.
+        """
+        # first sheet → reuse active
+        if not self._initialized:
+            ws = self._wb.active
+            self._initialized = True
+        else:
+            ws = self._wb.create_sheet()
+
         ws.title = sheet_name
 
         # ======================
@@ -40,7 +80,6 @@ class BaseExcelExporter[T]:
                         f"Error while exporting column '{col.header}'"
                     ) from e
 
-                # CHECKBOX → Excel oczekuje bool
                 if col.column_type == ExcelColumnType.CHECKBOX:
                     value = "☑" if value else "☐"
 
@@ -66,29 +105,103 @@ class BaseExcelExporter[T]:
                 max_row=ws.max_row,
             ):
                 cell = row[0]
-
-                # editable = False → lock cell
-                if not col.editable:
-                    cell.protection = Protection(locked=True)
-                else:
-                    cell.protection = Protection(locked=False)
+                cell.protection = Protection(
+                    locked=not col.editable
+                )
 
         # ======================
-        # SHEET PROTECTION
+        # STYLE
         # ======================
-        ws.protection.enable()
-        for ws in wb.worksheets:
+        if style:
             ExcelCommonMethods.style_header(ws)
             ExcelCommonMethods.autosize_columns(ws)
-
-
             ExcelCommonMethods.freeze_header(ws)
-            # ExcelCommonMethods.apply_autofilter(ws)
             ExcelCommonMethods.zebra_rows(ws)
 
+        # align first column (common UX)
         for cell in ws["A"]:
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-        ws.column_dimensions["A"].width = 6
+            cell.alignment = Alignment(
+                horizontal="center",
+                vertical="center",
+            )
 
-        wb.save(output_path)
+        # ======================
+        # DROPDOWNS
+        # ======================
+        for idx, col in enumerate(columns, start=1):
+            if col.column_type != ExcelColumnType.DROPDOWN:
+                continue
 
+            if not col.options:
+                raise RuntimeError(
+                    f"Dropdown column '{col.header}' has no options"
+                )
+
+            col_letter = get_column_letter(idx)
+
+            dict_ws = self._wb.create_sheet(f"_dict_{sheet_name}_{col.header}")
+            dict_ws.sheet_state = "hidden"
+
+            dict_ws["A1"] = col.header
+            for row_idx, opt in enumerate(col.options, start=2):
+                dict_ws[f"A{row_idx}"] = opt
+
+            ExcelCommonMethods.apply_one_dropdown(
+                max_rows=max(ws.max_row, 2),
+                dict_ws=dict_ws,
+                dict_ws_name=dict_ws.title,
+                source_ws=ws,
+                target_column=col_letter,
+            )
+
+    def save(self, output_path: Path) -> None:
+        """
+        Save workbook to disk.
+        """
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        self._wb.save(output_path)
+
+    # =========================================================
+    # BACKWARD COMPATIBLE API (STATIC – SINGLE SHEET)
+    # =========================================================
+
+    @staticmethod
+    def export(
+        *,
+        items: list[T],
+        columns: list[ExcelColumn[T]],
+        output_path: Path,
+        sheet_name: str = "data",
+    ) -> None:
+        """
+        Backward compatible single-sheet export.
+        """
+        exporter = BaseExcelExporter[T]()
+        exporter.add_sheet(
+            items=items,
+            columns=columns,
+            sheet_name=sheet_name,
+        )
+        exporter.save(output_path)
+
+    # =========================================================
+    # OPTIONAL SUGAR
+    # =========================================================
+
+    def export_many(
+        self,
+        *,
+        sheets: list[tuple[str, list[T], list[ExcelColumn[T]]]],
+        output_path: Path,
+    ) -> None:
+        """
+        Convenience method for exporting many sheets at once.
+        """
+        for sheet_name, items, columns in sheets:
+            self.add_sheet(
+                sheet_name=sheet_name,
+                items=items,
+                columns=columns,
+            )
+
+        self.save(output_path)

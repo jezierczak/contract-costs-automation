@@ -1,4 +1,6 @@
 import logging
+from types import SimpleNamespace
+from uuid import UUID
 
 from contract_costs.cli.prompts.interactive import interactive_prompt
 from contract_costs.cli.schemas.company import COMPANY_FIELDS
@@ -6,15 +8,35 @@ from contract_costs.cli.context import get_services
 from contract_costs.cli.adapters.company_adapter import update_company_from_cli
 from copy import deepcopy
 from contract_costs.model.company import Company
+from contract_costs.services.common.resolve_utils import normalize_required_tax_number
 
 logger = logging.getLogger(__name__)
 
 
-def handle_edit_company() -> None:
-    services = get_services()
+def handle_edit_company(args=None) -> None:
+    # =====================
+    # NORMALIZE ARGS
+    # =====================
+    if args is None:
+        args = SimpleNamespace(
+            activate=False,
+            deactivate=False,
+            id=None,
+            nip=None,
+        )
+    if args.activate or args.deactivate:
+        _handle_company_status_change(args)
+        return
 
-    tax_number = input("Type company tax number (NIP) to edit:\n-> ").strip()
-    company = services.company_repository.get_by_tax_number(tax_number)
+    services = get_services()
+    if args.id:
+        company = services.company_repository.get(UUID(args.id))
+    elif args.nip:
+        tax_number = normalize_required_tax_number(args.nip)
+        company = services.company_repository.get_by_tax_number(tax_number)
+    else:
+        tax_number = input("Type company tax number (NIP) to edit:\n-> ").strip()
+        company = services.company_repository.get_by_tax_number(tax_number)
 
     if company is None:
         print("Company not found.")
@@ -70,3 +92,31 @@ def _prefill_company_fields(company: Company) -> list[dict]:
         field["default"] = defaults.get(name)
 
     return fields
+
+
+
+def _handle_company_status_change(args) -> None:
+    services = get_services()
+    repo = services.company_repository
+
+    if args.activate and args.deactivate:
+        print("Cannot activate and deactivate at the same time")
+        return
+
+    # resolve company
+    if args.id:
+        company_id = UUID(args.id)
+    else:
+        tax_number = normalize_required_tax_number(args.nip)
+        company = repo.get_by_tax_number(tax_number)
+        if company is None:
+            print("Company not found")
+            return
+        company_id = company.id
+
+    if args.activate:
+        services.activate_company_service.execute(company_id)
+        print("Company activated")
+    else:
+        services.deactivate_company_service.execute(company_id)
+        print("Company deactivated")

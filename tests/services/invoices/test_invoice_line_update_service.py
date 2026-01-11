@@ -6,12 +6,11 @@ import pytest
 from contract_costs.model.invoice_line import InvoiceLine
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 from contract_costs.model.amount import Amount, VatRate
+from contract_costs.services.invoices.assigment.ingest.dto.invoice_ref_result import InvoiceRefResult, \
+    InvoiceApplyAction
 
-from contract_costs.services.invoices.assigment.invoice_sources.dto import InvoiceLineUpdate
-from contract_costs.services.invoices.assigment.invoice_sources.dto import (
-    InvoiceRefResult,
-    InvoiceApplyAction,
-)
+from contract_costs.services.invoices.assigment.invoice_sources.dto.common import InvoiceLineUpdate
+
 
 @pytest.fixture
 def invoice_id():

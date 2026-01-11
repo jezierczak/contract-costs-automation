@@ -1,0 +1,1 @@
+from contract_costs.cli.commands.set.set_contract_status import build_set_contract_status

@@ -1,11 +1,17 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar, Generic
 from openpyxl import load_workbook
 
-from contract_costs.infrastructure.excel.excel_column import ExcelColumnType, ExcelColumn
+from contract_costs.infrastructure.excel.excel_column import (
+    ExcelColumn,
+    ExcelColumnType,
+)
+
+T = TypeVar("T")
 
 
-class ExcelLoader[T]:
+class ExcelLoader(Generic[T]):
+
     @staticmethod
     def load(
         *,
@@ -18,7 +24,6 @@ class ExcelLoader[T]:
         wb = load_workbook(input_path, data_only=True)
         ws = wb[sheet_name] if sheet_name else wb.active
 
-        # Mapowanie: index kolumny -> ExcelColumn
         column_map: dict[int, ExcelColumn[T]] = {
             idx + 1: col
             for idx, col in enumerate(columns)
@@ -34,17 +39,19 @@ class ExcelLoader[T]:
                 cell = ws.cell(row=row_idx, column=col_idx)
                 value = cell.value
 
+                # normalize empty
                 if value not in (None, ""):
                     empty_row = False
 
-                # --- CHECKBOX ---
-                if col.column_type == ExcelColumnType.CHECKBOX:
-                    # Excel checkbox → True / False / None
-                    value = bool(value) if value is not None else None
+                value = ExcelLoader._normalize_cell(value)
 
-                # --- HIDDEN ---
-                # hidden columns są normalnie czytane,
-                # tylko nie są edytowalne w UI
+                # =====================
+                # CHECKBOX
+                # =====================
+                if col.column_type == ExcelColumnType.CHECKBOX:
+                    value = ExcelLoader._parse_checkbox(
+                        value, col.header
+                    )
 
                 row_data[col.header] = value
 
@@ -52,3 +59,28 @@ class ExcelLoader[T]:
                 rows.append(row_data)
 
         return rows
+
+    # =====================
+    # HELPERS
+    # =====================
+
+    @staticmethod
+    def _normalize_cell(value: Any) -> Any:
+        if value in ("", None):
+            return None
+        return value
+
+    @staticmethod
+    def _parse_checkbox(
+        value: Any,
+        header: str,
+    ) -> bool:
+        if value in ("☑","X","x", True, 1):
+            return True
+        if value in ("☐", False, 0, None, ""):
+            return False
+
+        raise ValueError(
+            f"Invalid checkbox value '{value}' "
+            f"for column '{header}'"
+        )

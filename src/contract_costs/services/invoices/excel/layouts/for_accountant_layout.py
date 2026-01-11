@@ -2,7 +2,9 @@ from contract_costs.infrastructure.excel.excel_column import ExcelColumn, ExcelC
 from contract_costs.services.invoices.review.dto.invoice_for_accountant_view import InvoiceForAccountantView
 
 ACCOUNTANT_COLUMNS: list[ExcelColumn[InvoiceForAccountantView]] = [
-    ExcelColumn("X", lambda _: False, ExcelColumnType.CHECKBOX, editable=True),
+    # ExcelColumn("X", lambda _: False, ExcelColumnType.CHECKBOX, editable=True),
+    ExcelColumn("ACTION",lambda _: "none",ExcelColumnType.DROPDOWN,editable=True,
+                    options=["none", "approved", "reopen"],),
     ExcelColumn("INVOICE_ID", lambda x: str(x.invoice_id), ExcelColumnType.HIDDEN),
 
     ExcelColumn("Invoice No", lambda x: x.invoice_number),

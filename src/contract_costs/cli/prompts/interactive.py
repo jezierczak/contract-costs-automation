@@ -1,4 +1,3 @@
-# contract_costs/cli/prompts/interactive.py
 
 def interactive_prompt(fields: list[dict]) -> dict:
     data = {}
