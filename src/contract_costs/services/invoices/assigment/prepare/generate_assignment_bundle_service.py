@@ -75,24 +75,24 @@ class GenerateInvoiceAssignmentBundleService:
             inv.seller_id for inv in updated_invoices
         }
 
+        # buyers = [
+        #     CompanyExport(
+        #         id=c.id,
+        #         name=c.name,
+        #         tax_number=c.tax_number,
+        #     )
+        #     for c in (self._company_repo.get(cid) for cid in company_buyers)
+        #     if c is not None
+        # ]
+        # if len(buyers)==0:
         buyers = [
             CompanyExport(
                 id=c.id,
                 name=c.name,
                 tax_number=c.tax_number,
             )
-            for c in (self._company_repo.get(cid) for cid in company_buyers)
-            if c is not None
+            for c in self._company_repo.get_owners()
         ]
-        if len(buyers)==0:
-            buyers = [
-                CompanyExport(
-                    id=c.id,
-                    name=c.name,
-                    tax_number=c.tax_number,
-                )
-                for c in self._company_repo.get_owners()
-            ]
 
         sellers = [
             CompanyExport(
@@ -115,6 +115,10 @@ class GenerateInvoiceAssignmentBundleService:
         ]
 
         #  Cost nodes
+        contract_code_by_id = {
+            c.id: c.code
+            for c in contracts
+        }
         cost_nodes = [
             CostNodeExport(
                 id=n.id,
@@ -123,6 +127,7 @@ class GenerateInvoiceAssignmentBundleService:
                 code=n.code,
                 name=n.name,
                 budget=n.budget,
+                contract_code=contract_code_by_id.get(n.contract_id),
             )
             for n in self._cost_node_repo.list_leaf_nodes_for_active_contracts()
         ]
@@ -155,7 +160,10 @@ class GenerateInvoiceAssignmentBundleService:
                     payment_status=i.payment_status,
                     status=i.status,
                     due_date=i.due_date,
+                    paid_date=i.paid_date,
                     timestamp=i.timestamp,
+                    scan_filename=i.scan_filename,
+                    tags =i.tags
                 )
             )
 

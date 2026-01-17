@@ -8,6 +8,7 @@ class CostNodeExport:
     contract_id: UUID
     parent_id: UUID | None
 
+    contract_code: str
     code: str
     name: str
     budget: Decimal | None

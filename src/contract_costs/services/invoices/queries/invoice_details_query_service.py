@@ -38,7 +38,10 @@ class InvoiceDetailsQueryService:
 
         if len(invoices) > 1:
             logger.warning(
-                f"Multiple invoices found for {invoice_number}. "
+                f"Multiple invoices found for {invoice_number}. Found: {len(invoices)}: ")
+            for invoice in invoices:
+                logger.warning(f"Invoice id: {invoice.id}")
+            logger.warning(
                 f"Please specify invoice ID. Provided first match!"
             )
 
@@ -105,6 +108,7 @@ class InvoiceDetailsQueryService:
             )
 
         return InvoiceDetailsView(
+            id=str(invoice.id),
             invoice_number=invoice.invoice_number,
             status=invoice.status.value,
             invoice_date=invoice.invoice_date,

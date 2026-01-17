@@ -4,6 +4,7 @@ from uuid import UUID
 import contract_costs.config as cfg
 from contract_costs.cli.context import get_services
 from contract_costs.cli.registry import REGISTRY
+from contract_costs.infrastructure.filesystem.excel_domain_file_manager import InputsContractsAssignmentFileManager
 
 logger = logging.getLogger(__name__)
 
@@ -35,24 +36,27 @@ def handle_apply_contract(args) -> None:
     ref = args.ref
 
     if ref == "new":
-        excel_path = (
-            cfg.INPUTS_CONTRACTS_NEW_DIR /
-            cfg.CONTRACT_EXCEL_FILENAME
-        )
+        fm = InputsContractsAssignmentFileManager()
+        excel_path = fm.get_active_file()
 
         services.apply_contract_structure_excel.apply_new(excel_path)
+
+        fm.mark_processed()  # 🔒 DOMKNIĘCIE LIFECYCLE
+
         print("New contract applied from Excel.")
         return
 
     contract = _resolve_contract(ref, services)
 
-    filename = cfg.CONTRACT_EDIT_EXCEL_TEMPLATE.format(code=contract.code)
-    excel_path = cfg.INPUTS_CONTRACTS_EDIT_DIR / filename
+    fm = InputsContractsAssignmentFileManager(contract_code=contract.code)
+    excel_path = fm.get_active_file()
 
     services.apply_contract_structure_excel.apply_update(
         contract_id=contract.id,
         excel_path=excel_path,
     )
+
+    fm.mark_processed()  # 🔒 DOMKNIĘCIE LIFECYCLE
 
     print(f"Contract '{contract.code}' updated from Excel.")
 

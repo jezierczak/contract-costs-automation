@@ -2,6 +2,7 @@ from enum import Enum
 from pathlib import Path
 
 from openpyxl import Workbook
+from openpyxl.workbook.defined_name import DefinedName
 
 from openpyxl.worksheet.worksheet import Worksheet
 
@@ -45,6 +46,7 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
         vat_rates_ws = self._write_dictionary(wb, bundle.vat_rates, cfg.DICTS_VAT_RATES)
         actions_ws = self._write_dictionary(wb, bundle.actions, cfg.DICTS_ACTIONS)
 
+        self._define_cost_node_named_ranges(wb, cost_nodes_ws)
 
         self._apply_dropdowns(
             invoices_ws=invoices_ws,
@@ -82,7 +84,8 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
 
         wb.save(output_path)
 
-    def _write_invoices(self, wb: Workbook, invoices) -> Worksheet:
+    @staticmethod
+    def _write_invoices(wb: Workbook, invoices) -> Worksheet:
         ws = wb.create_sheet(cfg.INVOICE_METADATA_SHEET_NAME)
 
         headers = [
@@ -96,7 +99,10 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
             "payment_method",
             "payment_status",
             "due_date",
+            "paid_date",
+            "tags",
             "timestamp",
+            "scan_filename"
         ]
         ws.append(headers)
 
@@ -112,7 +118,10 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
                 i.payment_method.value if i.payment_method else None,
                 i.payment_status.value if i.payment_status else None,
                 i.due_date,
+                i.paid_date,
+                ",".join(sorted(i.tags)) if i.tags else None,
                 i.timestamp,
+                i.scan_filename
             ])
         ws.column_dimensions["C"].hidden = True
         return ws
@@ -186,8 +195,8 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
             ws.append([c.tax_number,c.name,str(c.id)  ])
         ws.column_dimensions["C"].hidden = True
         return ws
-
-    def _write_contracts(self, wb: Workbook, contracts) -> Worksheet:
+    @staticmethod
+    def _write_contracts( wb: Workbook, contracts) -> Worksheet:
         ws = wb.create_sheet(cfg.DICTS_CONTRACTS)
         ws.append(["code",  "name","id"])
 
@@ -199,6 +208,7 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
     def _write_cost_nodes(self, wb: Workbook, cost_nodes) -> Worksheet:
         ws = wb.create_sheet(cfg.DICTS_COST_NODES)
         ws.append([
+            "contract_code",
             "code",
             "name",
             "budget",
@@ -208,7 +218,9 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
         ])
 
         for n in cost_nodes:
+
             ws.append([
+                n.contract_code,
                 n.code,
                 n.name,
                 n.budget,
@@ -220,6 +232,57 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
         ws.column_dimensions["E"].hidden = True  # contract_id
         ws.column_dimensions["F"].hidden = True  # parent_id
         return ws
+
+    # def _write_cost_nodes_helper(
+    #         self,
+    #         wb: Workbook,
+    #         cost_nodes: list[CostNodeExport],
+    #         contracts: list[ContractExport],
+    # ) -> Worksheet:
+    #     ws = wb.create_sheet("_HELPER_COST_NODES")
+    #
+    #     ws.append(["contract_code", "cost_node_code"])
+    #
+    #     contract_code_by_id = {
+    #         c.id: c.code for c in contracts
+    #     }
+    #
+    #     for n in cost_nodes:
+    #         contract_code = contract_code_by_id.get(n.contract_id)
+    #         if not contract_code:
+    #             continue
+    #
+    #         ws.append([
+    #             contract_code,
+    #             n.code,
+    #         ])
+    #
+    #     return ws
+
+    @staticmethod
+    def _define_cost_node_named_ranges(
+            wb: Workbook,
+            cost_nodes_ws: Worksheet,
+    ) -> None:
+        rows = list(cost_nodes_ws.iter_rows(min_row=2, values_only=True))
+        by_contract: dict[str, list[int]] = {}
+
+        for idx, row in enumerate(rows, start=2):
+            contract_code = row[0]  # kolumna A
+            if not contract_code:
+                continue
+            by_contract.setdefault(contract_code, []).append(idx)
+
+        for contract_code, row_numbers in by_contract.items():
+            start = row_numbers[0]
+            end = row_numbers[-1]
+
+            formula = f"'{cost_nodes_ws.title}'!$B${start}:$B${end}"
+
+            wb.defined_names[contract_code] = DefinedName(
+                name=contract_code,
+                attr_text=formula,
+            )
 
     def _write_cost_types(self, wb: Workbook, cost_types) -> Worksheet:
         ws = wb.create_sheet(cfg.DICTS_COST_TYPES)
@@ -334,12 +397,19 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
             "J"
         )
 
-        ExcelCommonMethods.apply_one_dropdown(
-            max_rows,
-            cost_nodes_ws,
-            cfg.DICTS_COST_NODES,
-            lines_ws,
-            "K"
+        # ExcelCommonMethods.apply_one_dropdown(
+        #     max_rows,
+        #     cost_nodes_ws,
+        #     cfg.DICTS_COST_NODES,
+        #     lines_ws,
+        #     "K"
+        # )
+
+        ExcelCommonMethods.apply_formula_dropdown(
+            source_ws=lines_ws,
+            target_column="K",
+            formula="=INDIRECT($J2)",
+            max_rows=2000,
         )
 
         ExcelCommonMethods.apply_one_dropdown(

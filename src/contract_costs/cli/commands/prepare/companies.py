@@ -3,6 +3,7 @@ from pathlib import Path
 from contract_costs.cli.context import get_services
 from contract_costs.cli.registry import REGISTRY
 from contract_costs.infrastructure.excel.base_excel_exporter import BaseExcelExporter
+from contract_costs.infrastructure.filesystem.excel_domain_file_manager import InputsCompaniesAssignmentFileManager
 from contract_costs.model.company import CompanyType
 from contract_costs.services.companies.query.company_query_service import CompanyQuery
 from contract_costs.services.companies.prepare.company_prepare_columns import (
@@ -20,10 +21,10 @@ def build_prepare_companies(subparsers) -> None:
         help="Prepare companies Excel for editing",
     )
 
-    p.add_argument(
-        "--output",
-        help="Output Excel file path",
-    )
+    # p.add_argument(
+    #     "--output",
+    #     help="Output Excel file path",
+    # )
 
     p.add_argument(
         "--nip",
@@ -42,11 +43,12 @@ REGISTRY.register_group("prepare", build_prepare_companies)
 
 def handle_prepare_companies(args) -> None:
     services = get_services()
+    fm = InputsCompaniesAssignmentFileManager()
 
-    if args.output:
-        output_path = Path(args.output)
-    else:
-        output_path = cfg.INPUTS_COMPANIES_EDIT_DIR / "companies.xlsx"
+    # if args.output:
+    #     output_path = Path(args.output)
+    # else:
+    output_path = fm.prepare_target()
 
     role = None
     if args.role:

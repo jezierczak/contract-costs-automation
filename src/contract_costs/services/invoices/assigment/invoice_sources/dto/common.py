@@ -33,6 +33,9 @@ class InvoiceUpdate:
 
     payment_method: PaymentMethod
     due_date: date | None
+    paid_date: date | None
+    scan_filename: str | None
+    tags: str | None
     payment_status: PaymentStatus
     status: InvoiceStatus
 
@@ -53,6 +56,10 @@ class ResolvedInvoiceUpdate:
     due_date: date | None
     payment_status: PaymentStatus
     status: InvoiceStatus
+
+    paid_date: str | None
+    scan_filename: str | None
+    tags: str| None
 
 
 @dataclass(frozen=True)

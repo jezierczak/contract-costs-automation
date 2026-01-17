@@ -47,8 +47,8 @@ class ExcelReportRenderer:
                         cell.number_format = "#,##0.00"  # 🇵🇱 Excel format
 
             # earned < 0 → czerwone tło
-            if "earned" in col_letters:
-                col_letter = col_letters["earned"]
+            if "Wynik" in col_letters:
+                col_letter = col_letters["Wynik"]
                 start_row = 2  # dane (bez nagłówka)
                 end_row = ws.max_row
 

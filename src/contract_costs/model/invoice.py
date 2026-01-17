@@ -44,8 +44,12 @@ class Invoice:
     payment_method: PaymentMethod
     due_date: date | None
     payment_status: PaymentStatus
+    paid_date: date | None
 
     status: InvoiceStatus
+
+    scan_filename: str | None
+    tags: set[str]
 
     timestamp: datetime
 
@@ -54,12 +58,14 @@ class Invoice:
         return replace(
             self,
             payment_status=PaymentStatus.PAID,
+            paid_date=paid_at,
         )
 
     def mark_unpaid(self) -> "Invoice":
         return replace(
             self,
             payment_status=PaymentStatus.UNPAID,
+            paid_date=None,
         )
 
     def mark_sent_to_accountant(self) -> "Invoice":

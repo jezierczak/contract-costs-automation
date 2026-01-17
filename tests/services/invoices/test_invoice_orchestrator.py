@@ -28,8 +28,11 @@ def test_ingest_from_pdf_creates_invoice_and_lines_without_finalization(
                 seller_id=uuid4(),
                 payment_method=PaymentMethod.BANK_TRANSFER,
                 due_date=date(2024, 1, 31),
+                paid_date=None,
                 payment_status=PaymentStatus.UNPAID,
                 status=InvoiceStatus.IN_PROGRESS,
+                scan_filename=None,
+                tags=None
             )
         ],
         lines=[
@@ -73,8 +76,11 @@ def test_ingest_from_excel_finalizes_invoice_when_lines_fully_assigned(
                 seller_id=uuid4(),
                 payment_method=PaymentMethod.BANK_TRANSFER,
                 due_date=date(2024, 1, 31),
+                paid_date=None,
                 payment_status=PaymentStatus.UNPAID,
                 status=InvoiceStatus.IN_PROGRESS,
+                scan_filename=None,
+                tags=None
             )
         ],
         lines=[
@@ -118,8 +124,11 @@ def test_ingest_from_excel_does_not_finalize_when_lines_incomplete(
                 seller_id=uuid4(),
                 payment_method=PaymentMethod.BANK_TRANSFER,
                 due_date=date(2024, 1, 31),
+                paid_date=None,
                 payment_status=PaymentStatus.UNPAID,
                 status=InvoiceStatus.IN_PROGRESS,
+                scan_filename=None,
+                tags=None
             )
         ],
         lines=[
@@ -162,8 +171,11 @@ def test_ingest_from_excel_delete_does_not_finalize(
                 seller_id=uuid4(),
                 payment_method=PaymentMethod.BANK_TRANSFER,
                 due_date=date(2024, 1, 31),
+                paid_date=None,
                 payment_status=PaymentStatus.UNPAID,
                 status=InvoiceStatus.DELETED,
+                scan_filename=None,
+                tags=None
             )
         ],
         lines=[],
@@ -192,9 +204,12 @@ def test_ingest_from_excel_delete_existing_invoice(
             seller_id=seller_id,
             payment_method=PaymentMethod.BANK_TRANSFER,
             due_date=date(2024, 1, 31),
+            paid_date=None,
             payment_status=PaymentStatus.UNPAID,
             status=InvoiceStatus.IN_PROGRESS,
             timestamp=datetime.now(),
+            scan_filename=None,
+            tags=set()
         )
     )
 
@@ -210,8 +225,11 @@ def test_ingest_from_excel_delete_existing_invoice(
                 seller_id=seller_id,  # 👈 TEN SAM SELLER
                 payment_method=PaymentMethod.BANK_TRANSFER,
                 due_date=date(2024, 1, 31),
+                paid_date=None,
                 payment_status=PaymentStatus.UNPAID,
                 status=InvoiceStatus.DELETED,
+                scan_filename=None,
+                tags=None
             )
         ],
         lines=[],
@@ -247,9 +265,12 @@ def test_ingest_from_excel_changes_invoice_number_and_deletes_old(
         seller_id=seller_id,
         payment_method=PaymentMethod.BANK_TRANSFER,
         due_date=date(2024, 1, 31),
+        paid_date=None,
         payment_status=PaymentStatus.UNPAID,
         status=InvoiceStatus.IN_PROGRESS,
         timestamp=datetime.now(),
+        scan_filename=None,
+        tags=set()
     )
     invoice_repo.add(old_invoice)
 
@@ -282,8 +303,11 @@ def test_ingest_from_excel_changes_invoice_number_and_deletes_old(
                 seller_id=seller_id,
                 payment_method=old_invoice.payment_method,
                 due_date=old_invoice.due_date,
+                paid_date=None,
                 payment_status=old_invoice.payment_status,
                 status=InvoiceStatus.IN_PROGRESS,
+                scan_filename=None,
+                tags=None
             )
         ],
         lines=[

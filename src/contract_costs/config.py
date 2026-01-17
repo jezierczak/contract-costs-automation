@@ -24,17 +24,20 @@ def is_test_env() -> bool:
     return APP_ENV == "test"
 
 # --- Excel filenames ---
-COMPANY_EXCEL_FILENAME = "company.xlsx"
-COMPANY_EDIT_EXCEL_TEMPLATE = "company_{ref}.xlsx"
+# COMPANY_EXCEL_FILENAME = "company.xlsx"
+# COMPANY_EDIT_EXCEL_TEMPLATE = "company_{ref}.xlsx"
+COMPANY_EXCEL_NAME = "company"
 
-CONTRACT_EXCEL_FILENAME = "contract.xlsx"
-CONTRACT_EDIT_EXCEL_TEMPLATE = "contract_{code}.xlsx"
+# CONTRACT_EXCEL_FILENAME = "contract.xlsx"
+#CONTRACT_EDIT_EXCEL_TEMPLATE = "contract_{code}.xlsx"
+CONTRACT_EXCEL_NAME = "contract"
 
 # INVOICES_EXCEL_FILENAME = "invoices.xlsx"
 # INVOICES_ASSIGN_EXCEL_FILENAME = "invoice_assignment.xlsx"
 
-INVOICES_EXCEL_FILENAME = "invoices_input.xlsx"
+#INVOICES_EXCEL_FILENAME = "invoices_input.xlsx"
 #INVOICES_EXCEL_FILENAME_IN_PROGRESS = "invoices_in_progress.xlsx"
+INVOICES_INPUT_NAME = "invoices_input"
 
 # =========================
 # Excel sheet names
@@ -79,22 +82,22 @@ WORK_DIR = Path(os.getenv("WORK_DIR", "./.test_work_dir" if APP_ENV == "test" el
 OWNERS_DIR = WORK_DIR / "companies"
 
 # --- invoices (automatyczne) ---
-INVOICES_DIR = WORK_DIR / "invoices"
-INVOICE_INPUT_DIR = INVOICES_DIR / "incoming"
-INVOICE_FAILED_DIR = INVOICES_DIR / "failed"
+INCOMING_DIR = WORK_DIR / "incoming"
+INVOICE_INPUT_DIR = INCOMING_DIR / "invoices"
+INVOICE_FAILED_DIR = INCOMING_DIR / "failed"
 
 # --- inputs (Excel jako UI) ---
 INPUTS_DIR = WORK_DIR / "inputs"
 
 INPUTS_COMPANIES_DIR = INPUTS_DIR / "companies"
-INPUTS_COMPANIES_NEW_DIR = INPUTS_COMPANIES_DIR / "new"
-INPUTS_COMPANIES_EDIT_DIR = INPUTS_COMPANIES_DIR / "edit"
+# INPUTS_COMPANIES_NEW_DIR = INPUTS_COMPANIES_DIR / "new"
+# INPUTS_COMPANIES_EDIT_DIR = INPUTS_COMPANIES_DIR / "edit"
 INPUTS_COMPANIES_PROCESSED_DIR = INPUTS_COMPANIES_DIR / "processed"
 
 INPUTS_CONTRACTS_DIR = INPUTS_DIR / "contracts"
-INPUTS_CONTRACTS_NEW_DIR = INPUTS_CONTRACTS_DIR / "new"
-INPUTS_CONTRACTS_EDIT_DIR = INPUTS_CONTRACTS_DIR / "edit"
-INPUTS_CONTRACTS_SHOW_DIR = INPUTS_CONTRACTS_DIR / "show"
+# INPUTS_CONTRACTS_NEW_DIR = INPUTS_CONTRACTS_DIR / "new"
+# INPUTS_CONTRACTS_EDIT_DIR = INPUTS_CONTRACTS_DIR / "edit"
+# INPUTS_CONTRACTS_SHOW_DIR = INPUTS_CONTRACTS_DIR / "show"
 INPUTS_CONTRACTS_PROCESSED_DIR = INPUTS_CONTRACTS_DIR / "processed"
 
 INPUTS_INVOICES_DIR = INPUTS_DIR / "invoices"
@@ -110,6 +113,9 @@ INPUTS_INVOICES_ACCOUNTANT_DIR = INPUTS_INVOICES_DIR / "accountant"
 # --- output ---
 REPORTS_DIR = WORK_DIR / "reports"
 LOGS_DIR = WORK_DIR / "logs"
+SHOW_DIR = WORK_DIR / "show"
+CONTRACTS_SHOW_DIR = SHOW_DIR / "contracts"
+INVOICES_SHOW_DIR = SHOW_DIR / "invoices"
 
 # -------------------------------------------------
 # DATABASE

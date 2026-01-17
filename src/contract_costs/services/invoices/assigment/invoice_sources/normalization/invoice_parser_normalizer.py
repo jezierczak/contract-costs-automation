@@ -50,12 +50,14 @@ class InvoiceParseNormalizer:
         invoice_date = _safe_date(invoice.invoice_date)
         selling_date = _safe_date(invoice.selling_date) or invoice_date
         due_date = _safe_date(invoice.due_date)
+        parsed_date = _safe_date(invoice.parsed_date)
 
         return replace(
             invoice,
             invoice_date=invoice_date,
             selling_date=selling_date,
             due_date=due_date,
+            parsed_date=parsed_date,
             # payment_method=invoice.payment_method,
             # payment_status=self._payment_status(invoice.payment_status),
             status=invoice.status or InvoiceStatus.NEW,

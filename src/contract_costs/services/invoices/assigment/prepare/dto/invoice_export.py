@@ -20,4 +20,7 @@ class InvoiceExport:
     status: InvoiceStatus
 
     due_date: date | None
+    paid_date: date | None
+    scan_filename: str | None
+    tags: set[str]
     timestamp: datetime

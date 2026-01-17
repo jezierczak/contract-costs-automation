@@ -1,8 +1,9 @@
 import logging
 
 from contract_costs.cli.context import get_services
+from contract_costs.infrastructure.filesystem.excel_domain_file_manager import InvoiceExcelPrepareFileManager
 from contract_costs.model.invoice import PaymentStatus, InvoiceStatus
-from contract_costs.services.invoices.excel.invoice_excel_path_resolver import InvoiceExcelPathResolver
+
 from contract_costs.services.invoices.excel.layouts.invoice_excel_layout_resolver import InvoiceExcelView
 from contract_costs.services.invoices.review.dto.invoice_review_query import InvoiceReviewQuery
 
@@ -11,6 +12,7 @@ logger = logging.getLogger(__name__)
 def build_prepare_invoices_unpaid(subparsers):
     p = subparsers.add_parser(
         "unpaid",
+        aliases=["unp"],
         help="Prepare unpaid invoices, to assign paid",
     )
 
@@ -39,17 +41,11 @@ def handle_prepare_invoices_unpaid(args) -> None:
     )
 
     view = InvoiceExcelView.UNPAID
-
-    output_path = InvoiceExcelPathResolver.resolve(
+    file_manager = InvoiceExcelPrepareFileManager(
         view=view,
         query=review_query,
     )
-
-    if output_path.exists():
-        raise RuntimeError(
-            f"Excel already exists: {output_path}\n"
-            "Apply or remove it before preparing again."
-        )
+    output_path = file_manager.prepare_target()
 
     services.invoice_excel_export_service.export(
         review_query=review_query,

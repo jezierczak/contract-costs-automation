@@ -74,7 +74,7 @@ class InvoiceFileOrganizer:
         )
 
         file_path.replace(target_path)
-        return target_path
+        return target_path.relative_to(cfg.OWNERS_DIR)
 
     @staticmethod
     def _build_invoice_filename(

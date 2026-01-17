@@ -65,11 +65,13 @@ class AIInvoiceMapper:
             invoice_date=self.parse_date(data.get("invoice_date")),
             selling_date=self.parse_date(data.get("selling_date")),
             due_date=self.parse_date(data.get("due_date")),
+            paid_date= self.parse_date(data.get("paid_date")),
             buyer_tax_number=None,
             seller_tax_number=None,
             payment_method=payment_method,
             payment_status=payment_status,
             status=InvoiceStatus.NEW,
+            scan_filename=None
         )
 
         lines = [

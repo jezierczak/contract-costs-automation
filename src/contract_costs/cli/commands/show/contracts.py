@@ -8,6 +8,7 @@ from contract_costs.cli.context import get_services
 from contract_costs.cli.registry import REGISTRY
 from contract_costs.infrastructure.excel.contracts.contract_cost_node_tree_excel_exporter import \
     ContractTreeExcelExporter
+from contract_costs.infrastructure.filesystem.show_file_manager import ContractsShowFileManager
 from contract_costs.model.contract import Contract
 from contract_costs.model.cost_node import CostNode
 from contract_costs.services.contracts.prepare.mappers.cost_node_prepare_mapper import CostNodePrepareMapper
@@ -58,7 +59,10 @@ def handle_show_contracts(args) -> None:
 
         if args.excel:
             exporter = ContractTreeExcelExporter()
-            output_path =cfg.INPUTS_CONTRACTS_SHOW_DIR / f"contract_{contract.code}.xlsx"
+
+            fm = ContractsShowFileManager(contract_code=contract.code)
+            output_path = fm.create_output_file()
+
             exporter.export(
                 contract=contract,
                 cost_nodes=node_repo.list_by_contract(contract.id),

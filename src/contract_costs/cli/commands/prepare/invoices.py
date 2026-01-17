@@ -1,12 +1,11 @@
 import logging
-from pathlib import Path
 
-import contract_costs.config as cfg
 from contract_costs.cli.commands.prepare.invoices_for_accountant import build_prepare_invoices_for_accountant
 from contract_costs.cli.commands.prepare.invoices_for_review import build_prepare_invoices_for_review
 from contract_costs.cli.commands.prepare.invoices_unpaid import build_prepare_invoices_unpaid
 from contract_costs.cli.context import get_services
 from contract_costs.cli.registry import REGISTRY
+from contract_costs.infrastructure.filesystem.excel_domain_file_manager import InputsInvoiceAssignmentFileManager
 from contract_costs.model.invoice import InvoiceStatus
 
 logger = logging.getLogger(__name__)
@@ -41,6 +40,7 @@ def build_prepare_invoices_for_assignment(subparsers):
     """
     p = subparsers.add_parser(
         "for-assignment",
+        aliases=["ass"],
         help="Prepare invoices for assignment/editing",
     )
 
@@ -79,9 +79,11 @@ def handle_prepare_invoices(args) -> None:
         "open": [InvoiceStatus.NEW, InvoiceStatus.IN_PROGRESS],
     }[args.mode if args.mode else "open"]
 
-    output_path: Path = (
-        cfg.INPUTS_INVOICES_NEW_DIR / cfg.INVOICES_EXCEL_FILENAME
-    )
+    file_manager = InputsInvoiceAssignmentFileManager()
+    # output_path: Path = (
+    #     cfg.INPUTS_INVOICES_NEW_DIR / cfg.INVOICES_EXCEL_FILENAME
+    # )
+    output_path = file_manager.prepare_target()
 
     bundle = services.generate_invoice_assignment_bundle.execute(
         invoice_status=statuses,

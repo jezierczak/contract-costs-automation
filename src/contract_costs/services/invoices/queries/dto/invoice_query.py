@@ -19,6 +19,7 @@ class InvoiceLineView:
 
 @dataclass(frozen=True)
 class InvoiceDetailsView:
+    id: str
     invoice_number: str
     status: str
     invoice_date: date | None

@@ -28,7 +28,7 @@ class OCRAIAgentInvoiceParser(InvoiceParser):
         self._mapper = AIInvoiceMapper()
 
     def parse(self, file_path: Path) -> InvoiceParseResult:
-        logger.info(f"Extracting {file_path} with PDF parser")
+        logger.info(f"Extracting {file_path} with parser")
 
         text = self._text_extractor.extract(file_path)
         print("****************TEXT************************\n")

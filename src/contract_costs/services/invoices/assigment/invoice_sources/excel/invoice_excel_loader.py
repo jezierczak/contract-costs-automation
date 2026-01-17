@@ -86,31 +86,6 @@ def load_invoice_excel_batch(path: Path) -> InvoiceExcelBatch:
 
     df_lines = df_lines.reset_index(drop=True)
 
-    # # 2. tylko logiczne faktury
-    # df_invoices = df_invoices[df_invoices["invoice_number"].notna()]
-    # df_invoices = df_invoices[df_invoices["invoice_number"].astype(str).str.strip() != ""]
-    #
-    # # 3. odetnij wszystko po pierwszej dziurze
-    # df_invoices = df_invoices.reset_index(drop=True)
-    # mask = df_invoices["invoice_number"].notna()
-    # if not mask.all():
-    #     raise ValueError(
-    #         "Invoice sheet contains empty rows between invoices. "
-    #         "Please remove empty rows."
-    #     )
-    #
-    # df_lines = df_lines.dropna(how="all")
-    # df_lines = df_lines[df_lines["item_name"].notna()]
-    # df_lines = df_lines[df_lines["item_name"].astype(str).str.strip() != ""]
-    #
-    # # 3. odetnij wszystko po pierwszej dziurze
-    # df_lines = df_lines.reset_index(drop=True)
-    # mask = df_lines["item_name"].notna()
-    # if not mask.all():
-    #     raise ValueError(
-    #         "Invoice Line sheet contains empty rows between lines. "
-    #         "Please remove empty rows."
-    #     )
 
     invoices: list[InvoiceUpdate] = []
     for _, row in df_invoices.iterrows():
@@ -128,10 +103,13 @@ def load_invoice_excel_batch(path: Path) -> InvoiceExcelBatch:
                 if not pd.isna(row["payment_method"])
                 else PaymentMethod.UNKNOWN,
                 due_date=_parse_date(row["due_date"]),
+                paid_date=_parse_date(row["paid_date"]),
                 payment_status=PaymentStatus(row["payment_status"])
                 if not pd.isna(row["payment_status"])
                 else PaymentStatus.UNKNOWN,
                 status=InvoiceStatus.IN_PROGRESS, ## OR PROCESSED
+                tags = str(row["tags"]) if not pd.isna(row["tags"]) else None,
+                scan_filename= str(row["scan_filename"]) if not pd.isna(row["scan_filename"]) else None,
             )
         )
 

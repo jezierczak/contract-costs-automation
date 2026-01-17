@@ -1,6 +1,5 @@
 from decimal import Decimal
-from uuid import uuid4
-from datetime import date, datetime
+from datetime import  datetime
 
 import pytest
 
@@ -25,7 +24,10 @@ def invoice_new(contract_owner, contract_company):
         due_date=date.today(),
         payment_status=PaymentStatus.UNPAID,
         status=InvoiceStatus.NEW,
+        paid_date=None,
         timestamp=datetime.now(),
+        scan_filename=None,
+        tags=set(),
     )
 
 
@@ -41,9 +43,12 @@ def invoice_in_progress(contract_owner, contract_company):
 
         payment_method=PaymentMethod.CARD,
         due_date=date.today(),
+        paid_date=None,
         payment_status=PaymentStatus.UNPAID,
         status=InvoiceStatus.IN_PROGRESS,
         timestamp=datetime.now(),
+        scan_filename=None,
+        tags=set()
     )
 
 
@@ -59,9 +64,12 @@ def invoice_processed(contract_owner, contract_company):
 
         payment_method=PaymentMethod.BANK_TRANSFER,
         due_date=date.today(),
+        paid_date=None,
         payment_status=PaymentStatus.PAID,
         status=InvoiceStatus.PROCESSED,
         timestamp=datetime.now(),
+        scan_filename=None,
+        tags=set()
     )
 
 @pytest.fixture

@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 from uuid import uuid4
 import pytest
@@ -87,9 +88,12 @@ def invoice(contract):
         seller_id=uuid4(),
         payment_method=PaymentMethod.BANK_TRANSFER,
         due_date=None,
+        paid_date=None,
         payment_status=PaymentStatus.UNPAID,
         status=InvoiceStatus.PROCESSED,
-        timestamp=None,
+        timestamp=datetime.now(),
+        scan_filename=None,
+        tags=set(),
     )
 
 

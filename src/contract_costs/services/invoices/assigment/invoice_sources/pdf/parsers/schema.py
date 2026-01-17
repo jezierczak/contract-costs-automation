@@ -6,6 +6,7 @@ AI_SCHEMA: dict[str, str | list[dict[str,str]]] = {
     "payment_method": 'Literal["pre_paid", "bank_transfer", "card", "cash", "blik"]] | null',
     "due_date": "string | null",
     "payment_status": 'Literal["paid", "unpaid", "partially_paid" | null',
+    "paid_date": "string | null",
 
     "buyer_name": "string | null",
     "buyer_tax_number": "string | null",

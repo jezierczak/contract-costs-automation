@@ -41,6 +41,8 @@ def fmt(val, width):
 
 def _print_invoice_header(inv):
     print("=" * 120)
+    print(f"UUID: {inv.id}")
+    print("-" * 120)
     print(f"INVOICE: {inv.invoice_number}")
     print("-" * 120)
 

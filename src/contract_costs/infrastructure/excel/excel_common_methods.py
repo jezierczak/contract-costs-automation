@@ -25,6 +25,25 @@ class ExcelCommonMethods:
         dv.add(f"{target_column}2:{target_column}{max_rows}")
 
     @staticmethod
+    def apply_formula_dropdown(
+            *,
+            max_rows: int,
+            source_ws: Worksheet,
+            target_column: str,
+            formula: str,
+    ) -> None:
+        """
+        Dropdown oparty o formułę (np. =INDIRECT($J2))
+        """
+        dv = DataValidation(
+            type="list",
+            formula1=formula,
+            allow_blank=True,
+        )
+        source_ws.add_data_validation(dv)
+        dv.add(f"{target_column}2:{target_column}{max_rows}")
+
+    @staticmethod
     def autosize_columns(ws: Worksheet, max_width: int = 50) -> None:
         for idx, col in enumerate(ws.columns, start=1):
             max_length = 0

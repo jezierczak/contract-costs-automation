@@ -8,7 +8,7 @@ from contract_costs.cli.context import get_services
 logger = logging.getLogger(__name__)
 
 
-def handle_add_cost_type() -> None:
+def handle_add_cost_type(args=None) -> None:
     print("\nAdding cost type:\n")
 
     data = interactive_prompt(COST_TYPE_FIELDS)

@@ -11,7 +11,7 @@ from contract_costs.model.contract import ContractStarter
 logger = logging.getLogger(__name__)
 
 
-def handle_add_contract() -> None:
+def handle_add_contract(args=None) -> None:
     services = get_services()
 
     print("\nAdding contract:\n")

@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, ClassVar
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, model_validator

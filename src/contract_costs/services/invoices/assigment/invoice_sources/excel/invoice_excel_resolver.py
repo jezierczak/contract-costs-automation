@@ -42,6 +42,9 @@ class InvoiceExcelBatchResolver:
                     due_date=inv.due_date,
                     payment_status=inv.payment_status,
                     status=inv.status,
+                    scan_filename=inv.scan_filename,
+                    paid_date = inv.paid_date,
+                    tags=inv.tags,
                 )
             )
 

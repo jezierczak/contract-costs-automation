@@ -1,8 +1,9 @@
 import logging
 
 from contract_costs.cli.context import get_services
+from contract_costs.infrastructure.filesystem.show_file_manager import InvoiceShowFileManager
 from contract_costs.model.invoice import PaymentStatus, InvoiceStatus
-from contract_costs.services.invoices.excel.invoice_excel_path_resolver import InvoiceExcelPathResolver
+
 from contract_costs.services.invoices.excel.layouts.invoice_excel_layout_resolver import InvoiceExcelView
 from contract_costs.services.invoices.review.dto.invoice_review_query import InvoiceReviewQuery
 
@@ -11,6 +12,7 @@ logger = logging.getLogger(__name__)
 def build_prepare_invoices_for_review(subparsers):
     p = subparsers.add_parser(
         "for-review",
+        aliases=["rev"],
         help="Prepare invoices, for review",
     )
 
@@ -77,11 +79,15 @@ def handle_prepare_invoices_for_review(args) -> None:
     )
 
     view = InvoiceExcelView.REVIEW
-
-    output_path = InvoiceExcelPathResolver.resolve(
-        view=view,
-        query=review_query,
+    fm = InvoiceShowFileManager(
+        view=view
     )
+    output_path = fm.create_output_file()
+    # output_path = InvoiceExcel
+    # PathResolver.resolve(
+    #     view=view,
+    #     query=review_query,
+    # )
 
     # if output_path.exists():
     #     raise RuntimeError(

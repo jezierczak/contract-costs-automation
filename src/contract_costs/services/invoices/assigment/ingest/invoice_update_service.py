@@ -134,8 +134,11 @@ class InvoiceUpdateService:
                     seller_id=update.seller_id,
                     payment_method=update.payment_method,
                     due_date=update.due_date,
+                    paid_date=update.paid_date,
                     payment_status=update.payment_status,
                     status=update.status,
+                    tags=self._resolve_tags(update.tags),
+                    scan_filename=update.scan_filename
                 )
                 self._invoice_repository.update(updated)
 
@@ -160,9 +163,13 @@ class InvoiceUpdateService:
                 seller_id=update.seller_id,
                 payment_method=update.payment_method,
                 due_date=update.due_date,
+                paid_date=update.paid_date,
                 payment_status=update.payment_status,
                 status=update.status,
                 timestamp=datetime.now(),
+                tags=self._resolve_tags(update.tags),
+                scan_filename=update.scan_filename
+
             )
 
             self._invoice_repository.add(invoice)
@@ -217,3 +224,7 @@ class InvoiceUpdateService:
 
             updated = replace(invoice, status=InvoiceStatus.PROCESSED)
             self._invoice_repository.update(updated)
+
+    @staticmethod
+    def _resolve_tags(tags: str | None) -> set[str]:
+        return {t.strip() for t in tags.split(",") if t.strip()} if tags else set()

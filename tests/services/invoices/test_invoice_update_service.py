@@ -33,8 +33,11 @@ def resolved_update(**kwargs):
         payment_method=PaymentMethod.BANK_TRANSFER,
         payment_status=PaymentStatus.UNPAID,
         due_date=date(2024, 1, 31),
+        paid_date=None,
         status=kwargs.get("status", InvoiceStatus.IN_PROGRESS),
         command=kwargs.get("command", InvoiceCommand.APPLY),
+        scan_filename=None,
+        tags=None
     )
 
 
@@ -60,9 +63,12 @@ def test_update_existing_invoice(service, invoice_repo):
         seller_id=uuid4(),
         payment_method=PaymentMethod.CASH,
         due_date=date(2024, 1, 31),
+        paid_date=None,
         payment_status=PaymentStatus.UNPAID,
         status=InvoiceStatus.IN_PROGRESS,
         timestamp=datetime.now(),
+        scan_filename=None,
+        tags=set()
     )
     invoice_repo.add(existing)
 
@@ -89,9 +95,12 @@ def test_skip_processed_invoice(service, invoice_repo):
         seller_id=uuid4(),
         payment_method=PaymentMethod.CASH,
         due_date=date(2024, 1, 31),
+        paid_date=None,
         payment_status=PaymentStatus.UNPAID,
         status=InvoiceStatus.PROCESSED,
         timestamp=datetime.now(),
+        scan_filename=None,
+        tags=set()
     )
     invoice_repo.add(inv)
 
@@ -124,9 +133,12 @@ def test_invoice_number_change_creates_new_and_deletes_old(service, invoice_repo
         seller_id=uuid4(),
         payment_method=PaymentMethod.CASH,
         due_date=date(2024, 1, 31),
+        paid_date=None,
         payment_status=PaymentStatus.UNPAID,
         status=InvoiceStatus.IN_PROGRESS,
         timestamp=datetime.now(),
+        scan_filename=None,
+        tags=set()
     )
     invoice_repo.add(old)
 

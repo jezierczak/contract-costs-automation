@@ -29,6 +29,8 @@ class ContractReportAggregator:
 
         groups = self.BASE_GROUP + group_by
         # 🔥 jeżeli grupujemy po cost_node, dołącz budżet
+
+
         if "cost_node_code" in groups:
             groups += ["cost_node_name"]
 

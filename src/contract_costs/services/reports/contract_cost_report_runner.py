@@ -10,6 +10,7 @@ COLUMN_ORDER = [
     "contract_code",
     "cost_node_code",
     "cost_node_name",
+    "cost_type_code",
 
     "net_amount",
     "vat_amount",
@@ -25,6 +26,7 @@ DISPLAY_NAMES = {
     "contract_code": "Kontrakt",
     "cost_node_code": "Kod pozycji",
     "cost_node_name": "Nazwa pozycji",
+    "cost_type_code": "Typ kosztu",
     "cost_node_budget": "Budżet",
     "net_amount": "Netto",
     "vat_amount": "VAT",
@@ -99,7 +101,7 @@ class ContractCostReportRunner:
 
         result = (
             result
-            .pipe(lambda df: df[[c for c in COLUMN_ORDER if c in df.columns]])
+            .pipe(lambda dff: dff[[c for c in COLUMN_ORDER if c in dff.columns]])
             .rename(columns=DISPLAY_NAMES)
         )
 
