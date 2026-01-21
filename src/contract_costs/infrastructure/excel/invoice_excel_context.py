@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from enum import Enum
 
+from contract_costs.infrastructure.excel.checkbox_options import CheckBoxOptions
+
 
 class InvoiceExcelContext(Enum):
     UNPAID = "unpaid"
@@ -16,7 +18,7 @@ EXCEL_SPECS = {
     InvoiceExcelContext.UNPAID: InvoiceExcelSpec(
         action_column=0,
         invoice_id_column=1,
-        allowed_actions={"x"},
+        allowed_actions={CheckBoxOptions.YES.value.lower()},
     ),
     InvoiceExcelContext.ACCOUNTANT: InvoiceExcelSpec(
         action_column=0,

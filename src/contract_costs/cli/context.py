@@ -3,6 +3,7 @@ from contract_costs.config import INVOICE_INPUT_DIR
 from contract_costs.infrastructure.excel.base_excel_exporter import BaseExcelExporter
 from contract_costs.infrastructure.excel.invoice_action_excel_loader import InvoiceActionExcelLoader
 from contract_costs.services.catalogues.invoice_file_organizer import InvoiceFileOrganizer
+from contract_costs.services.catalogues.invoice_file_workflow_service import InvoiceFileWorkflowService
 from contract_costs.services.companies.activate_company_service import ActivateCompanyService
 from contract_costs.services.companies.apply.apply_companies_from_excel_service import ApplyCompaniesFromExcelService
 from contract_costs.services.companies.company_evaluate_orchestrator import CompanyEvaluateOrchestrator
@@ -44,6 +45,8 @@ from contract_costs.services.cost_types.apply.update_cost_type_service import Up
 from contract_costs.services.cost_types.create_cost_type_service import CreateCostTypeService
 from contract_costs.services.cost_types.query.cost_type_query_service import CostTypeQueryService
 from contract_costs.services.invoices.actions.invoice_action_service import InvoiceActionService
+from contract_costs.services.invoices.assigment.ingest.excel_invoice_ingest_service import ExcelInvoiceIngestService
+from contract_costs.services.invoices.assigment.ingest.pdf_invoice_ingest_service import PdfInvoiceIngestService
 
 from contract_costs.services.invoices.assigment.invoice_sources.excel.invoice_excel_resolver import InvoiceExcelBatchResolver
 from contract_costs.services.invoices.assigment.invoice_sources.normalization.invoice_parser_normalizer import \
@@ -53,7 +56,6 @@ from contract_costs.services.invoices.assigment.prepare.export.export_invoice_as
 from contract_costs.services.invoices.excel.invoice_excel_export_service import InvoiceExcelExportService
 from contract_costs.services.invoices.queries.invoice_details_query_service import InvoiceDetailsQueryService
 from contract_costs.services.invoices.queries.invoice_seller_summary_query_service import InvoiceSellerSummaryQueryService
-from contract_costs.services.invoices.assigment.ingest.invoice_update_service import InvoiceUpdateService
 from contract_costs.services.invoices.assigment.ingest.invoice_line_update_service import InvoiceLineUpdateService
 from contract_costs.services.invoices.assigment.ingest.invoice_ingest_orchestrator import (
     InvoiceIngestOrchestrator,
@@ -211,13 +213,20 @@ class Services:
     def invoice_ingest_orchestrator(self):
         if self._invoice_ingest_orchestrator is None:
             self._invoice_ingest_orchestrator = InvoiceIngestOrchestrator(
-                invoice_service=InvoiceUpdateService(self.invoice_repository),
+                invoice_ingest_service_pdf=PdfInvoiceIngestService(self.invoice_repository),
+                invoice_ingest_service_excel=ExcelInvoiceIngestService(self.invoice_repository),
                 invoice_line_service=InvoiceLineUpdateService(
                     self.invoice_line_repository,
                     self.contract_repository,
                     self.cost_node_repository,
                     self.cost_type_repository,
                 ),
+                invoice_repository=self.invoice_repository,
+                file_workflow= InvoiceFileWorkflowService(
+                    invoice_repository=self.invoice_repository,
+                    company_repository=self.company_repository,
+                    file_organizer=InvoiceFileOrganizer()
+                )
             )
         return self._invoice_ingest_orchestrator
 
@@ -250,7 +259,7 @@ class Services:
 
                 # company_resolve_service=self.company_resolver,
                 invoice_file_organizer=InvoiceFileOrganizer(),
-                company_repository=self.company_repository,
+                # company_repository=self.company_repository,
                 normalizer=self._normalizer,
                 orchestrator=self.invoice_ingest_orchestrator,
             )

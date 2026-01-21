@@ -100,7 +100,8 @@ class MySQLInvoiceRepository(InvoiceRepository):
               FROM invoices
               WHERE invoice_number = %s
                 AND seller_id = %s
-                AND status != %s \
+                AND status != %s 
+                LIMIT 1
               """
 
         conn = get_connection()
@@ -285,8 +286,9 @@ class MySQLInvoiceRepository(InvoiceRepository):
 
         if conditions:
             sql += " WHERE " + " AND ".join(conditions)
-
-        sql += " ORDER BY invoice_date DESC, timestamp DESC"
+        if  not query.payment_statuses:
+            sql += " ORDER BY invoice_date DESC, timestamp DESC"
+        else: sql += " ORDER BY due_date , timestamp "
 
         conn = get_connection()
         with conn.cursor(dictionary=True) as cur:

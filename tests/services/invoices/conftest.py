@@ -18,6 +18,7 @@ from contract_costs.model.contract import (
 from contract_costs.model.cost_node import CostNode
 from contract_costs.model.cost_type import CostType
 from contract_costs.model.unit_of_measure import UnitOfMeasure
+from contract_costs.repository.inmemory.company_repository import InMemoryCompanyRepository
 
 # ============================================================
 # REPOZYTORIA (IN-MEMORY)
@@ -36,6 +37,10 @@ from contract_costs.repository.inmemory.invoice_line_repository import (
     InMemoryInvoiceLineRepository,
 )
 from contract_costs.repository.inmemory.invoice_repository import InMemoryInvoiceRepository
+from contract_costs.services.catalogues.invoice_file_organizer import InvoiceFileOrganizer
+from contract_costs.services.catalogues.invoice_file_workflow_service import InvoiceFileWorkflowService
+from contract_costs.services.invoices.assigment.ingest.excel_invoice_ingest_service import ExcelInvoiceIngestService
+from contract_costs.services.invoices.assigment.ingest.invoice_ingest_orchestrator import InvoiceIngestOrchestrator
 
 # ============================================================
 # SERWISY
@@ -44,8 +49,9 @@ from contract_costs.repository.inmemory.invoice_repository import InMemoryInvoic
 from contract_costs.services.invoices.assigment.ingest.invoice_line_update_service import (
     InvoiceLineUpdateService,
 )
-from contract_costs.services.invoices.assigment.ingest.invoice_update_service import InvoiceUpdateService
-from contract_costs.services.invoices.assigment.ingest.invoice_ingest_orchestrator import InvoiceIngestOrchestrator
+# from contract_costs.services.invoices.assigment.ingest.invoice_update_service import InvoiceUpdateService
+# from contract_costs.services.invoices.assigment.ingest.invoice_ingest_orchestrator import InvoiceIngestOrchestrator
+from contract_costs.services.invoices.assigment.ingest.pdf_invoice_ingest_service import PdfInvoiceIngestService
 
 
 # ============================================================
@@ -60,6 +66,14 @@ def invoice_line_repo():
 def invoice_repo():
     return InMemoryInvoiceRepository()
 
+
+@pytest.fixture
+def pdf_ingest_service(invoice_repo) -> PdfInvoiceIngestService:
+    return PdfInvoiceIngestService(invoice_repo)
+
+@pytest.fixture
+def excel_ingest_service(invoice_repo) -> ExcelInvoiceIngestService:
+    return ExcelInvoiceIngestService(invoice_repo)
 
 # ============================================================
 # COMPANY FIXTURES
@@ -289,9 +303,9 @@ def invoice_line_update_service(
     )
 
 
-@pytest.fixture
-def invoice_update_service(invoice_repo):
-    return InvoiceUpdateService(invoice_repo)
+# @pytest.fixture
+# def invoice_update_service(invoice_repo):
+#     return InvoiceUpdateService(invoice_repo)
 
 
 # @pytest.fixture
@@ -310,9 +324,18 @@ def invoice_update_service(invoice_repo):
 
 
 @pytest.fixture
-def orchestrator(invoice_update_service, invoice_line_update_service):
+def orchestrator( invoice_repo,invoice_line_update_service,pdf_ingest_service,excel_ingest_service):
     return InvoiceIngestOrchestrator(
-        invoice_service=invoice_update_service,
+        invoice_ingest_service_pdf=pdf_ingest_service,
+        invoice_ingest_service_excel=excel_ingest_service,
         invoice_line_service=invoice_line_update_service,
+        invoice_repository=invoice_repo,
+        file_workflow=InvoiceFileWorkflowService(
+            invoice_repo,
+            InMemoryCompanyRepository(),
+            InvoiceFileOrganizer()
+        ),
     )
+
+
 

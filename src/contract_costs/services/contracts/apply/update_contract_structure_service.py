@@ -50,15 +50,30 @@ class UpdateContractStructureService:
 
         contract = self._get_contract(contract_id)
 
-        updated_contract = replace(
-            contract,
-            name=contract_starter["name"],
-            description=contract_starter["description"],
-            start_date=contract_starter["start_date"],
-            end_date=contract_starter["end_date"],
-            budget=contract_starter["budget"],
-            path=contract_starter["path"],
-            status=contract_starter["status"],
+
+        path = contract_starter["path"]
+
+        updated_contract = (
+            replace(
+                contract,
+                name=contract_starter["name"],
+                description=contract_starter["description"],
+                start_date=contract_starter["start_date"],
+                end_date=contract_starter["end_date"],
+                budget=contract_starter["budget"],
+                status=contract_starter["status"],
+                path=path,
+            )
+            if path is not None
+            else replace(
+                contract,
+                name=contract_starter["name"],
+                description=contract_starter["description"],
+                start_date=contract_starter["start_date"],
+                end_date=contract_starter["end_date"],
+                budget=contract_starter["budget"],
+                status=contract_starter["status"],
+            )
         )
 
         existing_nodes = self._cost_node_repository.list_by_contract(contract_id)

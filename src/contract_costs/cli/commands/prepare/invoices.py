@@ -74,9 +74,11 @@ def handle_prepare_invoices(args) -> None:
     services = get_services()
 
     statuses = {
-        "new": [InvoiceStatus.NEW],
+        "new_cost": [InvoiceStatus.NEW_COST],
+        "draft": [InvoiceStatus.DRAFT],
+        "new_revenue": [InvoiceStatus.NEW_REVENUE],
         "in_progress": [InvoiceStatus.IN_PROGRESS],
-        "open": [InvoiceStatus.NEW, InvoiceStatus.IN_PROGRESS],
+        "open": [InvoiceStatus.NEW_COST, InvoiceStatus.DRAFT, InvoiceStatus.NEW_REVENUE, InvoiceStatus.IN_PROGRESS],
     }[args.mode if args.mode else "open"]
 
     file_manager = InputsInvoiceAssignmentFileManager()

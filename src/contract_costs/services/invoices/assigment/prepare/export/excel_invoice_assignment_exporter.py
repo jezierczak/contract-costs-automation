@@ -15,6 +15,9 @@ from contract_costs.services.invoices.assigment.prepare.dto.assignment_export_bu
 from contract_costs.services.invoices.assigment.prepare.export.invoice_assignment_exporter import InvoiceAssignmentExporter
 
 import contract_costs.config as cfg
+from pathlib import Path
+
+work_dir = cfg.WORK_DIR.resolve().as_posix()
 
 class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
     def __init__(self,
@@ -91,6 +94,7 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
         headers = [
             "action",  # APPLY | MODIFY | DELETE
             "invoice_number",  # nowy numer (lub pusty → generator)
+            "invoice_id",
             "old_invoice_number",  # 🔒 UKRYTA – tylko dla MODIFY
             "invoice_date",
             "selling_date",
@@ -102,14 +106,31 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
             "paid_date",
             "tags",
             "timestamp",
-            "scan_filename"
+            "scan_filename",
+            "scan_link",
+            "scan_folder",
         ]
         ws.append(headers)
 
+
+
         for i in invoices:
+            scan_rel = i.scan_filename
+            abs_path = (Path(work_dir) / scan_rel).resolve().as_posix()
+            scan_link = (
+                f'=HYPERLINK("file:///{abs_path}", "📄 Otwórz")'
+                if scan_rel else None
+            )
+
+            scan_folder = (
+                f'=HYPERLINK("file:///{work_dir}/{Path(scan_rel).parent.as_posix()}", "📂 Folder")'
+                if scan_rel else None
+            )
+
             ws.append([
                 str(InvoiceCommand.APPLY.value),
                 i.invoice_number,
+                i.invoice_id,
                 i.invoice_number,  # old_invoice_number
                 i.invoice_date,
                 i.selling_date,
@@ -121,9 +142,13 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
                 i.paid_date,
                 ",".join(sorted(i.tags)) if i.tags else None,
                 i.timestamp,
-                i.scan_filename
+                scan_rel,
+                scan_link,
+                scan_folder
             ])
         ws.column_dimensions["C"].hidden = True
+        ws.column_dimensions["D"].hidden = True
+        ws.column_dimensions["O"].hidden = True  # scan_filename
         return ws
 
     def _write_invoice_lines(self, wb: Workbook, lines) -> Worksheet:
@@ -216,6 +241,7 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
             "contract_id",
             "parent_id"
         ])
+        cost_nodes.sort(key=lambda c: (c.contract_code,c.code))
 
         for n in cost_nodes:
 
@@ -269,7 +295,7 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
 
         for idx, row in enumerate(rows, start=2):
             contract_code = row[0]  # kolumna A
-            if not contract_code:
+            if not isinstance(contract_code, str):
                 continue
             by_contract.setdefault(contract_code, []).append(idx)
 
@@ -338,7 +364,7 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
             buyers_ws,
             cfg.DICTS_BUYERS,
             invoices_ws,
-            "F"
+            "G"
         )
 
         ExcelCommonMethods.apply_one_dropdown(
@@ -346,21 +372,21 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
             sellers_ws,
             cfg.DICTS_SELLERS,
             invoices_ws,
-            "G"
+            "H"
         )
         ExcelCommonMethods.apply_one_dropdown(
             max_rows,
             payment_method_ws,
             cfg.DICTS_PAYMENT_METHODS,
             invoices_ws,
-            "H"
+            "I"
         )
         ExcelCommonMethods.apply_one_dropdown(
             max_rows,
             payment_status_ws,
             cfg.DICTS_PAYMENT_STATUS,
             invoices_ws,
-            "I"
+            "J"
         )
 
         ExcelCommonMethods.apply_one_dropdown(

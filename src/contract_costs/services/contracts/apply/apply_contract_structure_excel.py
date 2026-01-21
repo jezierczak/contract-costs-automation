@@ -86,7 +86,7 @@ class ApplyContractStructureExcelService:
             sheet_name=self.CONTRACT_SHEET,
             columns=CONTRACT_PREPARE_COLUMNS,
         )
-
+        print(contract_rows)
         if len(contract_rows) != 1:
             raise ValueError(
                 "Contract sheet must contain exactly one row"
@@ -137,7 +137,7 @@ class ApplyContractStructureExcelService:
                 if row.get("Budget") is not None
                 else None
             ),
-            path=Path(row["Path"]),
+            path=Path(row["Path"]) if row.get("Path") is not None else None,
             status=ContractStatus[row["Status"]],
         )
 

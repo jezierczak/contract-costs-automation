@@ -4,6 +4,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from contract_costs.model.amount import Amount
+from contract_costs.model.company import Company
 from contract_costs.model.invoice import PaymentMethod, PaymentStatus, InvoiceStatus
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 from contract_costs.services.invoices.assigment.apply.commands.invoice_command import InvoiceCommand
@@ -23,6 +24,7 @@ class InvoiceUpdate:
     command: InvoiceCommand              # APPLY | DELETE | MODIFY
 
     invoice_number: str           # nowy numer (None → generator)
+    invoice_id: UUID | None
     old_invoice_number: str | None       # tylko dla MODIFY / DELETE
 
     invoice_date: date | None
@@ -44,20 +46,21 @@ class ResolvedInvoiceUpdate:
     command: InvoiceCommand
 
     invoice_number: str
+    invoice_id: UUID | None
     old_invoice_number: str | None
 
     invoice_date: date | None
     selling_date: date | None
 
-    buyer_id: UUID
-    seller_id: UUID
+    buyer: Company
+    seller: Company
 
     payment_method: PaymentMethod
     due_date: date | None
     payment_status: PaymentStatus
     status: InvoiceStatus
 
-    paid_date: str | None
+    paid_date: date | None
     scan_filename: str | None
     tags: str| None
 

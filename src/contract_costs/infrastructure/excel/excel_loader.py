@@ -24,6 +24,11 @@ class ExcelLoader(Generic[T]):
         wb = load_workbook(input_path, data_only=True)
         ws = wb[sheet_name] if sheet_name else wb.active
 
+        if ws is None:
+            raise ValueError(
+                f"No active worksheet found in Excel file: {input_path}"
+            )
+
         column_map: dict[int, ExcelColumn[T]] = {
             idx + 1: col
             for idx, col in enumerate(columns)
@@ -75,12 +80,21 @@ class ExcelLoader(Generic[T]):
         value: Any,
         header: str,
     ) -> bool:
-        if value in ("☑","X","x", True, 1):
+        if value is None or value == "":
+            return False
+
+        if isinstance(value, bool):
+            return value
+
+        value_str = str(value).strip().upper()
+
+        if value_str == "YES":
             return True
-        if value in ("☐", False, 0, None, ""):
+
+        if value_str == "NO":
             return False
 
         raise ValueError(
             f"Invalid checkbox value '{value}' "
-            f"for column '{header}'"
+            f"for column '{header}'. Expected YES or NO."
         )

@@ -1,12 +1,11 @@
-from collections import defaultdict
-from decimal import Decimal
+
 from pathlib import Path
-from typing import Iterable
+
 from uuid import UUID
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment
-from openpyxl.utils import get_column_letter
+
 
 from contract_costs.infrastructure.excel.excel_common_methods import ExcelCommonMethods
 from contract_costs.model.contract import Contract
@@ -36,9 +35,11 @@ class ContractTreeExcelExporter:
         output_path: Path,
     ) -> None:
         wb = Workbook()
-
+        ws = wb.active
+        if ws is None:
+            raise RuntimeError("Workbook has no active worksheet to remove")
         # remove default sheet
-        wb.remove(wb.active)
+        wb.remove(ws)
 
         self._export_contract_sheet(wb, contract)
         self._export_cost_nodes_sheet(wb, cost_nodes)

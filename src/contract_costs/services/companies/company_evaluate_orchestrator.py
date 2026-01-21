@@ -44,7 +44,7 @@ class CompanyEvaluateOrchestrator:
         return self.evaluate(
             CompanyInput(
                 name=None,
-                tax_number=input_tax_number,
+                tax_number=str(input_tax_number),
                 state=None,
                 street=None,
                 zip_code=None,

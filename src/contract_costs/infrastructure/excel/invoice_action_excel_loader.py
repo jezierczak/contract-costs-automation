@@ -5,7 +5,7 @@ from openpyxl import load_workbook
 
 from contract_costs.infrastructure.excel.invoice_excel_context import InvoiceExcelContext, EXCEL_SPECS
 from contract_costs.services.invoices.actions.dto.invoice_action_command import InvoiceActionCommand, InvoiceSelector, \
-    InvoiceAction, invoice_action_from_excel
+     invoice_action_from_excel
 
 
 class InvoiceActionExcelLoader:
@@ -22,7 +22,8 @@ class InvoiceActionExcelLoader:
 
         wb = load_workbook(path)
         ws = wb.active
-
+        if ws is None:
+            raise ValueError(f"No active worksheet in Excel file: {path}")
         grouped: dict[str, list[InvoiceSelector]] = {}
 
         for row in ws.iter_rows(min_row=2):
@@ -34,6 +35,7 @@ class InvoiceActionExcelLoader:
                 continue
 
             raw_action = str(raw_action).strip().lower()
+            # print(raw_action, spec.allowed_actions)
             if raw_action not in spec.allowed_actions:
                 continue
 

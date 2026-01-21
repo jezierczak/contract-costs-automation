@@ -33,7 +33,7 @@ class FakeInvoiceParser(InvoiceParser):
                 seller_tax_number=None,
                 payment_method=PaymentMethod.BANK_TRANSFER,
                 payment_status=PaymentStatus.UNPAID,
-                status=InvoiceStatus.NEW,
+                status=InvoiceStatus.NEW_COST,
                 due_date=date(2024, 1, 20),
 
             ),

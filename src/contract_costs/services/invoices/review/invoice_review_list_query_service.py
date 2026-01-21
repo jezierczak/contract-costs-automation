@@ -58,11 +58,12 @@ class InvoiceReviewListQueryService:
                     payment_method=inv.payment_method.value,
                     payment_status=inv.payment_status.value,
                     due_date=inv.due_date,
-                    seller_bank_account=seller.bank_account.number if seller.bank_account else None,
+                    seller_bank_account=seller.bank_account.number if seller and seller.bank_account else None,
                     total_net=total_net,
                     total_vat=total_vat,
                     total_gross=total_gross,
-                    total_not_evidenced=total_not_evidenced
+                    total_not_evidenced=total_not_evidenced,
+                    scan_filename = inv.scan_filename
                 )
             )
 

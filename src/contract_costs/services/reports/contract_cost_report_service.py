@@ -52,10 +52,10 @@ class ContractCostReportService:
                 continue
 
             node = leaf_by_id[line.cost_node_id]
-            # if line.cost_type_id:
-            #     cost_type = cost_types.get(line.cost_type_id)
-            # else: cost_type = None
-            cost_type = cost_types.get(line.cost_type_id)
+            if line.cost_type_id:
+                cost_type = cost_types.get(line.cost_type_id)
+            else: cost_type = None
+            # cost_type = cost_types.get(line.cost_type_id)
 
             rows.append(
                 {

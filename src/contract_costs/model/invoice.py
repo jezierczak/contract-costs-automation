@@ -20,7 +20,9 @@ class PaymentStatus(Enum):
     UNKNOWN = "unknown"
 
 class InvoiceStatus(Enum):
-    NEW = "new"
+    NEW_COST = "new_cost"
+    NEW_REVENUE = "new_revenue"
+    DRAFT = "draft"
     IN_PROGRESS = "in_progress"
     PROCESSED = "processed"
     DELETED = "deleted"

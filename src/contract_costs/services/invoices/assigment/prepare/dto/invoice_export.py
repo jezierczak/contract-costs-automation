@@ -8,6 +8,8 @@ from contract_costs.services.invoices.assigment.apply.commands.invoice_command i
 @dataclass(frozen=True)
 class InvoiceExport:
     action: InvoiceCommand | None
+    invoice_id: str | None
+    # invoice_number: str | None
     invoice_number: str
     invoice_date: date | None
     selling_date: date | None

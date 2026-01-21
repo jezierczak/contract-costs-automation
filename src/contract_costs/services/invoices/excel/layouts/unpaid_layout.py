@@ -17,4 +17,6 @@ UNPAID_COLUMNS: list[ExcelColumn[UnpaidInvoiceView]] = [
     ExcelColumn("Net", lambda x: x.total_net),
     ExcelColumn("Vat", lambda x: x.total_vat),
     ExcelColumn("Gross", lambda x: x.total_gross),
+    ExcelColumn("Link", lambda x: x.scan_filename, ExcelColumnType.LINK),
+    ExcelColumn("Folder", lambda x: x.scan_filename, ExcelColumnType.FOLDER),
 ]

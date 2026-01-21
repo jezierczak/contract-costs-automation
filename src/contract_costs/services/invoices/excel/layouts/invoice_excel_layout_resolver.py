@@ -7,7 +7,7 @@ from contract_costs.services.invoices.excel.layouts.unpaid_layout import UNPAID_
 
 class InvoiceExcelView(Enum):
     REVIEW = "Review"
-    FOR_ACCOUNTANT = "For_Accountant"
+    FOR_ACCOUNTANT = "Accountant"
     UNPAID = "Unpaid"
 
 

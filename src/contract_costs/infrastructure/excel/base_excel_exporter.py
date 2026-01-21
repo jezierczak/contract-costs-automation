@@ -1,3 +1,4 @@
+
 from pathlib import Path
 from typing import Generic, TypeVar
 
@@ -5,6 +6,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Protection, Alignment
 from openpyxl.utils import get_column_letter
 
+from contract_costs.infrastructure.excel.checkbox_options import CheckBoxOptions
 from contract_costs.infrastructure.excel.excel_column import (
     ExcelColumn,
     ExcelColumnType,
@@ -12,6 +14,7 @@ from contract_costs.infrastructure.excel.excel_column import (
 from contract_costs.infrastructure.excel.excel_common_methods import (
     ExcelCommonMethods,
 )
+import contract_costs.config as cfg
 
 T = TypeVar("T")
 
@@ -60,6 +63,8 @@ class BaseExcelExporter(Generic[T]):
         else:
             ws = self._wb.create_sheet()
 
+        if ws is None:
+            raise RuntimeError("Workbook has no active worksheet")
         ws.title = sheet_name
 
         # ======================
@@ -80,8 +85,27 @@ class BaseExcelExporter(Generic[T]):
                         f"Error while exporting column '{col.header}'"
                     ) from e
 
-                if col.column_type == ExcelColumnType.CHECKBOX:
-                    value = "☑" if value else "☐"
+                match col.column_type:
+
+                    case ExcelColumnType.CHECKBOX:
+                        value = CheckBoxOptions.YES.value if value else CheckBoxOptions.NO.value
+
+                    case ExcelColumnType.LINK:
+                        if value:
+                            abs_path = (cfg.WORK_DIR / Path(value)).resolve().as_posix()
+                            value = f'=HYPERLINK("file:///{abs_path}", "📄 Otwórz")'
+                        else:
+                            value = None
+
+                    case ExcelColumnType.FOLDER:
+                        if value:
+                            folder = (cfg.WORK_DIR / Path(value).parent).resolve().as_posix()
+                            value = f'=HYPERLINK("file:///{folder}", "📂 Folder")'
+                        else:
+                            value = None
+
+                    case _:
+                        pass  # DISPLAY, HIDDEN, DROPDOWN itd.
 
                 row.append(value)
 
@@ -98,13 +122,12 @@ class BaseExcelExporter(Generic[T]):
                 ws.column_dimensions[col_letter].hidden = True
 
             # --- PROTECTION ---
-            for row in ws.iter_rows(
+            for (cell,) in ws.iter_rows(
                 min_col=idx,
                 max_col=idx,
                 min_row=2,
                 max_row=ws.max_row,
             ):
-                cell = row[0]
                 cell.protection = Protection(
                     locked=not col.editable
                 )
@@ -129,13 +152,26 @@ class BaseExcelExporter(Generic[T]):
         # DROPDOWNS
         # ======================
         for idx, col in enumerate(columns, start=1):
-            if col.column_type != ExcelColumnType.DROPDOWN:
+            if col.column_type not in (
+                    ExcelColumnType.DROPDOWN,
+                    ExcelColumnType.CHECKBOX,
+            ):
                 continue
 
-            if not col.options:
-                raise RuntimeError(
-                    f"Dropdown column '{col.header}' has no options"
-                )
+                # -----------------------------------
+                # RESOLVE OPTIONS
+                # -----------------------------------
+            if col.column_type == ExcelColumnType.CHECKBOX:
+                options = [
+                    CheckBoxOptions.YES.value,
+                    CheckBoxOptions.NO.value,
+                ]
+            else:
+                if not col.options:
+                    raise RuntimeError(
+                        f"Dropdown column '{col.header}' has no options"
+                    )
+                options = col.options
 
             col_letter = get_column_letter(idx)
 
@@ -143,7 +179,7 @@ class BaseExcelExporter(Generic[T]):
             dict_ws.sheet_state = "hidden"
 
             dict_ws["A1"] = col.header
-            for row_idx, opt in enumerate(col.options, start=2):
+            for row_idx, opt in enumerate(options, start=2):
                 dict_ws[f"A{row_idx}"] = opt
 
             ExcelCommonMethods.apply_one_dropdown(

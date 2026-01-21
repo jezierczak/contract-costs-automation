@@ -15,4 +15,6 @@ REVIEW_COLUMNS: list[ExcelColumn[InvoiceReviewItemView]] = [
     ExcelColumn("Gross", lambda x: x.total_gross),
     ExcelColumn("Not Evidenced", lambda x: x.total_not_evidenced),
     ExcelColumn("Status", lambda x: x.status),
+    ExcelColumn("Link", lambda x: x.scan_filename, ExcelColumnType.LINK),
+    ExcelColumn("Folder", lambda x: x.scan_filename, ExcelColumnType.FOLDER),
 ]

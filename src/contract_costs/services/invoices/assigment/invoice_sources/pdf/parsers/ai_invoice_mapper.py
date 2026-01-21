@@ -61,6 +61,7 @@ class AIInvoiceMapper:
         invoice = InvoiceUpdate(
             command=InvoiceCommand.APPLY,
             old_invoice_number=None,
+            invoice_id=None,
             invoice_number=invoice_number,
             invoice_date=self.parse_date(data.get("invoice_date")),
             selling_date=self.parse_date(data.get("selling_date")),
@@ -70,8 +71,9 @@ class AIInvoiceMapper:
             seller_tax_number=None,
             payment_method=payment_method,
             payment_status=payment_status,
-            status=InvoiceStatus.NEW,
-            scan_filename=None
+            status=InvoiceStatus.NEW_COST,
+            scan_filename=None,
+            tags=None
         )
 
         lines = [

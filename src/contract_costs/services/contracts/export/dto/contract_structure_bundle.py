@@ -3,8 +3,6 @@ from datetime import date
 from decimal import Decimal
 from typing import TypedDict
 
-from contract_costs.model.contract import Contract
-from contract_costs.model.cost_node import CostNode
 
 class ContractStructureRow(TypedDict):
     code: str

@@ -24,3 +24,5 @@ class UnpaidInvoiceView(BaseModel):
     total_net: Decimal
     total_vat: Decimal
     total_gross: Decimal
+
+    scan_filename: str | None

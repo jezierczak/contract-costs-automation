@@ -25,3 +25,5 @@ class InvoiceReviewItemView(BaseModel):
     total_vat: Decimal
     total_gross: Decimal
     total_not_evidenced: Decimal
+    
+    scan_filename: str | None

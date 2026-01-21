@@ -23,7 +23,7 @@ def invoice_new(contract_owner, contract_company):
         payment_method=PaymentMethod.CASH,
         due_date=date.today(),
         payment_status=PaymentStatus.UNPAID,
-        status=InvoiceStatus.NEW,
+        status=InvoiceStatus.NEW_COST,
         paid_date=None,
         timestamp=datetime.now(),
         scan_filename=None,

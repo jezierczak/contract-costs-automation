@@ -7,6 +7,8 @@ class ExcelColumnType(Enum):
     CHECKBOX = "checkbox"
     HIDDEN = "hidden"
     DROPDOWN= "dropdown"
+    LINK = "link"
+    FOLDER = "folder"
 
 @dataclass(frozen=True)
 class ExcelColumn[T]:

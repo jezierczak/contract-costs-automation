@@ -94,6 +94,7 @@ def load_invoice_excel_batch(path: Path) -> InvoiceExcelBatch:
             InvoiceUpdate(
                 command=InvoiceCommand(str(row["action"])) if not pd.isna(row["action"]) else InvoiceCommand.APPLY,
                 invoice_number=str(row["invoice_number"]) ,
+                invoice_id=_parse_uuid(normalize(row["invoice_id"])),
                 old_invoice_number=str(row["old_invoice_number"]) if not pd.isna(row["old_invoice_number"]) else None,
                 invoice_date=_parse_date(row["invoice_date"]),
                 selling_date=_parse_date(row["selling_date"]),

@@ -34,6 +34,7 @@ def handle_apply_invoices_paid(args):
 
     commands = services.invoice_action_excel_loader.load(path,context=InvoiceExcelContext.UNPAID)
 
+
     for cmd in commands:
         services.invoice_action_service.execute(cmd)
 

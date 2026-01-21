@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 
 from contract_costs.infrastructure.excel.base_excel_exporter import (
     BaseExcelExporter,
@@ -14,6 +15,7 @@ import contract_costs.config as cfg
 
 from contract_costs.model.contract import Contract
 from contract_costs.model.cost_node import CostNode
+from contract_costs.services.contracts.prepare.dto.contract_prepare_dto import ContractPrepareDTO
 from contract_costs.services.contracts.prepare.mappers.contract_prepare_mapper import ContractPrepareMapper
 from contract_costs.services.contracts.prepare.mappers.cost_node_prepare_mapper import CostNodePrepareMapper
 
@@ -36,7 +38,7 @@ class ContractPrepareExcelExporter:
     # =====================================================
 
     def export_new(self, *, output_path: Path) -> None:
-        exporter = BaseExcelExporter()
+        exporter = BaseExcelExporter[Any]()
 
         exporter.add_sheet(
             sheet_name=self.CONTRACT_SHEET,
@@ -59,7 +61,7 @@ class ContractPrepareExcelExporter:
         cost_nodes: list[CostNode],
         output_path: Path,
     ) -> None:
-        exporter = BaseExcelExporter()
+        exporter = BaseExcelExporter[Any]()
 
         contract_dtos = [
             ContractPrepareMapper.map(contract)

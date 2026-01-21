@@ -85,6 +85,9 @@ OWNERS_DIR = WORK_DIR / "companies"
 INCOMING_DIR = WORK_DIR / "incoming"
 INVOICE_INPUT_DIR = INCOMING_DIR / "invoices"
 INVOICE_FAILED_DIR = INCOMING_DIR / "failed"
+INVOICE_DRAFT_DIR = INCOMING_DIR / "drafts"
+INVOICE_RAW_DIR = INCOMING_DIR / "raw"
+INVOICE_TRASH_DIR = INCOMING_DIR / "trash"
 
 # --- inputs (Excel jako UI) ---
 INPUTS_DIR = WORK_DIR / "inputs"

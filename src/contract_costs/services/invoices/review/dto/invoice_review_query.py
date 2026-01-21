@@ -1,5 +1,5 @@
 from datetime import date
-from typing import TypedDict
+from typing import TypedDict, cast, Any
 
 from openpyxl.styles.builtins import total
 from pydantic import BaseModel
@@ -27,7 +27,7 @@ class InvoiceReviewQuery(BaseModel):
 
     @staticmethod
     def build_company_query(**kwargs) -> CompanyReviewQuery | None:
-        query: CompanyReviewQuery = {}
+        query: dict[str, Any] = {}
         allowed_keys = CompanyReviewQuery.__annotations__.keys()
 
         for k, v in kwargs.items():
@@ -39,4 +39,4 @@ class InvoiceReviewQuery(BaseModel):
                 v = CompanyType(v)
             query[k] = v
 
-        return query or None
+        return cast(CompanyReviewQuery, query) if query else None

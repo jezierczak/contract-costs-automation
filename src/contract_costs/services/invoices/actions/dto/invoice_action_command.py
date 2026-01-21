@@ -23,9 +23,10 @@ def invoice_action_from_excel(
 
     key = f"{raw.strip().lower()}-{context.value.lower()}"
 
+
     mapping: dict[str, InvoiceAction] = {
         "approved-accountant": InvoiceAction.MARK_SENT_TO_ACCOUNTANT,
-        "x-unpaid": InvoiceAction.MARK_PAID,
+        "yes-unpaid": InvoiceAction.MARK_PAID,
         "reopen-accountant": InvoiceAction.REOPEN,
     }
 

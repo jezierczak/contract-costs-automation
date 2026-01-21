@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import date
 from decimal import Decimal
 
 from contract_costs.repository.invoice_repository import InvoiceRepository
@@ -52,15 +53,15 @@ class InvoiceSellerSummaryQueryService:
         total_vat = Decimal("0.00")
         total_gross = Decimal("0.00")
 
-        invoices.sort(key=lambda x: x.invoice_date, reverse=True)
+        invoices.sort(key=lambda x: x.invoice_date or date.min, reverse=True)
 
         for inv in invoices:
             if inv.status != InvoiceStatus.PROCESSED:
                 continue
             lines = self._line_repo.list_by_invoice_ids([inv.id])
-            net = sum(l.amount.net for l in lines)
-            vat = sum(l.amount.tax for l in lines)
-            gross = sum(l.amount.gross for l in lines)
+            net = sum((l.amount.net for l in lines),Decimal("0.00"))
+            vat = sum((l.amount.tax for l in lines),Decimal("0.00"))
+            gross = sum((l.amount.gross for l in lines),Decimal("0.00"))
 
             total_net += net
             total_vat += vat
@@ -71,7 +72,7 @@ class InvoiceSellerSummaryQueryService:
                     invoice_number=inv.invoice_number,
                     invoice_date=str(inv.invoice_date) if inv.invoice_date else None,
                     status=inv.status,
-                    net=net,
+                    net = net,
                     vat=vat,
                     gross=gross,
                     paid=inv.payment_status.name == "PAID",

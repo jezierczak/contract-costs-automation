@@ -57,7 +57,8 @@ class InvoiceLineUpdateService:
 
         for update in lines:
             if update.invoice_number:
-                ref_result = ref_map.get(update.invoice_number)
+                # ref_result = ref_map.get(update.invoice_number)
+                ref_result = self._resolve_ref(update, ref_map)
             else: ref_result = None
 
             resolved_invoice_id: UUID | None = (
@@ -217,3 +218,20 @@ class InvoiceLineUpdateService:
         )
 
         self._invoice_line_repository.update(updated)
+
+    @staticmethod
+    def _resolve_ref(
+            update: InvoiceLineUpdate,
+            ref_map: dict[str, InvoiceRefResult],
+    ) -> InvoiceRefResult | None:
+
+        # 1️⃣ normalne dopasowanie (nowy numer)
+        if update.invoice_number in ref_map:
+            return ref_map[update.invoice_number]
+
+        # 2️⃣ dopasowanie przez old_invoice_number
+        for ref in ref_map.values():
+            if ref.old_invoice_number == update.invoice_number:
+                return ref
+
+        return None

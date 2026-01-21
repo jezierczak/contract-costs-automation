@@ -24,8 +24,8 @@ def test_ingest_from_pdf_creates_invoice_and_lines_without_finalization(
                 old_invoice_number=None,
                 invoice_date=date(2024, 1, 1),
                 selling_date=date(2024, 1, 1),
-                buyer_id=uuid4(),
-                seller_id=uuid4(),
+                buyer=uuid4(),
+                seller=uuid4(),
                 payment_method=PaymentMethod.BANK_TRANSFER,
                 due_date=date(2024, 1, 31),
                 paid_date=None,
@@ -72,8 +72,8 @@ def test_ingest_from_excel_finalizes_invoice_when_lines_fully_assigned(
                 old_invoice_number=None,
                 invoice_date=date(2024, 1, 1),
                 selling_date=date(2024, 1, 1),
-                buyer_id=uuid4(),
-                seller_id=uuid4(),
+                buyer=uuid4(),
+                seller=uuid4(),
                 payment_method=PaymentMethod.BANK_TRANSFER,
                 due_date=date(2024, 1, 31),
                 paid_date=None,
@@ -101,7 +101,7 @@ def test_ingest_from_excel_finalizes_invoice_when_lines_fully_assigned(
 
     orchestrator.ingest_from_excel(batch)
 
-    seller_id = batch.invoices[0].seller_id
+    seller_id = batch.invoices[0].seller
     invoice = invoice_repo.get_unique_invoice("FV/XLS/1", seller_id)
 
     assert invoice is not None
@@ -120,8 +120,8 @@ def test_ingest_from_excel_does_not_finalize_when_lines_incomplete(
                 old_invoice_number=None,
                 invoice_date=date(2024, 1, 1),
                 selling_date=date(2024, 1, 1),
-                buyer_id=uuid4(),
-                seller_id=uuid4(),
+                buyer=uuid4(),
+                seller=uuid4(),
                 payment_method=PaymentMethod.BANK_TRANSFER,
                 due_date=date(2024, 1, 31),
                 paid_date=None,
@@ -149,7 +149,7 @@ def test_ingest_from_excel_does_not_finalize_when_lines_incomplete(
 
     orchestrator.ingest_from_excel(batch)
 
-    seller_id = batch.invoices[0].seller_id
+    seller_id = batch.invoices[0].seller
     invoice = invoice_repo.get_unique_invoice("FV/XLS/2", seller_id)
     assert invoice is not None
     assert invoice.status == InvoiceStatus.IN_PROGRESS
@@ -167,8 +167,8 @@ def test_ingest_from_excel_delete_does_not_finalize(
                 old_invoice_number=None,
                 invoice_date=date(2024, 1, 1),
                 selling_date=date(2024, 1, 1),
-                buyer_id=uuid4(),
-                seller_id=uuid4(),
+                buyer=uuid4(),
+                seller=uuid4(),
                 payment_method=PaymentMethod.BANK_TRANSFER,
                 due_date=date(2024, 1, 31),
                 paid_date=None,
@@ -183,7 +183,7 @@ def test_ingest_from_excel_delete_does_not_finalize(
 
     orchestrator.ingest_from_excel(batch)
 
-    seller_id = batch.invoices[0].seller_id
+    seller_id = batch.invoices[0].seller
     invoice = invoice_repo.get_unique_invoice("FV/XLS/DEL", seller_id)
     assert invoice is None
 
@@ -221,8 +221,8 @@ def test_ingest_from_excel_delete_existing_invoice(
                 old_invoice_number=None,
                 invoice_date=date(2024, 1, 1),
                 selling_date=date(2024, 1, 1),
-                buyer_id=uuid4(),
-                seller_id=seller_id,  # 👈 TEN SAM SELLER
+                buyer=uuid4(),
+                seller=seller_id,  # 👈 TEN SAM SELLER
                 payment_method=PaymentMethod.BANK_TRANSFER,
                 due_date=date(2024, 1, 31),
                 paid_date=None,
@@ -299,8 +299,8 @@ def test_ingest_from_excel_changes_invoice_number_and_deletes_old(
                 old_invoice_number="FV/OLD",
                 invoice_date=old_invoice.invoice_date,
                 selling_date=old_invoice.selling_date,
-                buyer_id=buyer_id,
-                seller_id=seller_id,
+                buyer=buyer_id,
+                seller=seller_id,
                 payment_method=old_invoice.payment_method,
                 due_date=old_invoice.due_date,
                 paid_date=None,

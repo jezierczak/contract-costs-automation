@@ -23,4 +23,10 @@ class ExactNipCandidateProvider(CompanyCandidateProvider):
             company = self._repo.get_by_tax_number(tax)
             if company:
                 return [company]
+        # fallback ONLY for placeholders
+        if input_.tax_number.startswith(("TMP-", "AI-")):
+            company_dirty = self._repo.get_by_tax_number(input_.tax_number)
+            if company_dirty:
+                return [company_dirty]
+
         return []

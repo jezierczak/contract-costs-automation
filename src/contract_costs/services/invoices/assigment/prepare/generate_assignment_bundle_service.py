@@ -1,6 +1,7 @@
 from dataclasses import replace
 import logging
 
+from contract_costs.model.company import CompanyType
 from contract_costs.model.invoice import InvoiceStatus, Invoice
 from contract_costs.repository.invoice_repository import InvoiceRepository
 from contract_costs.repository.invoice_line_repository import InvoiceLineRepository
@@ -69,11 +70,11 @@ class GenerateInvoiceAssignmentBundleService:
 
         #  Companies (buyer + seller)
 
-        company_buyers = {
-            inv.buyer_id for inv in updated_invoices}
-        company_sellers= {
-            inv.seller_id for inv in updated_invoices
-        }
+        # company_buyers = {
+        #     inv.buyer_id for inv in updated_invoices}
+        # company_sellers= {
+        #     inv.seller_id for inv in updated_invoices
+        # }
 
         # buyers = [
         #     CompanyExport(
@@ -100,8 +101,9 @@ class GenerateInvoiceAssignmentBundleService:
                 name=c.name,
                 tax_number=c.tax_number,
             )
-            for c in (self._company_repo.get(cid) for cid in company_sellers)
-            if c is not None
+            for c in self._company_repo.list_all()
+            # for c in (self._company_repo.get(cid) for cid in company_sellers)
+            if c is not None and c.role != CompanyType.OWN
         ]
 
         #  Contracts
@@ -119,18 +121,27 @@ class GenerateInvoiceAssignmentBundleService:
             c.id: c.code
             for c in contracts
         }
-        cost_nodes = [
-            CostNodeExport(
-                id=n.id,
-                contract_id=n.contract_id,
-                parent_id=n.parent_id,
-                code=n.code,
-                name=n.name,
-                budget=n.budget,
-                contract_code=contract_code_by_id.get(n.contract_id),
+
+        cost_nodes = []
+
+        for n in self._cost_node_repo.list_leaf_nodes_for_active_contracts():
+            contract_code = contract_code_by_id.get(n.contract_id)
+            if contract_code is None:
+                raise RuntimeError(
+                    f"Missing contract code for contract_id={n.contract_id}"
+                )
+
+            cost_nodes.append(
+                CostNodeExport(
+                    id=n.id,
+                    contract_id=n.contract_id,
+                    parent_id=n.parent_id,
+                    code=n.code,
+                    name=n.name,
+                    budget=n.budget,
+                    contract_code=contract_code,
+                )
             )
-            for n in self._cost_node_repo.list_leaf_nodes_for_active_contracts()
-        ]
 
         #  Cost types
         cost_types = [
@@ -151,6 +162,7 @@ class GenerateInvoiceAssignmentBundleService:
             invoice_exports.append(
                 InvoiceExport(
                     action=InvoiceCommand.APPLY,
+                    invoice_id=str(i.id),
                     invoice_number=i.invoice_number,
                     invoice_date=i.invoice_date,
                     selling_date=i.selling_date,

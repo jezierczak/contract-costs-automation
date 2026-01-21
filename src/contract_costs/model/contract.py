@@ -5,6 +5,7 @@ from uuid import UUID,uuid4
 from datetime import date
 from decimal import Decimal
 from enum import Enum
+import contract_costs.config as cfg
 
 from contract_costs.model.company import Company
 
@@ -19,14 +20,14 @@ class ContractStarter(TypedDict):
     name: str
     code: str
     contract_owner: Company
-    client: Company
+    client: Company | None
     description: str | None
 
     start_date: date | None
     end_date: date | None
 
     budget: Decimal | None
-    path: Path
+    path: Path | None
     status: ContractStatus
 
 @dataclass
@@ -57,7 +58,12 @@ class Contract:
             start_date=data['start_date'],
             end_date=data['end_date'],
             budget=data['budget'],
-            path=data['path'],
+            path=data['path'] if data['path'] else Contract.contract_path(cfg.OWNERS_DIR,data['contract_owner'].name),
             status=data['status']
         )
+
+    @staticmethod
+    def contract_path(owner, contract_name: str) -> Path:
+        safe_name = contract_name.replace(" ", "_").lower()
+        return Path(owner.name) / safe_name
 

@@ -17,4 +17,7 @@ ACCOUNTANT_COLUMNS: list[ExcelColumn[InvoiceForAccountantView]] = [
     ExcelColumn("Vat", lambda x: x.total_vat),
     ExcelColumn("Gross", lambda x: x.total_gross),
     ExcelColumn("Not Evidenced", lambda x: x.total_not_evidenced),
+    ExcelColumn("Link", lambda x: x.scan_filename, ExcelColumnType.LINK),
+    ExcelColumn("Folder", lambda x: x.scan_filename, ExcelColumnType.FOLDER),
+
 ]
