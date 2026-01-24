@@ -108,8 +108,8 @@ class ExcelCommonMethods:
         )
 
     @staticmethod
-    def freeze_header(ws: Worksheet) -> None:
-        ws.freeze_panes = "A2"
+    def freeze_header(ws: Worksheet, row: int = 2) -> None:
+        ws.freeze_panes = f"A{row}"
 
 
     @staticmethod

@@ -116,9 +116,9 @@ class ContractSnapshotQueryService:
     ) -> ContractSnapshotDTO:
 
         snapshot = self.resolve_snapshot(str(snapshot_id),self._snapshot_repo)
-        snapshot_id = snapshot.id
         if not snapshot:
             raise ValueError("Snapshot not found")
+        snapshot_id = snapshot.id
 
         contract = self._contract_repo.get(snapshot.contract_id)
         nodes = self._node_repo.list_by_contract(snapshot.contract_id)
@@ -129,6 +129,9 @@ class ContractSnapshotQueryService:
         nodes_by_id = {n.id: n for n in nodes}
         values_by_node_snapshot = defaultdict(list)
 
+        value_types = self._value_type_repo.list()
+        value_type_by_id = {vt.id: vt for vt in value_types}
+
         for v in value_snapshots:
             values_by_node_snapshot[v.node_snapshot_id].append(v)
 
@@ -137,11 +140,25 @@ class ContractSnapshotQueryService:
         for ns in node_snapshots:
             node = nodes_by_id[ns.contract_node_id]
             values = values_by_node_snapshot.get(ns.id, [])
+            net_cost = Decimal("0")
+            vat = Decimal("0")
+            gross = Decimal("0")
+            non_deductible = Decimal("0")
+            revenue = Decimal("0")
 
-            net = sum((v.net for v in values), Decimal("0"))
-            vat = sum((v.vat for v in values), Decimal("0"))
-            gross = sum((v.gross for v in values), Decimal("0"))
-            non_deductible = sum((v.non_deductible for v in values), Decimal("0"))
+            for v in values:
+                vt = value_type_by_id.get(v.value_type_id)
+                if not vt:
+                    continue
+
+                if vt.direction == ValueDirection.COST:
+                    net_cost += v.net
+                    vat += v.vat
+                    gross += v.gross
+                    non_deductible += v.non_deductible
+
+                elif vt.direction == ValueDirection.REVENUE:
+                    revenue += v.net
 
             result_nodes.append(
                 ContractNodeSnapshotDTO(
@@ -152,10 +169,11 @@ class ContractSnapshotQueryService:
                     level=node.level if hasattr(node, "level") else 0,
                     planned_budget=ns.planned_budget,
                     progress=ns.progress,
-                    net=net,
+                    net=net_cost,
                     vat=vat,
                     gross=gross,
                     non_deductible=non_deductible,
+                    revenue=revenue,
                 )
             )
 

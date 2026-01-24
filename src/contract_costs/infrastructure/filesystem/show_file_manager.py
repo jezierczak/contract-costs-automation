@@ -22,6 +22,12 @@ class ContractsShowFileManager(ShowFileManager):
         name = f"contract_{contract_code}"
         super().__init__(Path(path), name)
 
+class SnapshotsShowFileManager(ShowFileManager):
+    def __init__(self, contract_code: str,contract_date: datetime) -> None:
+        path = cfg.SNAPSHOTS_SHOW_DIR
+        name = f"snapshot_{contract_code}_{contract_date.strftime("%Y%m%d")}"
+        super().__init__(Path(path), name)
+
 
 class InvoiceShowFileManager(ShowFileManager):
     def __init__(self, *, view):

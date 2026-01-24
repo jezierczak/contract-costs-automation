@@ -22,6 +22,8 @@ class ContractNodeSnapshotDTO:
     gross: Decimal
     non_deductible: Decimal
 
+    revenue: Decimal
+
     @property
     def progress_percent(self) -> Decimal:
         return (self.progress * Decimal("100")).quantize(Decimal("0.01"))

@@ -120,6 +120,7 @@ LOGS_DIR = WORK_DIR / "logs"
 SHOW_DIR = WORK_DIR / "show"
 CONTRACTS_SHOW_DIR = SHOW_DIR / "contracts"
 INVOICES_SHOW_DIR = SHOW_DIR / "invoices"
+SNAPSHOTS_SHOW_DIR = SHOW_DIR / "snapshots"
 
 # -------------------------------------------------
 # DATABASE
