@@ -49,7 +49,7 @@ class CreateContractSnapshotService:
         *,
         contract_id: UUID,
         snapshot_date: date,
-    ) -> ContractSnapshot:
+    ) -> tuple[ContractSnapshot,bool]:
 
         # ---------- idempotency ----------
         existing = self._snapshot_repo.get_by_contract_and_date(
@@ -57,7 +57,7 @@ class CreateContractSnapshotService:
             snapshot_date=snapshot_date,
         )
         if existing:
-            return existing
+            return existing, False
 
         contract = self._contract_repo.get(contract_id)
         if not contract:
@@ -221,4 +221,4 @@ class CreateContractSnapshotService:
         self._node_snapshot_repo.add_many(node_snapshots)
         self._value_snapshot_repo.add_many(value_snapshots)
 
-        return snapshot
+        return snapshot, True

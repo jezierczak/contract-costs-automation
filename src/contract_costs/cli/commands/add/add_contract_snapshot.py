@@ -30,13 +30,16 @@ def handle_add_contract_snapshot(args):
         else date.today()
     )
 
-    snapshot = services.create_contract_snapshot.create(
+    snapshot,created = services.create_contract_snapshot.create(
         contract_id=contract.id,
         snapshot_date=snapshot_date,
     )
 
-    print(
-        f"Snapshot created: "
-        f"contract={contract.code} "
-        f"date={snapshot.snapshot_date}"
-    )
+    if created:
+        print(
+            f"Snapshot created: "
+            f"contract={contract.code} "
+            f"date={snapshot.snapshot_date}"
+        )
+    else:
+        print(f"Snapshot already exists: contract={contract.code} date={snapshot.snapshot_date}")
