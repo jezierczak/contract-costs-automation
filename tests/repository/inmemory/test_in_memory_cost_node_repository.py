@@ -1,13 +1,13 @@
 from dataclasses import replace
 from decimal import Decimal
 
-from contract_costs.repository.inmemory.cost_node_repository import InMemoryCostNodeRepository
+from contract_costs.repository.inmemory.contract_node_repository import InMemoryContractNodeRepository
 
 
 class TestInMemoryCostNodeRepository:
 
     def test_cost_node_repository_add_and_get(self,root_node) -> None:
-        repo = InMemoryCostNodeRepository()
+        repo = InMemoryContractNodeRepository()
 
         repo.add(root_node)
         result = repo.get(root_node.id)
@@ -15,7 +15,7 @@ class TestInMemoryCostNodeRepository:
         assert result == root_node
 
     def test_cost_node_repository_exists(self,root_node):
-        repo = InMemoryCostNodeRepository()
+        repo = InMemoryContractNodeRepository()
 
         assert repo.exists(root_node.id) is False
 
@@ -24,7 +24,7 @@ class TestInMemoryCostNodeRepository:
         assert repo.exists(root_node.id) is True
 
     def test_cost_node_repository_list_nodes(self,root_node, child_node):
-        repo = InMemoryCostNodeRepository()
+        repo = InMemoryContractNodeRepository()
 
         repo.add(root_node)
         repo.add(child_node)
@@ -36,7 +36,7 @@ class TestInMemoryCostNodeRepository:
         assert child_node in nodes
 
     def test_cost_node_repository_list_by_contract(self, root_node, child_node):
-        repo = InMemoryCostNodeRepository()
+        repo = InMemoryContractNodeRepository()
 
         repo.add(root_node)
         repo.add(child_node)
@@ -47,7 +47,7 @@ class TestInMemoryCostNodeRepository:
         assert all(n.contract_id == root_node.contract_id for n in result)
 
     def test_cost_node_repository_list_by_parent(self, root_node, child_node):
-        repo = InMemoryCostNodeRepository()
+        repo = InMemoryContractNodeRepository()
 
         repo.add(root_node)
         repo.add(child_node)
@@ -59,7 +59,7 @@ class TestInMemoryCostNodeRepository:
 
 
     def test_cost_node_repository_update(self, root_node):
-        repo = InMemoryCostNodeRepository()
+        repo = InMemoryContractNodeRepository()
         repo.add(root_node)
 
         updated = replace(root_node, budget=Decimal("2000"))

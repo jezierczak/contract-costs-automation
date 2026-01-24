@@ -9,15 +9,15 @@ from contract_costs.infrastructure.excel.contracts.contract_prepare_columns impo
     CONTRACT_PREPARE_COLUMNS,
 )
 from contract_costs.infrastructure.excel.contracts.cost_node_prepare_columns import (
-    COST_NODE_PREPARE_COLUMNS,
+    CONTRACT_NODE_PREPARE_COLUMNS,
 )
 import contract_costs.config as cfg
 
 from contract_costs.model.contract import Contract
-from contract_costs.model.cost_node import CostNode
+from contract_costs.model.contract_node import ContractNode
 from contract_costs.services.contracts.prepare.dto.contract_prepare_dto import ContractPrepareDTO
 from contract_costs.services.contracts.prepare.mappers.contract_prepare_mapper import ContractPrepareMapper
-from contract_costs.services.contracts.prepare.mappers.cost_node_prepare_mapper import CostNodePrepareMapper
+from contract_costs.services.contracts.prepare.mappers.contract_node_prepare_mapper import ContractNodePrepareMapper
 
 
 class ContractPrepareExcelExporter:
@@ -49,7 +49,7 @@ class ContractPrepareExcelExporter:
         exporter.add_sheet(
             sheet_name=self.COST_NODES_SHEET,
             items=[],
-            columns=COST_NODE_PREPARE_COLUMNS,
+            columns=CONTRACT_NODE_PREPARE_COLUMNS,
         )
 
         exporter.save(output_path)
@@ -58,7 +58,7 @@ class ContractPrepareExcelExporter:
         self,
         *,
         contract: Contract,
-        cost_nodes: list[CostNode],
+        cost_nodes: list[ContractNode],
         output_path: Path,
     ) -> None:
         exporter = BaseExcelExporter[Any]()
@@ -67,7 +67,7 @@ class ContractPrepareExcelExporter:
             ContractPrepareMapper.map(contract)
         ]
         cost_node_dtos = (
-            CostNodePrepareMapper.map(cost_nodes)
+            ContractNodePrepareMapper.map(cost_nodes)
             if cost_nodes else []
         )
 
@@ -80,7 +80,7 @@ class ContractPrepareExcelExporter:
         exporter.add_sheet(
             sheet_name=self.COST_NODES_SHEET,
             items=cost_node_dtos,
-            columns=COST_NODE_PREPARE_COLUMNS,
+            columns=CONTRACT_NODE_PREPARE_COLUMNS,
         )
 
         exporter.save(output_path)

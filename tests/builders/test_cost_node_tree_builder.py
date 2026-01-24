@@ -1,7 +1,7 @@
 import uuid
 from decimal import Decimal
 
-from contract_costs.builders.cost_node_tree_builder import DefaultCostNodeTreeBuilder
+from contract_costs.builders.contract_node_tree_builder import DefaultContractNodeTreeBuilder
 
 
 class TestCostNodeTreeBuilder:
@@ -10,7 +10,7 @@ class TestCostNodeTreeBuilder:
     def test_default_cost_node_tree_builder_creates_tree(self,cost_node_tree_1) -> None:
         contract_id = uuid.uuid4()
 
-        node_tree_builder = DefaultCostNodeTreeBuilder()
+        node_tree_builder = DefaultContractNodeTreeBuilder()
 
         nodes = node_tree_builder.build(contract_id,[cost_node_tree_1])
 

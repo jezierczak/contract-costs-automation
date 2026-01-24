@@ -4,28 +4,28 @@ from uuid import uuid4
 
 import pytest
 
-from contract_costs.builders.cost_node_tree_builder import DefaultCostNodeTreeBuilder
+from contract_costs.builders.contract_node_tree_builder import DefaultContractNodeTreeBuilder
 from contract_costs.model.amount import VatRate, Amount
 from contract_costs.model.company import Company, Address, BankAccount, CompanyType, Contact
 from contract_costs.model.contract import ContractStarter, ContractStatus, Contract
 from datetime import date
 
-from contract_costs.model.cost_node import CostNodeInput, CostNode
+from contract_costs.model.contract_node import ContractNodeInput, ContractNode
 from contract_costs.model.invoice_line import InvoiceLine
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 from contract_costs.repository.inmemory.contract_repository import InMemoryContractRepository
-from contract_costs.repository.inmemory.cost_node_repository import InMemoryCostNodeRepository
+from contract_costs.repository.inmemory.contract_node_repository import InMemoryContractNodeRepository
 from contract_costs.services.contracts.create_contract_service import CreateContractService
-from contract_costs.services.contracts.validators.cost_node_tree_validator import CostNodeEntityValidator
+from contract_costs.services.contracts.validators.contract_node_tree_validator import ContractNodeEntityValidator
 
 
 @pytest.fixture
 def create_contract_service():
     return CreateContractService(
         contract_repository=InMemoryContractRepository(),
-        cost_node_repository=InMemoryCostNodeRepository(),
-        cost_node_tree_builder=DefaultCostNodeTreeBuilder(),
-        cost_node_tree_validator=CostNodeEntityValidator()
+        contract_node_repository=InMemoryContractNodeRepository(),
+        contract_node_tree_builder=DefaultContractNodeTreeBuilder(),
+        contract_node_tree_validator=ContractNodeEntityValidator()
     )
 
 @pytest.fixture
@@ -116,7 +116,7 @@ def contract_2(contract_owner,contract_company) -> Contract:
     )
 
 @pytest.fixture
-def cost_node_tree_1() -> CostNodeInput:
+def cost_node_tree_1() -> ContractNodeInput:
     return {
         "code":"WYB",
         "name":"wyburzenia",
@@ -150,8 +150,8 @@ def invoice_line_1(contract_1) -> InvoiceLine:
         id = uuid4(),
         invoice_id= uuid4(),
         contract_id= contract_1.id,
-        cost_node_id= uuid4(),
-        cost_type_id= uuid4(),
+        contract_node_id= uuid4(),
+        value_type_id= uuid4(),
         quantity= Decimal(2),
         unit = UnitOfMeasure.TON,
         amount = Amount(Decimal("10000"),VatRate.VAT_23),
@@ -165,8 +165,8 @@ def invoice_line_2(contract_2) -> InvoiceLine:
         id=uuid4(),
         invoice_id=uuid4(),
         contract_id=contract_2.id,
-        cost_node_id=uuid4(),
-        cost_type_id=uuid4(),
+        contract_node_id=uuid4(),
+        value_type_id=uuid4(),
         quantity=Decimal(1),
         unit=UnitOfMeasure.METER,
         amount=Amount(Decimal("5000"), VatRate.VAT_8),
@@ -180,7 +180,7 @@ def node_contract_id():
 
 @pytest.fixture
 def root_node(node_contract_id):
-    return CostNode(
+    return ContractNode(
         id=uuid4(),
         contract_id=node_contract_id,
         parent_id=None,
@@ -195,7 +195,7 @@ def root_node(node_contract_id):
 
 @pytest.fixture
 def child_node(node_contract_id, root_node):
-    return CostNode(
+    return ContractNode(
         id=uuid4(),
         contract_id=node_contract_id,
         parent_id=root_node.id,

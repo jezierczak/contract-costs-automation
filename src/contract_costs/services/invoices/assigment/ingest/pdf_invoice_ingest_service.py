@@ -87,6 +87,8 @@ class PdfInvoiceIngestService(InvoiceIngestService):
                 action=InvoiceApplyAction.APPLIED,
                 invoice_number=invoice.invoice_number,
                 old_invoice_number=update.old_invoice_number,
+                buyer_role=update.buyer.role,
+                seller_role=update.seller.role
             )
 
         return results

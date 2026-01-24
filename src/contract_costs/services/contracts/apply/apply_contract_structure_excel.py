@@ -4,18 +4,19 @@ from decimal import Decimal
 from typing import Any
 
 import contract_costs.config as cfg
+from contract_costs.config import CONTRACT_EXCEL_NAME
 
 from contract_costs.infrastructure.excel.excel_loader import ExcelLoader
 from contract_costs.infrastructure.excel.contracts.contract_prepare_columns import (
     CONTRACT_PREPARE_COLUMNS,
 )
 from contract_costs.infrastructure.excel.contracts.cost_node_prepare_columns import (
-    COST_NODE_PREPARE_COLUMNS,
+    CONTRACT_NODE_PREPARE_COLUMNS,
 )
 
 from contract_costs.model.company import CompanyType
 from contract_costs.model.contract import ContractStarter, ContractStatus
-from contract_costs.model.cost_node import CostNodeInput
+from contract_costs.model.contract_node import ContractNodeInput
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 
 from contract_costs.services.companies.company_evaluate_orchestrator import (
@@ -39,7 +40,7 @@ class ApplyContractStructureExcelService:
     """
 
     CONTRACT_SHEET = cfg.CONTRACT_METADATA_SHEET_NAME
-    COST_NODES_SHEET = cfg.CONTRACT_ITEMS_SHEET_NAME
+    CONTRACT_NODES_SHEET = cfg.CONTRACT_ITEMS_SHEET_NAME
 
 
     def __init__(
@@ -57,10 +58,10 @@ class ApplyContractStructureExcelService:
     # =====================================================
 
     def apply_new(self, excel_path: Path) -> None:
-        starter, cost_nodes = self._load_from_excel(excel_path)
+        starter, contract_nodes = self._load_from_excel(excel_path)
 
         self._create_contract.init(starter)
-        self._create_contract.add_cost_node_tree(cost_nodes)
+        self._create_contract.add_contract_node_tree(contract_nodes)
         self._create_contract.execute()
 
     def apply_update(self, *, excel_path: Path, contract_id: UUID) -> None:
@@ -69,7 +70,7 @@ class ApplyContractStructureExcelService:
         self._update_contract.execute(
             contract_id=contract_id,
             contract_starter=starter,
-            cost_node_input=cost_nodes,
+            contract_node_input=cost_nodes,
         )
 
     # =====================================================
@@ -79,7 +80,7 @@ class ApplyContractStructureExcelService:
     def _load_from_excel(
         self,
         path: Path,
-    ) -> tuple[ContractStarter, list[CostNodeInput]]:
+    ) -> tuple[ContractStarter, list[ContractNodeInput]]:
 
         contract_rows = ExcelLoader.load(
             input_path=path,
@@ -92,16 +93,16 @@ class ApplyContractStructureExcelService:
                 "Contract sheet must contain exactly one row"
             )
 
-        cost_node_rows = ExcelLoader.load(
+        contract_node_rows = ExcelLoader.load(
             input_path=path,
-            sheet_name=self.COST_NODES_SHEET,
-            columns=COST_NODE_PREPARE_COLUMNS,
+            sheet_name=self.CONTRACT_NODES_SHEET,
+            columns=CONTRACT_NODE_PREPARE_COLUMNS,
         )
 
         starter = self._build_contract_starter(contract_rows[0])
-        cost_node_tree = self._build_cost_node_tree(cost_node_rows)
+        contract_node_tree = self._build_contract_node_tree(contract_node_rows)
 
-        return starter, cost_node_tree
+        return starter, contract_node_tree
 
     # =====================================================
     # BUILDERS
@@ -142,11 +143,11 @@ class ApplyContractStructureExcelService:
         )
 
     @staticmethod
-    def _build_cost_node_tree(
+    def _build_contract_node_tree(
             rows: list[dict[str, Any]],
-    ) -> list[CostNodeInput]:
+    ) -> list[ContractNodeInput]:
         """
-        Build cost node tree from flat rows.
+        Build contract node tree from flat rows.
 
         Final, backward-compatible behavior:
         - if exactly ONE root → use it
@@ -155,7 +156,7 @@ class ApplyContractStructureExcelService:
         - System always operates on a single tree
         """
 
-        nodes: dict[str, CostNodeInput] = {}
+        nodes: dict[str, ContractNodeInput] = {}
 
         # =====================
         # CREATE NODES
@@ -189,7 +190,7 @@ class ApplyContractStructureExcelService:
         # =====================
         # BUILD RELATIONS
         # =====================
-        roots: list[CostNodeInput] = []
+        roots: list[ContractNodeInput] = []
 
         for row in rows:
             node = nodes[row["Code"]]
@@ -213,7 +214,7 @@ class ApplyContractStructureExcelService:
             return roots
 
         # MULTIPLE ROOTS → create technical root
-        technical_root: CostNodeInput = {
+        technical_root: ContractNodeInput = {
             "code": "ROOT",
             "name": "Contract root",
             "budget": None,

@@ -92,7 +92,7 @@ def handle_prepare_contract(args) -> None:
         output_path = fm.prepare_target()
         exporter.export_existing(
             contract=contract,
-            cost_nodes=services.cost_node_repository.list_by_contract(contract.id),
+            cost_nodes=services.contract_node_repository.list_by_contract(contract.id),
             output_path=output_path,
         )
 

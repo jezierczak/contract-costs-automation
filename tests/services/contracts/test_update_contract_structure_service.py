@@ -5,18 +5,18 @@ from uuid import uuid4
 
 import pytest
 
-from contract_costs.builders.cost_node_tree_builder import DefaultCostNodeTreeBuilder
+from contract_costs.builders.contract_node_tree_builder import DefaultContractNodeTreeBuilder
 from contract_costs.model.company import Company, CompanyType
 from contract_costs.model.contract import Contract, ContractStarter, ContractStatus
-from contract_costs.model.cost_node import CostNode
+from contract_costs.model.contract_node import ContractNode
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 from contract_costs.repository.inmemory.contract_repository import InMemoryContractRepository
-from contract_costs.repository.inmemory.cost_node_repository import InMemoryCostNodeRepository
+from contract_costs.repository.inmemory.contract_node_repository import InMemoryContractNodeRepository
 from contract_costs.services.contracts.apply.update_contract_structure_service import (
     UpdateContractStructureService,
 )
-from contract_costs.services.contracts.validators.cost_node_tree_validator import (
-    CostNodeEntityValidator,
+from contract_costs.services.contracts.validators.contract_node_tree_validator import (
+    ContractNodeEntityValidator,
 )
 
 # ---------------------------------------------------------------------
@@ -81,7 +81,7 @@ def contract_1(contract_starter_1) -> Contract:
 # ---------------------------------------------------------------------
 
 @pytest.fixture
-def cost_node_tree_input():
+def contract_node_tree_input():
     return [
         {
             "code": "ROOT",
@@ -116,16 +116,16 @@ def contract_repo():
 
 @pytest.fixture
 def cost_node_repo():
-    return InMemoryCostNodeRepository()
+    return InMemoryContractNodeRepository()
 
 
 @pytest.fixture
 def update_contract_structure_service(contract_repo, cost_node_repo):
     return UpdateContractStructureService(
         contract_repository=contract_repo,
-        cost_node_repository=cost_node_repo,
-        cost_node_tree_builder=DefaultCostNodeTreeBuilder(),
-        cost_node_tree_validator=CostNodeEntityValidator(),
+        contract_node_repository=cost_node_repo,
+        contract_node_tree_builder=DefaultContractNodeTreeBuilder(),
+        contract_node_tree_validator=ContractNodeEntityValidator(),
     )
 
 
@@ -136,13 +136,13 @@ def update_contract_structure_service(contract_repo, cost_node_repo):
 def test_update_contract_structure_contract_not_found(
     update_contract_structure_service,
     contract_starter_1,
-    cost_node_tree_input,
+        contract_node_tree_input,
 ):
     with pytest.raises(ValueError, match="Contract does not exist"):
         update_contract_structure_service.execute(
             contract_id=uuid4(),
             contract_starter=contract_starter_1,
-            cost_node_input=cost_node_tree_input,
+            contract_node_input=contract_node_tree_input,
         )
 
 
@@ -152,14 +152,14 @@ def test_update_contract_structure_hard_replace_when_no_costs(
     cost_node_repo,
     contract_1,
     contract_starter_1,
-    cost_node_tree_input,
+        contract_node_tree_input,
 ):
     contract_repo.add(contract_1)
 
     update_contract_structure_service.execute(
         contract_id=contract_1.id,
         contract_starter=contract_starter_1,
-        cost_node_input=cost_node_tree_input,
+        contract_node_input=contract_node_tree_input,
     )
 
     nodes = cost_node_repo.list_by_contract(contract_1.id)
@@ -175,7 +175,7 @@ def test_update_contract_structure_safe_replace_updates_existing_node(
 monkeypatch):
     contract_repo.add(contract_1)
 
-    root = CostNode(
+    root = ContractNode(
         id=uuid4(),
         contract_id=contract_1.id,
         code="ROOT",
@@ -189,8 +189,8 @@ monkeypatch):
     cost_node_repo.add(root)
 
     # symulacja: node ma już koszty
-    monkeypatch.setattr(cost_node_repo, "has_costs", lambda _cid: True)
-    monkeypatch.setattr(cost_node_repo, "node_has_costs", lambda _nid: True)
+    monkeypatch.setattr(cost_node_repo, "has_values", lambda _cid: True)
+    monkeypatch.setattr(cost_node_repo, "node_has_values", lambda _nid: True)
 
     update_contract_structure_service.execute(
         contract_id=contract_1.id,
@@ -198,7 +198,7 @@ monkeypatch):
             **contract_1.__dict__,
             "name": "Updated Contract",
         },
-        cost_node_input=[
+        contract_node_input=[
             {
                 "code": "ROOT",
                 "name": "Updated Root",
@@ -224,10 +224,10 @@ def test_update_contract_structure_rejects_empty_cost_node_input(
 ):
     contract_repo.add(contract_1)
 
-    with pytest.raises(ValueError, match="At least one cost node root is required"):
+    with pytest.raises(ValueError, match="At least one contract node root is required"):
         update_contract_structure_service.execute(
             contract_id=contract_1.id,
             contract_starter=contract_1.__dict__,
-            cost_node_input=[],
+            contract_node_input=[],
         )
 

@@ -3,10 +3,12 @@ from dataclasses import replace
 from uuid import uuid4, UUID
 
 from contract_costs.model.invoice_line import InvoiceLine
+from contract_costs.model.value_direction import ValueDirection
 from contract_costs.repository.contract_repository import ContractRepository
-from contract_costs.repository.cost_node_repository import CostNodeRepository
-from contract_costs.repository.cost_type_repository import CostTypeRepository
+from contract_costs.repository.contract_node_repository import ContractNodeRepository
+from contract_costs.repository.value_type_repository import ValueTypeRepository
 from contract_costs.repository.invoice_line_repository import InvoiceLineRepository
+from contract_costs.services.invoices.assigment.ingest.dto.invoice_assignment_facts import InvoiceAssignmentFacts
 from contract_costs.services.invoices.assigment.ingest.dto.invoice_ref_result import InvoiceRefResult, InvoiceApplyAction
 from contract_costs.services.invoices.assigment.invoice_sources.dto.common import InvoiceLineUpdate
 
@@ -28,31 +30,36 @@ class InvoiceLineUpdateService:
     def __init__(self,
                  invoice_line_repository: InvoiceLineRepository,
                  contract_repository: ContractRepository,
-                cost_node_repository: CostNodeRepository,
-                cost_type_repository: CostTypeRepository
+                 cost_node_repository: ContractNodeRepository,
+                 cost_type_repository: ValueTypeRepository
                  ) -> None:
 
         self._invoice_line_repository = invoice_line_repository
         self._contract_repository = contract_repository
-        self._cost_node_repository = cost_node_repository
-        self._cost_type_repository = cost_type_repository
+        self._contract_node_repository = cost_node_repository
+        self._value_type_repository = cost_type_repository
 
     def apply(
         self,
         lines: list[InvoiceLineUpdate],
         ref_map: dict[str, InvoiceRefResult],
-    ) ->  set[UUID]:
+    ) ->  dict[UUID,InvoiceAssignmentFacts]:
         # Excel is the source of truth for invoice-line relations.
         # If invoice_number is changed, line references MUST be updated in the batch.
         # The system does not auto-migrate invoice lines.
-        invoice_line_states: dict[UUID, list[bool]] = defaultdict(list)
 
-        invoice_lines_ids_updated: defaultdict[UUID,list[UUID]] = defaultdict(list) #fist is invoice id, second updated invoice_line_ids,
+        # invoice_line_states: dict[UUID, list[bool]] = defaultdict(list)
+        # invoice_lines_directions: dict[UUID, set[ValueDirection]] = defaultdict(set)
+
+        invoice_lines_updated: defaultdict[UUID,list[InvoiceLine]] = defaultdict(list) #fist is invoice id, second updated invoice_line_ids,
 
         invoice_ids_from_excel: set[UUID] = {
             ref.invoice_id
             for ref in ref_map.values()
             if ref.invoice_id is not None
+        }
+        value_type_directions: dict[UUID, ValueDirection] = {
+            value_type.id: value_type.direction for value_type in self._value_type_repository.list()
         }
 
         for update in lines:
@@ -93,36 +100,48 @@ class InvoiceLineUpdateService:
                 "Contract",
             )
 
-            cost_node_id = resolve_or_none(
-                self._cost_node_repository.get_by_code,
-                update.cost_node_id,
-                "CostNode",
+            contract_node_id = resolve_or_none(
+                self._contract_node_repository.get_by_code,
+                update.contract_node_id,
+                "ContractNode",
             )
 
-            cost_type_id = resolve_or_none(
-                self._cost_type_repository.get_by_code,
-                update.cost_type_id,
-                "CostType",
+            value_type_id = resolve_or_none(
+                self._value_type_repository.get_by_code,
+                update.value_type_code,
+                "ValueType",
             )
+
+
 
             if resolved_invoice_id:
                 if update.invoice_line_id is None:
-                    new_id = self._create_line(update, resolved_invoice_id, contract_id, cost_node_id, cost_type_id)
-                    invoice_lines_ids_updated[resolved_invoice_id].append(new_id)  # adding updated invoice lines ids by invoice_id
+                    new_id = self._create_line(update, resolved_invoice_id, contract_id, contract_node_id, value_type_id)
+                    line = self._invoice_line_repository.get(new_id)
+                    if line is None:
+                        raise RuntimeError(f"InvoiceLine not found after create: {new_id}")
+                    invoice_lines_updated[resolved_invoice_id].append(line)  # adding updated invoice lines ids by invoice_id
                 else:
-                    self._update_line(update, resolved_invoice_id, contract_id, cost_node_id, cost_type_id)
-                    invoice_lines_ids_updated[resolved_invoice_id].append(update.invoice_line_id) #adding updated invoice lines ids by invoice_id
+                    self._update_line(update, resolved_invoice_id, contract_id, contract_node_id, value_type_id)
+                    line = self._invoice_line_repository.get(update.invoice_line_id)
+                    if line is None:
+                        raise RuntimeError(f"InvoiceLine not found: {update.invoice_line_id}")
 
-                if resolved_invoice_id is not None:
-                    invoice_line_states[resolved_invoice_id].append(
-                        self._is_line_complete(update)
-                    )
+                    invoice_lines_updated[resolved_invoice_id].append(line) #adding updated invoice lines ids by invoice_id
+
+                # if resolved_invoice_id is not None:
+                #     invoice_line_states[resolved_invoice_id].append(
+                #         self._is_line_complete(update)
+                #     )
+                #     if value_type_id is not None:
+                #         value_type = self._value_type_repository.get(value_type_id)
+                #         if value_type:
+                #             invoice_lines_directions[resolved_invoice_id].add(value_type.direction)
+        invoice_lines_ids_updated: dict[UUID, list[UUID]] = {}
+        for inv_id, lines_up in invoice_lines_updated.items():
+            invoice_lines_ids_updated[inv_id] = [line_up.id for line_up in lines_up]
 
         self._delete_items_erased_from_excel(invoice_ids_from_excel,invoice_lines_ids_updated)
-
-        fully_assigned_invoice_ids ={
-            inv_id for inv_id,states in invoice_line_states.items() if all(states)
-        }
 
         logger.info(
             "Invoice lines processed: total=%d, invoices_affected=%d",
@@ -130,7 +149,26 @@ class InvoiceLineUpdateService:
             len(invoice_lines_ids_updated),
         )
 
-        return fully_assigned_invoice_ids
+        invoice_assignment_facts: dict[UUID, InvoiceAssignmentFacts] = {}
+
+        for ref in ref_map.values():
+            if not ref.invoice_id:
+                continue
+            if ref.action != InvoiceApplyAction.APPLIED:
+                continue
+
+            # states = invoice_line_states.get(ref.invoice_id, [])
+            # directions = invoice_lines_directions.get(ref.invoice_id, set())
+
+            invoice_assignment_facts[ref.invoice_id] = InvoiceAssignmentFacts(
+                invoice_id=ref.invoice_id,
+                invoice_lines=invoice_lines_updated[ref.invoice_id],
+                buyer_role=ref.buyer_role,
+                seller_role=ref.seller_role,
+                value_type_directions=value_type_directions
+            )
+
+        return invoice_assignment_facts
 
     def _delete_items_erased_from_excel(
             self,
@@ -158,13 +196,6 @@ class InvoiceLineUpdateService:
                     invoice_id,
                 )
 
-    @staticmethod
-    def _is_line_complete(update: InvoiceLineUpdate) -> bool:
-        return (
-                update.contract_id is not None and
-                update.cost_node_id is not None and
-                update.cost_type_id is not None
-        )
 
     def _create_line(
         self,
@@ -183,8 +214,8 @@ class InvoiceLineUpdateService:
             unit=update.unit,
             amount=update.amount,
             contract_id=contract_id,
-            cost_node_id=cost_node_id,
-            cost_type_id=cost_type_id,
+            contract_node_id=cost_node_id,
+            value_type_id=cost_type_id,
         )
 
         self._invoice_line_repository.add(line)
@@ -195,8 +226,8 @@ class InvoiceLineUpdateService:
         update: InvoiceLineUpdate,
         invoice_id: UUID | None,
         contract_id: UUID | None,
-        cost_node_id: UUID | None,
-        cost_type_id: UUID | None
+        contract_node_id: UUID | None,
+        value_type_id: UUID | None
     ) -> None:
         if update.invoice_line_id:
             line = self._invoice_line_repository.get(update.invoice_line_id)
@@ -213,8 +244,8 @@ class InvoiceLineUpdateService:
             unit=update.unit,
             amount=update.amount,
             contract_id=contract_id,
-            cost_node_id=cost_node_id,
-            cost_type_id=cost_type_id,
+            contract_node_id=contract_node_id,
+            value_type_id=value_type_id,
         )
 
         self._invoice_line_repository.update(updated)

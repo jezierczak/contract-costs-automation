@@ -41,3 +41,6 @@ class InvoiceDetailsView:
     total_vat: Decimal
     total_gross: Decimal
     total_not_evidenced: Decimal
+
+    contract_codes: str | None
+    direction: str | None

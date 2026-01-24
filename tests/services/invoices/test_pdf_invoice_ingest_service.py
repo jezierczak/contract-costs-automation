@@ -15,24 +15,22 @@ from contract_costs.services.invoices.assigment.ingest.dto.invoice_ref_result im
 )
 
 
-def test_pdf_ingest_creates_invoice(invoice_repo,pdf_ingest_service) -> None:
+def test_pdf_ingest_creates_invoice(invoice_repo,pdf_ingest_service,owner_company,client_company) -> None:
     # -------------------------------------------------
     # GIVEN
     # -------------------------------------------------
     repo = invoice_repo
     service = pdf_ingest_service
 
-    buyer_id = uuid4()
-    seller_id = uuid4()
-
     update = ResolvedInvoiceUpdate(
         command=InvoiceCommand.APPLY,
         invoice_number="FV/01/2024",
+        invoice_id=None,
         old_invoice_number=None,
         invoice_date=None,
         selling_date=None,
-        buyer=buyer_id,
-        seller=seller_id,
+        buyer=owner_company,
+        seller=client_company,
         payment_method=PaymentMethod.UNKNOWN,
         due_date=None,
         paid_date=None,
@@ -60,32 +58,30 @@ def test_pdf_ingest_creates_invoice(invoice_repo,pdf_ingest_service) -> None:
     assert invoice is not None
 
     assert invoice.invoice_number == "FV/01/2024"
-    assert invoice.buyer == buyer_id
-    assert invoice.seller == seller_id
+    assert invoice.buyer_id == owner_company.id
+    assert invoice.seller_id == client_company.id
     assert invoice.status == InvoiceStatus.NEW_COST
     assert invoice.payment_method == PaymentMethod.UNKNOWN
     assert invoice.payment_status == PaymentStatus.UNKNOWN
     assert invoice.scan_filename == "raw/FV01.pdf"
 
 
-def test_pdf_ingest_creates_duplicate_on_ocr_collision(invoice_repo,pdf_ingest_service) -> None:
+def test_pdf_ingest_creates_duplicate_on_ocr_collision(invoice_repo,pdf_ingest_service,owner_company,client_company) -> None:
     # -------------------------------------------------
     # GIVEN
     # -------------------------------------------------
     repo = invoice_repo
     service = pdf_ingest_service
 
-    buyer_id = uuid4()
-    seller_id = uuid4()
-
     update = ResolvedInvoiceUpdate(
         command=InvoiceCommand.APPLY,
         invoice_number="FV/01/2024",
+        invoice_id=None,
         old_invoice_number=None,
         invoice_date=None,
         selling_date=None,
-        buyer=buyer_id,
-        seller=seller_id,
+        buyer=owner_company,
+        seller=client_company,
         payment_method=PaymentMethod.UNKNOWN,
         due_date=None,
         paid_date=None,
@@ -120,21 +116,20 @@ def test_pdf_ingest_creates_duplicate_on_ocr_collision(invoice_repo,pdf_ingest_s
     ref_2 = ref_map_2["FV/01/2024-duplicate"]
     assert ref_2.action == InvoiceApplyAction.APPLIED
 
-def test_pdf_ingest_requires_invoice_number(invoice_repo, pdf_ingest_service) -> None:
+def test_pdf_ingest_requires_invoice_number(invoice_repo, pdf_ingest_service,owner_company,client_company) -> None:
     # -------------------------------------------------
     # GIVEN
     # -------------------------------------------------
-    buyer_id = uuid4()
-    seller_id = uuid4()
 
     update = ResolvedInvoiceUpdate(
         command=InvoiceCommand.APPLY,
         invoice_number="",  # ❌ brak numeru
+        invoice_id=None,
         old_invoice_number=None,
         invoice_date=None,
         selling_date=None,
-        buyer=buyer_id,
-        seller=seller_id,
+        buyer=owner_company,
+        seller=client_company,
         payment_method=PaymentMethod.UNKNOWN,
         due_date=None,
         paid_date=None,

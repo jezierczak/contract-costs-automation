@@ -19,8 +19,8 @@ class TestInvoiceLine:
                 vat_rate=VatRate.VAT_23,
             ),
             contract_id=uuid4(),
-            cost_node_id=uuid4(),
-            cost_type_id=uuid4(),
+            contract_node_id=uuid4(),
+            value_type_id=uuid4(),
             description="Test line",
             item_name="Test Item"
         )
@@ -40,8 +40,8 @@ class TestInvoiceLine:
                 vat_rate=VatRate.VAT_8,
             ),
             contract_id=uuid4(),
-            cost_node_id=uuid4(),
-            cost_type_id=uuid4(),
+            contract_node_id=uuid4(),
+            value_type_id=uuid4(),
             description="Work",
             item_name="Test Work Name"
         )

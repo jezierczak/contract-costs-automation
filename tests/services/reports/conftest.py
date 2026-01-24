@@ -4,16 +4,17 @@ from uuid import uuid4
 import pytest
 
 from contract_costs.model.contract import Contract
-from contract_costs.model.cost_node import CostNode
-from contract_costs.model.cost_type import CostType
+from contract_costs.model.contract_node import ContractNode
+from contract_costs.model.value_direction import ValueDirection
+from contract_costs.model.value_type import ValueType
 from contract_costs.model.invoice import Invoice, InvoiceStatus, PaymentMethod, PaymentStatus
 from contract_costs.model.invoice_line import InvoiceLine
 from contract_costs.model.amount import Amount, VatRate
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 
 from contract_costs.repository.inmemory.contract_repository import InMemoryContractRepository
-from contract_costs.repository.inmemory.cost_node_repository import InMemoryCostNodeRepository
-from contract_costs.repository.inmemory.cost_type_repository import InMemoryCostTypeRepository
+from contract_costs.repository.inmemory.contract_node_repository import InMemoryContractNodeRepository
+from contract_costs.repository.inmemory.value_type_repository import InMemoryValueTypeRepository
 from contract_costs.repository.inmemory.invoice_repository import InMemoryInvoiceRepository
 from contract_costs.repository.inmemory.invoice_line_repository import InMemoryInvoiceLineRepository
 
@@ -40,7 +41,7 @@ def contract():
 
 @pytest.fixture
 def cost_nodes(contract):
-    root = CostNode(
+    root = ContractNode(
         id=uuid4(),
         contract_id=contract.id,
         code="ROOT",
@@ -52,7 +53,7 @@ def cost_nodes(contract):
         is_active=True,
     )
 
-    leaf = CostNode(
+    leaf = ContractNode(
         id=uuid4(),
         contract_id=contract.id,
         code="MAT",
@@ -68,12 +69,13 @@ def cost_nodes(contract):
 
 
 @pytest.fixture
-def cost_type():
-    return CostType(
+def value_type():
+    return ValueType(
         id=uuid4(),
         code="MATERIAL",
         name="Material",
         description=None,
+        direction=ValueDirection.COST,
         is_active=True,
     )
 
@@ -98,7 +100,7 @@ def invoice(contract):
 
 
 @pytest.fixture
-def invoice_line(contract,invoice, cost_nodes, cost_type):
+def invoice_line(contract, invoice, cost_nodes, value_type):
     _, leaf = cost_nodes
 
     return InvoiceLine(
@@ -110,16 +112,16 @@ def invoice_line(contract,invoice, cost_nodes, cost_type):
         unit=UnitOfMeasure.PIECE,
         amount=Amount(Decimal("100"), VatRate.VAT_23),
         contract_id=contract.id,          # ważne: kontrakt
-        cost_node_id=leaf.id,             # tylko LIŚĆ
-        cost_type_id=cost_type.id,
+        contract_node_id=leaf.id,             # tylko LIŚĆ
+        value_type_id=value_type.id,
     )
 
 
 @pytest.fixture
-def report_service(contract, cost_nodes, cost_type, invoice, invoice_line):
+def report_service(contract, cost_nodes, value_type, invoice, invoice_line):
     contract_repo = InMemoryContractRepository()
-    cost_node_repo = InMemoryCostNodeRepository()
-    cost_type_repo = InMemoryCostTypeRepository()
+    cost_node_repo = InMemoryContractNodeRepository()
+    cost_type_repo = InMemoryValueTypeRepository()
     invoice_repo = InMemoryInvoiceRepository()
     invoice_line_repo = InMemoryInvoiceLineRepository()
 
@@ -127,7 +129,7 @@ def report_service(contract, cost_nodes, cost_type, invoice, invoice_line):
     for n in cost_nodes:
         cost_node_repo.add(n)
 
-    cost_type_repo.add(cost_type)
+    cost_type_repo.add(value_type)
     invoice_repo.add(invoice)
     invoice_line_repo.add(invoice_line)
 

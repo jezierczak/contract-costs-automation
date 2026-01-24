@@ -3,9 +3,9 @@ from typing import Dict
 
 import pytest
 
-from contract_costs.model.cost_type import CostType
-from contract_costs.repository.cost_type_repository import CostTypeRepository
-from contract_costs.repository.inmemory.cost_type_repository import InMemoryCostTypeRepository
+from contract_costs.model.value_type import ValueType
+from contract_costs.repository.value_type_repository import ValueTypeRepository
+from contract_costs.repository.inmemory.value_type_repository import InMemoryValueTypeRepository
 
 
 # class InMemoryCostTypeRepository(CostTypeRepository):
@@ -36,4 +36,4 @@ from contract_costs.repository.inmemory.cost_type_repository import InMemoryCost
 
 @pytest.fixture
 def repo():
-    return InMemoryCostTypeRepository()
+    return InMemoryValueTypeRepository()

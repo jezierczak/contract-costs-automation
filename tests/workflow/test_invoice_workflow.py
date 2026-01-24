@@ -3,8 +3,8 @@ import pytest
 
 
 from contract_costs.repository.inmemory.contract_repository import InMemoryContractRepository
-from contract_costs.repository.inmemory.cost_node_repository import InMemoryCostNodeRepository
-from contract_costs.repository.inmemory.cost_type_repository import InMemoryCostTypeRepository
+from contract_costs.repository.inmemory.contract_node_repository import InMemoryContractNodeRepository
+from contract_costs.repository.inmemory.value_type_repository import InMemoryValueTypeRepository
 
 from contract_costs.repository.inmemory.invoice_repository import InMemoryInvoiceRepository
 from contract_costs.repository.inmemory.invoice_line_repository import InMemoryInvoiceLineRepository
@@ -17,8 +17,8 @@ def workflow_context():
         "invoice_line_repo": InMemoryInvoiceLineRepository(),
         "company_repo": InMemoryCompanyRepository(),
         "contract_repo": InMemoryContractRepository(),
-        "cost_node_repo": InMemoryCostNodeRepository(),
-        "cost_type_repo": InMemoryCostTypeRepository(),
+        "cost_node_repo": InMemoryContractNodeRepository(),
+        "cost_type_repo": InMemoryValueTypeRepository(),
     }
 
 

@@ -7,8 +7,8 @@ from contract_costs.repository.invoice_repository import InvoiceRepository
 from contract_costs.repository.invoice_line_repository import InvoiceLineRepository
 from contract_costs.repository.company_repository import CompanyRepository
 from contract_costs.repository.contract_repository import ContractRepository
-from contract_costs.repository.cost_node_repository import CostNodeRepository
-from contract_costs.repository.cost_type_repository import CostTypeRepository
+from contract_costs.repository.contract_node_repository import ContractNodeRepository
+from contract_costs.repository.value_type_repository import ValueTypeRepository
 from contract_costs.services.invoices.assigment.apply.commands.invoice_command import InvoiceCommand
 
 from contract_costs.services.invoices.assigment.prepare.dto.assignment_export_bundle import (
@@ -32,8 +32,8 @@ class GenerateInvoiceAssignmentBundleService:
         invoice_line_repository: InvoiceLineRepository,
         company_repository: CompanyRepository,
         contract_repository: ContractRepository,
-        cost_node_repository: CostNodeRepository,
-        cost_type_repository: CostTypeRepository,
+        cost_node_repository: ContractNodeRepository,
+        cost_type_repository: ValueTypeRepository,
         # exporter: InvoiceAssignmentExporter,
     ) -> None:
         self._invoice_repo = invoice_repository
@@ -195,8 +195,8 @@ class GenerateInvoiceAssignmentBundleService:
                     vat_rate=l.amount.vat_rate,
                     tax_treatment=l.amount.tax_treatment,
                     contract_id=l.contract_id,
-                    cost_node_id=l.cost_node_id,
-                    cost_type_id=l.cost_type_id,
+                    contract_node_id=l.contract_node_id,
+                    value_type_id=l.value_type_id,
                 )
                 for l in invoice_lines
             ]

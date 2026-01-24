@@ -1,14 +1,14 @@
 from decimal import Decimal
 from uuid import uuid4
 
-from contract_costs.model.cost_node import CostNode
+from contract_costs.model.contract_node import ContractNode
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 
 
 class TestCostNode:
 
     def test_cost_node_root(self) -> None:
-        node = CostNode(
+        node = ContractNode(
             id=uuid4(),
             contract_id=uuid4(),
             parent_id=None,
@@ -24,7 +24,7 @@ class TestCostNode:
 
     def test_cost_node_child(self) -> None:
         parent_id = uuid4()
-        node = CostNode(
+        node = ContractNode(
             id=uuid4(),
             contract_id=uuid4(),
             parent_id=parent_id,

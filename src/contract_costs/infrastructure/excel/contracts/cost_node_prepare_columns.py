@@ -2,11 +2,11 @@ from contract_costs.infrastructure.excel.excel_column import (
     ExcelColumn,
     ExcelColumnType,
 )
-from contract_costs.services.contracts.prepare.dto.cost_node_prepare_dto import (
-    CostNodePrepareDTO,
+from contract_costs.services.contracts.prepare.dto.contract_node_prepare_dto import (
+    ContractNodePrepareDTO,
 )
 
-COST_NODE_PREPARE_COLUMNS: list[ExcelColumn[CostNodePrepareDTO]] = [
+CONTRACT_NODE_PREPARE_COLUMNS: list[ExcelColumn[ContractNodePrepareDTO]] = [
 
     # =====================
     # BUSINESS KEYS

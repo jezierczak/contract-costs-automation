@@ -5,7 +5,10 @@ from uuid import uuid4
 
 from contract_costs.model.company import CompanyType
 from contract_costs.model.invoice import Invoice, InvoiceStatus
+from contract_costs.model.value_direction import ValueDirection
 from contract_costs.services.invoices.assigment.apply.commands.invoice_command import InvoiceCommand
+from contract_costs.services.invoices.assigment.ingest.completion_validator.invoice_completion_validator import \
+    InvoiceCompletionValidator
 from contract_costs.services.invoices.assigment.ingest.dto.invoice_ref_result import (
     InvoiceRefResult,
     InvoiceApplyAction,
@@ -43,6 +46,10 @@ class ExcelInvoiceIngestService(InvoiceIngestService):
 
             existing = self._get_existing_invoice(update)
 
+            buyer = update.buyer
+            seller = update.seller
+            # update_direction = self.resolve_direction(buyer,seller)
+
             # -------------------------------------------------
             # SKIP FINALIZED
             # -------------------------------------------------
@@ -59,6 +66,9 @@ class ExcelInvoiceIngestService(InvoiceIngestService):
                     action=InvoiceApplyAction.SKIPPED,
                     invoice_number=existing.invoice_number,
                     old_invoice_number=update.old_invoice_number,
+                    buyer_role=buyer.role,
+                    seller_role=seller.role
+
                 )
                 continue
 
@@ -72,6 +82,8 @@ class ExcelInvoiceIngestService(InvoiceIngestService):
                         action=InvoiceApplyAction.SKIPPED,
                         invoice_number=update.invoice_number,
                         old_invoice_number=update.old_invoice_number,
+                        buyer_role=buyer.role,
+                        seller_role=seller.role
                     )
                     continue
 
@@ -84,6 +96,8 @@ class ExcelInvoiceIngestService(InvoiceIngestService):
                     action=InvoiceApplyAction.DELETED,
                     invoice_number=existing.invoice_number,
                     old_invoice_number=update.old_invoice_number,
+                    buyer_role=buyer.role,
+                    seller_role=seller.role
                 )
                 continue
 
@@ -92,10 +106,7 @@ class ExcelInvoiceIngestService(InvoiceIngestService):
             # At least one side (buyer or seller) must be OWN
             # for APPLY / CREATE operations
             # -------------------------------------------------
-            buyer = update.buyer
-            seller = update.seller
-
-            if buyer.role != CompanyType.OWN and seller.role != CompanyType.OWN:
+            if not InvoiceCompletionValidator.resolve_invoice_direction(buyer.role,seller.role):
                 raise RuntimeError(
                     f"Invoice {update.invoice_number} has no OWN company "
                     f"(buyer={buyer.tax_number}, seller={seller.tax_number})"
@@ -127,6 +138,8 @@ class ExcelInvoiceIngestService(InvoiceIngestService):
                     action=InvoiceApplyAction.APPLIED,
                     invoice_number=update.invoice_number,
                     old_invoice_number=update.old_invoice_number,
+                    buyer_role=buyer.role,
+                    seller_role=seller.role
                 )
                 continue
 
@@ -156,30 +169,37 @@ class ExcelInvoiceIngestService(InvoiceIngestService):
             # -------------------------------------------------
             # OLD INVOICE NUMBER → logical delete
             # -------------------------------------------------
-            if update.old_invoice_number and update.old_invoice_number != update.invoice_number:
-                candidates = self._invoice_repository.get_for_assignment(
-                    InvoiceStatus.IN_PROGRESS
-                )
+            # LEGACY:
+            # old_invoice_number logic was used when invoice_number
+            # was the primary identity (pre invoice_id refactor).
+            # Kept temporarily for safety during transition.
 
-                old = next(
-                    (c for c in candidates if c.invoice_number == update.old_invoice_number),
-                    None,
-                )
-
-                if old is None:
-                    raise ValueError(
-                        f"Old invoice not found in IN_PROGRESS: {update.old_invoice_number}"
-                    )
-
-                self._invoice_repository.update(
-                    replace(old, status=InvoiceStatus.DELETED)
-                )
+            # if update.old_invoice_number and update.old_invoice_number != update.invoice_number:
+            #     candidates = self._invoice_repository.get_for_assignment(
+            #         InvoiceStatus.IN_PROGRESS
+            #     )
+            #
+            #     old = next(
+            #         (c for c in candidates if c.invoice_number == update.old_invoice_number),
+            #         None,
+            #     )
+            #
+            #     if old is None:
+            #         raise ValueError(
+            #             f"Old invoice not found in IN_PROGRESS: {update.old_invoice_number}"
+            #         )
+            #
+            #     self._invoice_repository.update(
+            #         replace(old, status=InvoiceStatus.DELETED)
+            #     )
 
             results[ref_key] = InvoiceRefResult(
                 invoice_id=invoice_id,
                 action=InvoiceApplyAction.APPLIED,
                 invoice_number=invoice.invoice_number,
                 old_invoice_number=update.old_invoice_number,
+                buyer_role=buyer.role,
+                seller_role=seller.role
             )
 
         return results

@@ -2,24 +2,26 @@ from uuid import uuid4
 
 import pytest
 
-from contract_costs.model.cost_type import CostType
-from contract_costs.services.cost_types.apply.commands.update_cost_type_command import UpdateCostTypeCommand
-from contract_costs.services.cost_types.apply.update_cost_type_service import UpdateCostTypeService
+from contract_costs.model.value_direction import ValueDirection
+from contract_costs.model.value_type import ValueType
+from contract_costs.services.value_types.apply.commands.update_value_type_command import UpdateValueTypeCommand
+from contract_costs.services.value_types.apply.update_value_type_service import UpdateValueTypeService
 
 
-def test_update_cost_type_changes_name_and_description(repo):
-    ct = CostType(
+def test_update_value_type_changes_name_and_description(repo):
+    ct = ValueType(
         id=uuid4(),
         code="MATERIAL",
         name="Old name",
         description="Old desc",
+        direction=ValueDirection.COST,
         is_active=True,
     )
     repo.add(ct)
 
-    service = UpdateCostTypeService(repo)
-    cmd = UpdateCostTypeCommand(
-        cost_type_id=ct.id,
+    service = UpdateValueTypeService(repo)
+    cmd = UpdateValueTypeCommand(
+        value_type_id=ct.id,
         name="New name",
         description="New desc",
     )
@@ -33,10 +35,10 @@ def test_update_cost_type_changes_name_and_description(repo):
 
 
 def test_update_non_existing_cost_type_raises(repo):
-    service = UpdateCostTypeService(repo)
+    service = UpdateValueTypeService(repo)
 
-    cmd = UpdateCostTypeCommand(
-        cost_type_id=uuid4(),
+    cmd = UpdateValueTypeCommand(
+        value_type_id=uuid4(),
         name="X",
         description=None,
     )

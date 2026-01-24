@@ -27,3 +27,6 @@ class InvoiceReviewItemView(BaseModel):
     total_not_evidenced: Decimal
     
     scan_filename: str | None
+
+    contract_codes: str | None
+    direction: str | None

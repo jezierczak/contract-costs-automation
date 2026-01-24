@@ -47,6 +47,8 @@ def _print_invoice_header(inv):
     print("-" * 120)
 
     print(f"Status:          {inv.status}")
+    print(f"Direction:       {inv.direction}")
+    print(f"Contracts:       {inv.contract_codes}")
     print(f"Invoice date:    {inv.invoice_date}")
     print(f"Selling date:    {inv.selling_date}")
     print(f"Due date:        {inv.due_date}")

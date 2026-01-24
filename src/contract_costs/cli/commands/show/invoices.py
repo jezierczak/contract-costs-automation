@@ -126,7 +126,7 @@ def handle_show_invoices(args) -> None:
         result_invoices = result_invoices[:args.last]
 
     print(
-        f"{fmt("NUMER FAKTURY", 65)} "
+        f"{fmt("NUMER FAKTURY", 50)} "
       
         f"{fmt("DATA FAKT.", 10)} "
         f"{fmt("NABYWCA", 10)} "
@@ -137,8 +137,10 @@ def handle_show_invoices(args) -> None:
         f"{fmt("NIEOPOD.", 10)} "
         f"{fmt("METODA PŁ.", 15)} "
         f"{fmt("STATUS PŁ.", 10)} "
-        f"{fmt("ZAPŁ. DO", 14)}"
+        f"{fmt("ZAPŁ. DO", 12)}"
         f"{fmt("STATUS", 18)} "
+        f"{fmt("DIRECTION", 10)} "
+        f"{fmt("CONTRACTS", 18)} "
     )
     NET: Decimal = Decimal("0.00")
     VAT: Decimal = Decimal("0.00")
@@ -147,7 +149,7 @@ def handle_show_invoices(args) -> None:
     for inv in result_invoices:
         # inv = invoice_details_service.get_invoice(i.id)
         print(
-            f"{fmt(inv.invoice_number, 65)} "
+            f"{fmt(inv.invoice_number, 50)} "
             
             f"{fmt(inv.invoice_date, 10)} "
             f"{fmt(inv.buyer_tax_number, 10)} "
@@ -158,8 +160,10 @@ def handle_show_invoices(args) -> None:
             f"{fmt(inv.total_not_evidenced, 10)} "
             f"{fmt(inv.payment_method, 15)} "
             f"{fmt(inv.payment_status, 10)} "
-            f"{fmt(inv.due_date, 14)}"
+            f"{fmt(inv.due_date, 12)}"
             f"{fmt(inv.status, 18)} "
+            f"{fmt(inv.direction, 10)} "
+            f"{fmt(inv.contract_codes, 18)} "
         )
         NET += inv.total_net
         VAT += inv.total_vat

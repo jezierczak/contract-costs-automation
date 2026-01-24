@@ -8,8 +8,8 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from contract_costs.infrastructure.excel.excel_common_methods import ExcelCommonMethods
 from contract_costs.repository.contract_repository import ContractRepository
-from contract_costs.repository.cost_node_repository import CostNodeRepository
-from contract_costs.repository.cost_type_repository import CostTypeRepository
+from contract_costs.repository.contract_node_repository import ContractNodeRepository
+from contract_costs.repository.value_type_repository import ValueTypeRepository
 from contract_costs.services.invoices.assigment.apply.commands.invoice_command import InvoiceCommand
 from contract_costs.services.invoices.assigment.prepare.dto.assignment_export_bundle import InvoiceAssignmentExportBundle
 from contract_costs.services.invoices.assigment.prepare.export.invoice_assignment_exporter import InvoiceAssignmentExporter
@@ -22,8 +22,8 @@ work_dir = cfg.WORK_DIR.resolve().as_posix()
 class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
     def __init__(self,
                  contract_repository: ContractRepository,
-                 cost_node_repository: CostNodeRepository,
-                 cost_type_repository:CostTypeRepository):
+                 cost_node_repository: ContractNodeRepository,
+                 cost_type_repository:ValueTypeRepository):
         self._contract_repository = contract_repository
         self._cost_node_repository = cost_node_repository
         self._cost_type_repository = cost_type_repository
@@ -197,8 +197,8 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
                 l.vat_rate.name if isinstance(l.vat_rate, Enum) else l.vat_rate,
                 l.tax_treatment.value,
                 contracts.get(l.contract_id),
-                cost_nodes.get(l.cost_node_id),
-                cost_types.get(l.cost_type_id),
+                cost_nodes.get(l.contract_node_id),
+                cost_types.get(l.value_type_id),
             ])
         ws.column_dimensions["A"].hidden = True
         return ws

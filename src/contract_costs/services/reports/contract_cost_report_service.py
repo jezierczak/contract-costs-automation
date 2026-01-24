@@ -4,8 +4,8 @@ from uuid import UUID
 
 from contract_costs.repository.contract_repository import ContractRepository
 from contract_costs.repository.invoice_line_repository import InvoiceLineRepository
-from contract_costs.repository.cost_node_repository import CostNodeRepository
-from contract_costs.repository.cost_type_repository import CostTypeRepository
+from contract_costs.repository.contract_node_repository import ContractNodeRepository
+from contract_costs.repository.value_type_repository import ValueTypeRepository
 
 
 class ContractCostReportService:
@@ -14,8 +14,8 @@ class ContractCostReportService:
         self,
         contract_repository: ContractRepository,
         invoice_line_repository: InvoiceLineRepository,
-        cost_node_repository: CostNodeRepository,
-        cost_type_repository: CostTypeRepository,
+        cost_node_repository: ContractNodeRepository,
+        cost_type_repository: ValueTypeRepository,
     ):
         self._contracts = contract_repository
         self._invoice_lines = invoice_line_repository
@@ -44,16 +44,16 @@ class ContractCostReportService:
         rows: list[dict] = []
 
         for line in lines:
-            if line.cost_node_id not in leaf_by_id:
+            if line.contract_node_id not in leaf_by_id:
                 continue  # tylko leaf
-            if line.cost_node_id is None:
+            if line.contract_node_id is None:
                 continue
-            if line.cost_node_id not in leaf_by_id:
+            if line.contract_node_id not in leaf_by_id:
                 continue
 
-            node = leaf_by_id[line.cost_node_id]
-            if line.cost_type_id:
-                cost_type = cost_types.get(line.cost_type_id)
+            node = leaf_by_id[line.contract_node_id]
+            if line.value_type_id:
+                cost_type = cost_types.get(line.value_type_id)
             else: cost_type = None
             # cost_type = cost_types.get(line.cost_type_id)
 

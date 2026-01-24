@@ -1,48 +1,50 @@
-
-from contract_costs.services.cost_types.create_cost_type_service import (
-    CreateCostTypeService,
+from contract_costs.model.value_direction import ValueDirection
+from contract_costs.services.value_types.create_value_type_service import (
+    CreateValueTypeService,
 )
 import pytest
 from uuid import uuid4
 
-from contract_costs.model.cost_type import CostType
-from contract_costs.repository.inmemory.cost_type_repository import (
-    InMemoryCostTypeRepository,
+from contract_costs.model.value_type import ValueType
+from contract_costs.repository.inmemory.value_type_repository import (
+    InMemoryValueTypeRepository,
 )
-from contract_costs.services.cost_types.cost_type_service import CostTypeService
+from contract_costs.services.value_types.value_type_service import ValueTypeService
 
 
 # ---------- fixtures ----------
 
 @pytest.fixture
 def repo():
-    return InMemoryCostTypeRepository()
+    return InMemoryValueTypeRepository()
 
 
 @pytest.fixture
 def service(repo):
-    return CostTypeService(repo)
+    return ValueTypeService(repo)
 
 
 @pytest.fixture
-def cost_type_material():
-    return CostType(
+def value_type_material():
+    return ValueType(
         id=uuid4(),
         code="MATERIAL",
         name="Materiały",
         description="Koszty materiałów",
+        direction=ValueDirection.COST,
         is_active=True,
     )
 
 
-def test_create_cost_type_success():
-    repo = InMemoryCostTypeRepository()
-    service = CreateCostTypeService(repo)
+def test_create_value_type_success():
+    repo = InMemoryValueTypeRepository()
+    service = CreateValueTypeService(repo)
 
     service.execute(
         code="MAT",
         name="Material",
         description="Material costs",
+        direction=ValueDirection.COST,
         is_active=True,
     )
 
@@ -51,14 +53,15 @@ def test_create_cost_type_success():
     assert ct.name == "Material"
 
 
-def test_create_cost_type_duplicate_code():
-    repo = InMemoryCostTypeRepository()
-    service = CreateCostTypeService(repo)
+def test_create_value_type_duplicate_code():
+    repo = InMemoryValueTypeRepository()
+    service = CreateValueTypeService(repo)
 
     service.execute(
         code="MAT",
         name="Material",
         description=None,
+        direction=ValueDirection.COST,
         is_active=True,
     )
 
@@ -67,6 +70,7 @@ def test_create_cost_type_duplicate_code():
             code="MAT",
             name="Material v2",
             description=None,
+            direction=ValueDirection.COST,
             is_active=True,
         )
 
@@ -74,8 +78,8 @@ def test_create_cost_type_duplicate_code():
 
 # ---------- add ----------
 
-def test_add_cost_type(service, repo, cost_type_material):
-    service.add(cost_type_material)
+def test_add_cost_type(service, repo, value_type_material):
+    service.add(value_type_material)
 
     saved = repo.get_by_code("MATERIAL")
     assert saved is not None
@@ -83,15 +87,16 @@ def test_add_cost_type(service, repo, cost_type_material):
     assert saved.is_active is True
 
 
-def test_add_duplicate_code_raises(service, cost_type_material):
-    service.add(cost_type_material)
+def test_add_duplicate_code_raises(service, value_type_material):
+    service.add(value_type_material)
 
-    with pytest.raises(ValueError, match="Cost type with this code already exists"):
+    with pytest.raises(ValueError, match="Value type with this code already exists"):
         service.add(
-            CostType(
+            ValueType(
                 id=uuid4(),
                 code="MATERIAL",  # ❌ ten sam code
                 name="Inne",
+                direction=ValueDirection.COST,
                 description=None,
             )
         )
@@ -99,31 +104,31 @@ def test_add_duplicate_code_raises(service, cost_type_material):
 
 # ---------- rename ----------
 
-def test_rename_cost_type(service, repo, cost_type_material):
-    repo.add(cost_type_material)
+def test_rename_cost_type(service, repo, value_type_material):
+    repo.add(value_type_material)
 
-    service.rename(cost_type_material.id, "Nowa nazwa")
+    service.rename(value_type_material.id, "Nowa nazwa")
 
-    updated = repo.get(cost_type_material.id)
+    updated = repo.get(value_type_material.id)
     assert updated.name == "Nowa nazwa"
 
 
 def test_rename_non_existing_raises(service):
-    with pytest.raises(ValueError, match="Cost type does not exist"):
+    with pytest.raises(ValueError, match="Value type does not exist"):
         service.rename(uuid4(), "X")
 
 
 # ---------- deactivate ----------
 
-def test_deactivate_cost_type(service, repo, cost_type_material):
-    repo.add(cost_type_material)
+def test_deactivate_cost_type(service, repo, value_type_material):
+    repo.add(value_type_material)
 
-    service.deactivate(cost_type_material.id)
+    service.deactivate(value_type_material.id)
 
-    updated = repo.get(cost_type_material.id)
+    updated = repo.get(value_type_material.id)
     assert updated.is_active is False
 
 
 def test_deactivate_non_existing_raises(service):
-    with pytest.raises(ValueError, match="Cost type does not exist"):
+    with pytest.raises(ValueError, match="Value type does not exist"):
         service.deactivate(uuid4())

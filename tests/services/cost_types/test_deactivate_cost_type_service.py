@@ -2,23 +2,25 @@ from uuid import uuid4
 
 import pytest
 
-from contract_costs.model.cost_type import CostType
-from contract_costs.services.cost_types.apply.commands.deactivate_cost_type_command import DeactivateCostTypeCommand
-from contract_costs.services.cost_types.apply.deactivate_cost_type_service import DeactivateCostTypeService
+from contract_costs.model.value_direction import ValueDirection
+from contract_costs.model.value_type import ValueType
+from contract_costs.services.value_types.apply.commands.deactivate_value_type_command import DeactivateValueTypeCommand
+from contract_costs.services.value_types.apply.deactivate_value_type_service import DeactivateValueTypeService
 
 
-def test_deactivate_cost_type(repo):
-    ct = CostType(
+def test_deactivate_value_type(repo):
+    ct = ValueType(
         id=uuid4(),
         code="SALARY",
         name="Salary",
         description=None,
+        direction=ValueDirection.COST,
         is_active=True,
     )
     repo.add(ct)
 
-    service = DeactivateCostTypeService(repo)
-    cmd = DeactivateCostTypeCommand(cost_type_id=ct.id)
+    service = DeactivateValueTypeService(repo)
+    cmd = DeactivateValueTypeCommand(value_type_id=ct.id)
 
     service.execute(cmd)
 
@@ -28,17 +30,18 @@ def test_deactivate_cost_type(repo):
 
 
 def test_deactivate_is_idempotent(repo):
-    ct = CostType(
+    ct = ValueType(
         id=uuid4(),
         code="TRANSPORT",
         name="Transport",
         description=None,
+        direction=ValueDirection.COST,
         is_active=False,
     )
     repo.add(ct)
 
-    service = DeactivateCostTypeService(repo)
-    cmd = DeactivateCostTypeCommand(cost_type_id=ct.id)
+    service = DeactivateValueTypeService(repo)
+    cmd = DeactivateValueTypeCommand(value_type_id=ct.id)
 
     service.execute(cmd)
 
@@ -47,8 +50,8 @@ def test_deactivate_is_idempotent(repo):
 
 
 def test_deactivate_non_existing_cost_type_raises(repo):
-    service = DeactivateCostTypeService(repo)
-    cmd = DeactivateCostTypeCommand(cost_type_id=uuid4())
+    service = DeactivateValueTypeService(repo)
+    cmd = DeactivateValueTypeCommand(value_type_id=uuid4())
 
     with pytest.raises(ValueError):
         service.execute(cmd)

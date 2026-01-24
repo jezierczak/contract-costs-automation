@@ -2,11 +2,11 @@ from decimal import Decimal
 
 import pytest
 
-from contract_costs.builders.cost_node_tree_builder import DefaultCostNodeTreeBuilder
+from contract_costs.builders.contract_node_tree_builder import DefaultContractNodeTreeBuilder
 from contract_costs.repository.inmemory.contract_repository import InMemoryContractRepository
-from contract_costs.repository.inmemory.cost_node_repository import InMemoryCostNodeRepository
+from contract_costs.repository.inmemory.contract_node_repository import InMemoryContractNodeRepository
 from contract_costs.services.contracts.create_contract_service import CreateContractService
-from contract_costs.services.contracts.validators.cost_node_tree_validator import CostNodeEntityValidator
+from contract_costs.services.contracts.validators.contract_node_tree_validator import ContractNodeEntityValidator
 
 
 class TestCreateContractService:
@@ -19,19 +19,19 @@ class TestCreateContractService:
     def test_create_contract_add_nodes_not_initialized(self,create_contract_service,cost_node_tree_1) -> None:
 
         with pytest.raises(RuntimeError, match="Contract not initialized"):
-            create_contract_service.add_cost_node_tree(cost_node_tree_1)
+            create_contract_service.add_contract_node_tree(cost_node_tree_1)
 
 
     def test_create_contract_without_nodes(self,contract_starter_1) -> None:
         con_repo = InMemoryContractRepository()
-        node_repo = InMemoryCostNodeRepository()
-        tree_builder = DefaultCostNodeTreeBuilder()
-        tree_validator = CostNodeEntityValidator()
+        node_repo = InMemoryContractNodeRepository()
+        tree_builder = DefaultContractNodeTreeBuilder()
+        tree_validator = ContractNodeEntityValidator()
         service = CreateContractService(
             contract_repository=con_repo,
-            cost_node_repository=node_repo,
-            cost_node_tree_builder=tree_builder,
-            cost_node_tree_validator=tree_validator
+            contract_node_repository=node_repo,
+            contract_node_tree_builder=tree_builder,
+            contract_node_tree_validator=tree_validator
         )
 
         service.init(contract_starter=contract_starter_1)
@@ -60,17 +60,17 @@ class TestCreateContractService:
 
     def test_create_contract_with_nodes(self, contract_starter_1,cost_node_tree_1) -> None:
         con_repo = InMemoryContractRepository()
-        node_repo = InMemoryCostNodeRepository()
-        tree_builder = DefaultCostNodeTreeBuilder()
+        node_repo = InMemoryContractNodeRepository()
+        tree_builder = DefaultContractNodeTreeBuilder()
         contract = CreateContractService(
             contract_repository=con_repo,
-            cost_node_repository=node_repo,
-            cost_node_tree_builder=tree_builder,
-            cost_node_tree_validator = CostNodeEntityValidator()
+            contract_node_repository=node_repo,
+            contract_node_tree_builder=tree_builder,
+            contract_node_tree_validator= ContractNodeEntityValidator()
         )
 
         contract.init(contract_starter=contract_starter_1)
-        contract.add_cost_node_tree([cost_node_tree_1])
+        contract.add_contract_node_tree([cost_node_tree_1])
         contract.execute()
 
         # --- kontrakt ---

@@ -89,8 +89,8 @@ class AIInvoiceMapper:
                     vat_rate=item.get("vat_rate") or VatRate.VAT_23,
                 ),
                 contract_id=None,
-                cost_node_id=None,
-                cost_type_id=None,
+                contract_node_id=None,
+                value_type_code=None,
             )
             for item in data.get("invoice_items", [])
         ]

@@ -2,7 +2,9 @@ from abc import ABC, abstractmethod
 from dataclasses import replace
 from uuid import UUID
 
+from contract_costs.model.company import Company, CompanyType
 from contract_costs.model.invoice import Invoice, InvoiceStatus
+from contract_costs.model.value_direction import ValueDirection
 from contract_costs.repository.invoice_repository import InvoiceRepository
 from contract_costs.services.invoices.assigment.ingest.dto.invoice_ref_result import InvoiceRefResult
 from contract_costs.services.invoices.assigment.invoice_sources.dto.common import ResolvedInvoiceUpdate
@@ -46,3 +48,4 @@ class InvoiceIngestService(ABC):
     @staticmethod
     def _resolve_tags(tags: str | None) -> set[str]:
         return {t.strip() for t in tags.split(",") if t.strip()} if tags else set()
+

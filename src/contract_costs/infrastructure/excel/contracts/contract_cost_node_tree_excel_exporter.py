@@ -9,8 +9,8 @@ from openpyxl.styles import Font, Alignment
 
 from contract_costs.infrastructure.excel.excel_common_methods import ExcelCommonMethods
 from contract_costs.model.contract import Contract
-from contract_costs.model.cost_node import CostNode
-from contract_costs.services.contracts.prepare.mappers.cost_node_prepare_mapper import CostNodePrepareMapper
+from contract_costs.model.contract_node import ContractNode
+from contract_costs.services.contracts.prepare.mappers.contract_node_prepare_mapper import ContractNodePrepareMapper
 
 FONT_ROOT = Font(bold=True, color="1F4E79")
 FONT_GROUP = Font(bold=True)
@@ -31,7 +31,7 @@ class ContractTreeExcelExporter:
         self,
         *,
         contract: Contract,
-        cost_nodes: list[CostNode],
+        cost_nodes: list[ContractNode],
         output_path: Path,
     ) -> None:
         wb = Workbook()
@@ -81,7 +81,7 @@ class ContractTreeExcelExporter:
     def _export_cost_nodes_sheet(
         self,
         wb: Workbook,
-        cost_nodes: list[CostNode],
+        cost_nodes: list[ContractNode],
     ) -> None:
         ws = wb.create_sheet(self.COST_NODES_SHEET)
 
@@ -104,7 +104,7 @@ class ContractTreeExcelExporter:
             cell.font = header_font
             cell.alignment = Alignment(vertical="center")
 
-        nodes_by_parent = CostNodePrepareMapper.group_by_parent(cost_nodes)
+        nodes_by_parent = ContractNodePrepareMapper.group_by_parent(cost_nodes)
 
         self._write_node_rows(
             ws=ws,
@@ -127,7 +127,7 @@ class ContractTreeExcelExporter:
         self,
         *,
         ws,
-        nodes_by_parent: dict[UUID | None, list[CostNode]],
+        nodes_by_parent: dict[UUID | None, list[ContractNode]],
         parent_id: UUID | None,
         prefix: str,
         is_last: bool,
@@ -140,7 +140,7 @@ class ContractTreeExcelExporter:
             connector = "└── " if last else "├── "
             node_label = f"{prefix}{connector}{node.code}"
 
-            total_budget = CostNode.calculate_budget_from_leaves(
+            total_budget = ContractNode.calculate_budget_from_leaves(
                 node.id,
                 nodes_by_parent,
             )

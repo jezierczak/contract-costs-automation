@@ -1,4 +1,4 @@
-from contract_costs.builders.cost_node_tree_builder import DefaultCostNodeTreeBuilder
+from contract_costs.builders.contract_node_tree_builder import DefaultContractNodeTreeBuilder
 from contract_costs.config import INVOICE_INPUT_DIR
 from contract_costs.infrastructure.excel.base_excel_exporter import BaseExcelExporter
 from contract_costs.infrastructure.excel.invoice_action_excel_loader import InvoiceActionExcelLoader
@@ -36,14 +36,15 @@ from contract_costs.services.contracts.apply.apply_contract_structure_excel impo
 # from contract_costs.services.contracts.export.contract_structure_excel_generator import (
 #     ContractStructureExcelGenerator,
 # )
-from contract_costs.services.contracts.validators.cost_node_tree_validator import (
-    CostNodeEntityValidator,
+from contract_costs.services.contracts.validators.contract_node_tree_validator import (
+    ContractNodeEntityValidator,
 )
-from contract_costs.services.cost_types.apply.change_cost_type_code_service import ChangeCostTypeCodeService
-from contract_costs.services.cost_types.apply.deactivate_cost_type_service import DeactivateCostTypeService
-from contract_costs.services.cost_types.apply.update_cost_type_service import UpdateCostTypeService
-from contract_costs.services.cost_types.create_cost_type_service import CreateCostTypeService
-from contract_costs.services.cost_types.query.cost_type_query_service import CostTypeQueryService
+from contract_costs.services.invoices.assigment.ingest.completion_validator.invoice_completion_validator import InvoiceCompletionValidator
+from contract_costs.services.value_types.apply.change_value_type_code_service import ChangeCostTypeCodeService
+from contract_costs.services.value_types.apply.deactivate_value_type_service import DeactivateValueTypeService
+from contract_costs.services.value_types.apply.update_value_type_service import UpdateValueTypeService
+from contract_costs.services.value_types.create_value_type_service import CreateValueTypeService
+from contract_costs.services.value_types.query.value_type_query_service import ValueTypeQueryService
 from contract_costs.services.invoices.actions.invoice_action_service import InvoiceActionService
 from contract_costs.services.invoices.assigment.ingest.excel_invoice_ingest_service import ExcelInvoiceIngestService
 from contract_costs.services.invoices.assigment.ingest.pdf_invoice_ingest_service import PdfInvoiceIngestService
@@ -93,8 +94,8 @@ class Services:
         self._invoice_repo = None
         self._invoice_line_repo = None
         self._contract_repo = None
-        self._cost_node_repo = None
-        self._cost_type_repo = None
+        self._contract_node_repo = None
+        self._value_type_repo = None
         self._cost_progress_snapshot_repo = None
 
         # services
@@ -107,7 +108,7 @@ class Services:
         self._export_invoice_assignment_excel = None
         self._create_company_service = None
         self._update_company_service = None
-        self._create_cost_type = None
+        self._create_value_type = None
         self._create_contract = None
         self._update_contract_service = None
         self._update_contract_structure_service = None
@@ -172,16 +173,16 @@ class Services:
         return self._contract_repo
 
     @property
-    def cost_node_repository(self):
-        if self._cost_node_repo is None:
-            self._cost_node_repo = self._factory.cost_node_repository()
-        return self._cost_node_repo
+    def contract_node_repository(self):
+        if self._contract_node_repo is None:
+            self._contract_node_repo = self._factory.contract_node_repository()
+        return self._contract_node_repo
 
     @property
-    def cost_type_repository(self):
-        if self._cost_type_repo is None:
-            self._cost_type_repo = self._factory.cost_type_repository()
-        return self._cost_type_repo
+    def value_type_repository(self):
+        if self._value_type_repo is None:
+            self._value_type_repo = self._factory.value_type_repository()
+        return self._value_type_repo
 
     @property
     def cost_progress_snapshot_repository(self):
@@ -218,15 +219,16 @@ class Services:
                 invoice_line_service=InvoiceLineUpdateService(
                     self.invoice_line_repository,
                     self.contract_repository,
-                    self.cost_node_repository,
-                    self.cost_type_repository,
+                    self.contract_node_repository,
+                    self.value_type_repository,
                 ),
                 invoice_repository=self.invoice_repository,
                 file_workflow= InvoiceFileWorkflowService(
                     invoice_repository=self.invoice_repository,
                     company_repository=self.company_repository,
                     file_organizer=InvoiceFileOrganizer()
-                )
+                ),
+                invoice_completion_validator=InvoiceCompletionValidator()
             )
         return self._invoice_ingest_orchestrator
 
@@ -304,8 +306,8 @@ class Services:
                 self.invoice_line_repository,
                 self.company_repository,
                 self.contract_repository,
-                self.cost_node_repository,
-                self.cost_type_repository,
+                self.contract_node_repository,
+                self.value_type_repository,
             )
         return self._generate_invoice_assignment_bundle
     @property
@@ -314,8 +316,8 @@ class Services:
             self._export_invoice_assignment_excel = ExportInvoiceAssignmentExcelService(
                 exporter=ExcelInvoiceAssignmentExporter(
                                     self.contract_repository,
-                                    self.cost_node_repository,
-                                    self.cost_type_repository,
+                                    self.contract_node_repository,
+                                    self.value_type_repository,
                                 )
             )
         return self._export_invoice_assignment_excel
@@ -333,19 +335,19 @@ class Services:
         return self._update_company_service
 
     @property
-    def create_cost_type(self):
-        if self._create_cost_type is None:
-            self._create_cost_type = CreateCostTypeService(self.cost_type_repository)
-        return self._create_cost_type
+    def create_value_type(self):
+        if self._create_value_type is None:
+            self._create_value_type = CreateValueTypeService(self.value_type_repository)
+        return self._create_value_type
 
     @property
     def create_contract(self):
         if self._create_contract is None:
             self._create_contract = CreateContractService(
                 self.contract_repository,
-                self.cost_node_repository,
-                DefaultCostNodeTreeBuilder(),
-                CostNodeEntityValidator(),
+                self.contract_node_repository,
+                DefaultContractNodeTreeBuilder(),
+                ContractNodeEntityValidator(),
             )
         return self._create_contract
 
@@ -361,9 +363,9 @@ class Services:
         if self._update_contract_structure_service is None:
             self._update_contract_structure_service = UpdateContractStructureService(
                 self.contract_repository,
-                self.cost_node_repository,
-                DefaultCostNodeTreeBuilder(),
-                CostNodeEntityValidator(),
+                self.contract_node_repository,
+                DefaultContractNodeTreeBuilder(),
+                ContractNodeEntityValidator(),
             )
         return self._update_contract_structure_service
 
@@ -403,8 +405,8 @@ class Services:
             self._contract_cost_report = ContractCostReportService(
                 self.contract_repository,
                 self.invoice_line_repository,
-                self.cost_node_repository,
-                self.cost_type_repository
+                self.contract_node_repository,
+                self.value_type_repository
             )
         return self._contract_cost_report
 
@@ -416,8 +418,8 @@ class Services:
                 invoice_line_repo=self.invoice_line_repository,
                 company_repo=self.company_repository,
                 contract_repo=self.contract_repository,
-                cost_node_repo=self.cost_node_repository,
-                cost_type_repo=self.cost_type_repository,
+                contract_node_repo=self.contract_node_repository,
+                value_type_repo=self.value_type_repository,
             )
         return self._invoice_query_service
 
@@ -428,6 +430,7 @@ class Services:
                 invoice_repo=self.invoice_repository,
                 invoice_line_repo=self.invoice_line_repository,
                 company_repo=self.company_repository,
+                contract_repo=self.contract_repository
             )
         return self._review_query_service
 
@@ -500,34 +503,34 @@ class Services:
         return self._apply_companies_from_excel_service
 
     @property
-    def cost_type_query_service(self):
+    def value_type_query_service(self):
         if self._cost_type_query_service is None:
-            self._cost_type_query_service = CostTypeQueryService(
-                self.cost_type_repository
+            self._cost_type_query_service = ValueTypeQueryService(
+                self.value_type_repository
             )
         return self._cost_type_query_service
 
     @property
-    def deactivate_cost_type_service(self):
+    def deactivate_value_type_service(self):
         if self._deactivate_cost_type_service is None:
-            self._deactivate_cost_type_service = DeactivateCostTypeService(
-                self.cost_type_repository
+            self._deactivate_cost_type_service = DeactivateValueTypeService(
+                self.value_type_repository
             )
         return self._deactivate_cost_type_service
 
     @property
-    def update_cost_type_service(self):
+    def update_value_type_service(self):
         if self._update_cost_type_service is None:
-            self._update_cost_type_service = UpdateCostTypeService(
-                self.cost_type_repository
+            self._update_cost_type_service = UpdateValueTypeService(
+                self.value_type_repository
             )
         return self._update_cost_type_service
 
     @property
-    def change_cost_type_code_service(self):
+    def change_value_type_code_service(self):
         if self._change_cost_type_code_service is None:
             self._change_cost_type_code_service = ChangeCostTypeCodeService(
-                self.cost_type_repository
+                self.value_type_repository
             )
         return self._change_cost_type_code_service
 

@@ -6,8 +6,10 @@ from contract_costs.repository.invoice_repository import InvoiceRepository
 from contract_costs.repository.invoice_line_repository import InvoiceLineRepository
 from contract_costs.repository.company_repository import CompanyRepository
 from contract_costs.repository.contract_repository import ContractRepository
-from contract_costs.repository.cost_node_repository import CostNodeRepository
-from contract_costs.repository.cost_type_repository import CostTypeRepository
+from contract_costs.repository.contract_node_repository import ContractNodeRepository
+from contract_costs.repository.value_type_repository import ValueTypeRepository
+from contract_costs.services.invoices.assigment.ingest.completion_validator.invoice_completion_validator import \
+    InvoiceCompletionValidator
 from contract_costs.services.invoices.queries.dto.invoice_query import InvoiceDetailsView, InvoiceLineView
 
 logger= logging.getLogger(__name__)
@@ -20,15 +22,15 @@ class InvoiceDetailsQueryService:
         invoice_line_repo: InvoiceLineRepository,
         company_repo: CompanyRepository,
         contract_repo: ContractRepository,
-        cost_node_repo: CostNodeRepository,
-        cost_type_repo: CostTypeRepository,
+        contract_node_repo: ContractNodeRepository,
+        value_type_repo: ValueTypeRepository,
     ) -> None:
         self._invoice_repo = invoice_repo
         self._invoice_line_repo = invoice_line_repo
         self._company_repo = company_repo
         self._contract_repo = contract_repo
-        self._cost_node_repo = cost_node_repo
-        self._cost_type_repo = cost_type_repo
+        self._contract_node_repo = contract_node_repo
+        self._value_type_repo = value_type_repo
 
     def get_by_invoice_number(self, invoice_number: str) -> InvoiceDetailsView:
         invoices = self._invoice_repo.get_by_invoice_number(invoice_number)
@@ -58,6 +60,10 @@ class InvoiceDetailsQueryService:
         buyer = self._company_repo.get(invoice.buyer_id)
         seller = self._company_repo.get(invoice.seller_id)
 
+        if buyer and seller:
+            direction = InvoiceCompletionValidator.resolve_invoice_direction(buyer.role, seller.role)
+        else: direction = None
+
         line_views: list[InvoiceLineView] = []
 
         total_net = Decimal("0")
@@ -82,13 +88,13 @@ class InvoiceDetailsQueryService:
             )
 
             cost_node = (
-                self._cost_node_repo.get(line.cost_node_id)
-                if line.cost_node_id else None
+                self._contract_node_repo.get(line.contract_node_id)
+                if line.contract_node_id else None
             )
 
             cost_type = (
-                self._cost_type_repo.get(line.cost_type_id)
-                if line.cost_type_id else None
+                self._value_type_repo.get(line.value_type_id)
+                if line.value_type_id else None
             )
 
             line_views.append(
@@ -129,4 +135,6 @@ class InvoiceDetailsQueryService:
             total_vat=total_vat,
             total_gross=total_gross,
             total_not_evidenced=total_not_evidenced,
+            contract_codes=", ".join({line.contract_code for line in line_views  if line.contract_code is not None}),
+            direction=direction.value if direction else "",
         )

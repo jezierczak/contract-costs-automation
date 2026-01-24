@@ -2,12 +2,12 @@ from dataclasses import replace
 from uuid import UUID
 import logging
 
-from contract_costs.builders.cost_node_tree_builder import CostNodeTreeBuilder
+from contract_costs.builders.contract_node_tree_builder import ContractNodeTreeBuilder
 from contract_costs.model.contract import Contract, ContractStarter
-from contract_costs.model.cost_node import CostNodeInput, CostNode
+from contract_costs.model.contract_node import ContractNodeInput, ContractNode
 from contract_costs.repository.contract_repository import ContractRepository
-from contract_costs.repository.cost_node_repository import CostNodeRepository
-from contract_costs.services.contracts.validators.cost_node_tree_validator import CostNodeEntityValidator
+from contract_costs.repository.contract_node_repository import ContractNodeRepository
+from contract_costs.services.contracts.validators.contract_node_tree_validator import ContractNodeEntityValidator
 
 
 logger = logging.getLogger(__name__)
@@ -27,25 +27,25 @@ class UpdateContractStructureService:
     def __init__(
         self,
         contract_repository: ContractRepository,
-        cost_node_repository: CostNodeRepository,
-        cost_node_tree_builder: CostNodeTreeBuilder,
-        cost_node_tree_validator: CostNodeEntityValidator,
+        contract_node_repository: ContractNodeRepository,
+        contract_node_tree_builder: ContractNodeTreeBuilder,
+        contract_node_tree_validator: ContractNodeEntityValidator,
     ) -> None:
         self._contract_repository = contract_repository
-        self._cost_node_repository = cost_node_repository
-        self._builder = cost_node_tree_builder
-        self._cost_node_tree_validator = cost_node_tree_validator
+        self._contract_node_repository = contract_node_repository
+        self._builder = contract_node_tree_builder
+        self._contract_node_tree_validator = contract_node_tree_validator
 
     def execute(
             self,
             contract_id: UUID,
             contract_starter: ContractStarter,
-            cost_node_input: list[CostNodeInput],
+            contract_node_input: list[ContractNodeInput],
     ) -> None:
         logger.info(
             "Updating contract structure: contract_id=%s, nodes_in_excel=%d",
             contract_id,
-            len(cost_node_input),
+            len(contract_node_input),
         )
 
         contract = self._get_contract(contract_id)
@@ -76,14 +76,14 @@ class UpdateContractStructureService:
             )
         )
 
-        existing_nodes = self._cost_node_repository.list_by_contract(contract_id)
+        existing_nodes = self._contract_node_repository.list_by_contract(contract_id)
 
-        if not self._cost_node_repository.has_costs(contract_id):
+        if not self._contract_node_repository.has_values(contract_id):
             logger.info(
                 "Using HARD replace strategy for contract_id=%s (no existing costs)",
                 contract_id,
             )
-            self._replace_structure_hard(contract_id, cost_node_input)
+            self._replace_structure_hard(contract_id, contract_node_input)
         else:
             logger.info(
                 "Using SAFE replace strategy for contract_id=%s (existing costs detected)",
@@ -91,33 +91,33 @@ class UpdateContractStructureService:
             )
             self._replace_structure_safe(
                 contract_id=contract_id,
-                cost_node_input=cost_node_input,
+                contract_node_input=contract_node_input,
                 existing_nodes=existing_nodes,
             )
 
         self._contract_repository.update(updated_contract)
 
-    def _replace_structure_hard(self, contract_id: UUID, cost_node_input: list[CostNodeInput]) -> None:
+    def _replace_structure_hard(self, contract_id: UUID, cost_node_input: list[ContractNodeInput]) -> None:
         # --- usuń starą strukturę kosztów ---
         logger.warning(
-            "HARD replace: deleting all cost nodes for contract_id=%s",
+            "HARD replace: deleting all contract nodes for contract_id=%s",
             contract_id,
         )
 
-        self._cost_node_repository.delete_by_contract(contract_id)
+        self._contract_node_repository.delete_by_contract(contract_id)
 
         # --- zbuduj nową strukturę ---
-        new_cost_nodes = self._builder.build(
+        new_contract_nodes = self._builder.build(
             contract_id,
             cost_node_input)
 
-        self._cost_node_tree_validator.validate(new_cost_nodes)
+        self._contract_node_tree_validator.validate(new_contract_nodes)
         # --- zapisz wszystko ---
 
-        self._cost_node_repository.add_all(new_cost_nodes)
+        self._contract_node_repository.add_all(new_contract_nodes)
         logger.info(
-            "HARD replace completed: inserted_cost_nodes=%d for contract_id=%s",
-            len(new_cost_nodes),
+            "HARD replace completed: inserted_contract_nodes=%d for contract_id=%s",
+            len(new_contract_nodes),
             contract_id,
         )
 
@@ -125,12 +125,12 @@ class UpdateContractStructureService:
             self,
             *,
             contract_id: UUID,
-            cost_node_input: list[CostNodeInput],
+            contract_node_input: list[ContractNodeInput],
             existing_nodes: list,
     ) -> None:
         """
         SAFE replace:
-        - zachowuje UUID cost nodes z kosztami
+        - zachowuje UUID contract nodes z kosztami
         - usuwa tylko te bez kosztów
         - dodaje nowe
         """
@@ -144,11 +144,11 @@ class UpdateContractStructureService:
         # builder MUSI umieć reuse UUID po code
         new_nodes = self._builder.build(
             contract_id=contract_id,
-            cost_node_input=cost_node_input,
+            contract_node_input=contract_node_input,
             existing_nodes=existing_by_code,
         )
 
-        self._cost_node_tree_validator.validate(new_nodes)
+        self._contract_node_tree_validator.validate(new_nodes)
 
         # --- podział ---
         new_by_code = {n.code: n for n in new_nodes}
@@ -165,14 +165,14 @@ class UpdateContractStructureService:
 
         for code, old_node in existing_by_code.items():
             if code not in new_by_code:
-                if self._cost_node_repository.node_has_costs(old_node.id):
+                if self._contract_node_repository.node_has_values(old_node.id):
                     logger.error(
-                        "SAFE replace blocked: cost node '%s' has existing costs (contract_id=%s)",
+                        "SAFE replace blocked: contract node '%s' has existing costs (contract_id=%s)",
                         code,
                         contract_id,
                     )
                     raise ValueError(
-                        f"Cannot remove cost node '{code}' – costs already exist"
+                        f"Cannot remove contract node '{code}' – costs already exist"
                     )
                 to_delete.append(old_node.id)
         logger.info(
@@ -184,13 +184,13 @@ class UpdateContractStructureService:
         )
         # --- persist ---
         if to_delete:
-            self._cost_node_repository.delete_many(to_delete)
+            self._contract_node_repository.delete_many(to_delete)
 
         if to_update:
-            self._cost_node_repository.update_many(to_update)
+            self._contract_node_repository.update_many(to_update)
 
         if to_insert:
-            self._cost_node_repository.add_all(to_insert)
+            self._contract_node_repository.add_all(to_insert)
 
         logger.info(
             "Contract metadata updated successfully: contract_id=%s",

@@ -1,4 +1,4 @@
 from contract_costs.cli.commands.edit.company import build_edit_company
-from contract_costs.cli.commands.edit.edit_cost_type import build_edit_cost_type
+from contract_costs.cli.commands.edit.edit_value_type import build_edit_value_type
 
-from contract_costs.cli.commands.edit.edit_cost_type_code import build_change_cost_type_code
+from contract_costs.cli.commands.edit.edit_value_type_code import build_change_value_type_code

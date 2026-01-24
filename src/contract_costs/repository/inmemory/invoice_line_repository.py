@@ -72,7 +72,7 @@ class InMemoryInvoiceLineRepository(InvoiceLineRepository):
     def get_for_assignment(self) -> list[InvoiceLine]:
         return [
             line for line in self._lines.values()
-            if line.cost_node_id is None
-               or line.cost_type_id is None
+            if line.contract_node_id is None
+               or line.value_type_id is None
         ]
 

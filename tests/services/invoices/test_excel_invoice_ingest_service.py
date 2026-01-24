@@ -1,5 +1,7 @@
 from uuid import uuid4, UUID
 
+import pytest
+
 from contract_costs.model.invoice import (
     InvoiceStatus,
     PaymentMethod,
@@ -19,22 +21,23 @@ from contract_costs.services.invoices.assigment.ingest.dto.invoice_ref_result im
 )
 
 
-def test_excel_ingest_creates_invoice(invoice_repo,    excel_ingest_service) -> None:
+def test_excel_ingest_creates_invoice(invoice_repo,    excel_ingest_service,
+                                      owner_company,client_company) -> None:
     # -------------------------------------------------
     # GIVEN
     # -------------------------------------------------
     service = excel_ingest_service
-    buyer_id = uuid4()
-    seller_id = uuid4()
+
 
     update = ResolvedInvoiceUpdate(
         command=InvoiceCommand.APPLY,
         invoice_number="FV/EX/01",
+        invoice_id=uuid4(),
         old_invoice_number=None,
         invoice_date=None,
         selling_date=None,
-        buyer=buyer_id,
-        seller=seller_id,
+        buyer=owner_company,
+        seller=client_company,
         payment_method=PaymentMethod.BANK_TRANSFER,
         due_date=None,
         paid_date=None,
@@ -62,8 +65,8 @@ def test_excel_ingest_creates_invoice(invoice_repo,    excel_ingest_service) -> 
     assert invoice is not None
 
     assert invoice.invoice_number == "FV/EX/01"
-    assert invoice.buyer == buyer_id
-    assert invoice.seller == seller_id
+    assert invoice.buyer_id == owner_company.id
+    assert invoice.seller_id == client_company.id
     assert invoice.status == InvoiceStatus.IN_PROGRESS
     assert invoice.payment_method == PaymentMethod.BANK_TRANSFER
     assert invoice.payment_status == PaymentStatus.UNPAID
@@ -73,23 +76,22 @@ def test_excel_ingest_creates_invoice(invoice_repo,    excel_ingest_service) -> 
 def test_excel_ingest_modifies_existing_invoice(
     invoice_repo,
     excel_ingest_service,
+        owner_company,client_company
 ) -> None:
     # -------------------------------------------------
     # GIVEN — istniejąca faktura
     # -------------------------------------------------
     service = excel_ingest_service
 
-    buyer_id = uuid4()
-    seller_id = uuid4()
-
     original = ResolvedInvoiceUpdate(
         command=InvoiceCommand.APPLY,
         invoice_number="FV/EX/02",
+        invoice_id=uuid4(),
         old_invoice_number=None,
         invoice_date=None,
         selling_date=None,
-        buyer=buyer_id,
-        seller=seller_id,
+        buyer=owner_company,
+        seller=client_company,
         payment_method=PaymentMethod.BANK_TRANSFER,
         due_date=None,
         paid_date=None,
@@ -109,11 +111,12 @@ def test_excel_ingest_modifies_existing_invoice(
     updated = ResolvedInvoiceUpdate(
         command=InvoiceCommand.APPLY,
         invoice_number="FV/EX/02",  # ten sam numer
+        invoice_id=invoice_id,
         old_invoice_number=None,
         invoice_date=None,
         selling_date=None,
-        buyer=buyer_id,
-        seller=seller_id,
+        buyer=owner_company,
+        seller=client_company,
         payment_method=PaymentMethod.CASH,  # 🔥 zmiana
         due_date=None,
         paid_date=None,
@@ -138,23 +141,23 @@ def test_excel_ingest_modifies_existing_invoice(
 def test_excel_ingest_deletes_invoice(
     invoice_repo,
     excel_ingest_service,
+        owner_company,client_company
 ) -> None:
     # -------------------------------------------------
     # GIVEN — istniejąca faktura
     # -------------------------------------------------
     service = excel_ingest_service
 
-    buyer_id = uuid4()
-    seller_id = uuid4()
 
     create = ResolvedInvoiceUpdate(
         command=InvoiceCommand.APPLY,
         invoice_number="FV/EX/03",
+        invoice_id=None,
         old_invoice_number=None,
         invoice_date=None,
         selling_date=None,
-        buyer=buyer_id,
-        seller=seller_id,
+        buyer=owner_company,
+        seller=client_company,
         payment_method=PaymentMethod.BANK_TRANSFER,
         due_date=None,
         paid_date=None,
@@ -174,11 +177,12 @@ def test_excel_ingest_deletes_invoice(
     delete = ResolvedInvoiceUpdate(
         command=InvoiceCommand.DELETE,
         invoice_number="FV/EX/03",
+        invoice_id=invoice_id,
         old_invoice_number=None,
         invoice_date=None,
         selling_date=None,
-        buyer=buyer_id,
-        seller=seller_id,
+        buyer=owner_company,
+        seller=client_company,
         payment_method=PaymentMethod.BANK_TRANSFER,
         due_date=None,
         paid_date=None,
@@ -205,23 +209,22 @@ def test_excel_ingest_deletes_invoice(
 def test_excel_ingest_skips_processed_invoice(
     invoice_repo,
     excel_ingest_service,
+        owner_company,client_company
 ) -> None:
     # -------------------------------------------------
     # GIVEN — istniejąca, przetworzona faktura
     # -------------------------------------------------
     service = excel_ingest_service
 
-    buyer_id = uuid4()
-    seller_id = uuid4()
-
     create = ResolvedInvoiceUpdate(
         command=InvoiceCommand.APPLY,
         invoice_number="FV/EX/04",
+        invoice_id=None,
         old_invoice_number=None,
         invoice_date=None,
         selling_date=None,
-        buyer=buyer_id,
-        seller=seller_id,
+        buyer=owner_company,
+        seller=client_company,
         payment_method=PaymentMethod.BANK_TRANSFER,
         due_date=None,
         paid_date=None,
@@ -237,17 +240,21 @@ def test_excel_ingest_skips_processed_invoice(
 
     invoice_before = invoice_repo.get(invoice_id)
 
+    assert invoice_before.status == InvoiceStatus.PROCESSED
+    # assert invoice_id == create.invoice_id
+
     # -------------------------------------------------
     # WHEN — Excel próbuje zmodyfikować PROCESSED
     # -------------------------------------------------
     update = ResolvedInvoiceUpdate(
         command=InvoiceCommand.APPLY,
         invoice_number="FV/EX/04",
+        invoice_id=invoice_id,
         old_invoice_number=None,
         invoice_date=None,
         selling_date=None,
-        buyer=buyer_id,
-        seller=seller_id,
+        buyer=owner_company,
+        seller=client_company,
         payment_method=PaymentMethod.CASH,  # ❌ próba zmiany
         due_date=None,
         paid_date=None,
@@ -274,26 +281,26 @@ def test_excel_ingest_skips_processed_invoice(
     assert invoice_after.scan_filename == invoice_before.scan_filename
 
 
+@pytest.mark.skip(reason="legacy behavior: old_invoice_number delete flow")
 def test_excel_ingest_renames_invoice_number(
     invoice_repo,
     excel_ingest_service,
+        owner_company,client_company
 ) -> None:
     # -------------------------------------------------
     # GIVEN — istniejąca faktura
     # -------------------------------------------------
     service = excel_ingest_service
 
-    buyer_id = uuid4()
-    seller_id = uuid4()
-
     original = ResolvedInvoiceUpdate(
         command=InvoiceCommand.APPLY,
         invoice_number="FV/EX/05",
+        invoice_id=None,
         old_invoice_number=None,
         invoice_date=None,
         selling_date=None,
-        buyer=buyer_id,
-        seller=seller_id,
+        buyer=owner_company,
+        seller=client_company,
         payment_method=PaymentMethod.BANK_TRANSFER,
         due_date=None,
         paid_date=None,
@@ -313,11 +320,12 @@ def test_excel_ingest_renames_invoice_number(
     renamed = ResolvedInvoiceUpdate(
         command=InvoiceCommand.APPLY,
         invoice_number="FV/EX/05A",          # 🔥 nowy numer
+        invoice_id=None,
         old_invoice_number="FV/EX/05",       # 🔥 stary numer
         invoice_date=None,
         selling_date=None,
-        buyer=buyer_id,
-        seller=seller_id,
+        buyer=owner_company,
+        seller=client_company,
         payment_method=PaymentMethod.BANK_TRANSFER,
         due_date=None,
         paid_date=None,

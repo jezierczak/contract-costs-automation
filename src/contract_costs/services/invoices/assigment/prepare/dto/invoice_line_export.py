@@ -20,5 +20,5 @@ class InvoiceLineExport:
     tax_treatment: TaxTreatment
 
     contract_id: UUID | None
-    cost_node_id: UUID | None
-    cost_type_id: UUID | None
+    contract_node_id: UUID | None
+    value_type_id: UUID | None

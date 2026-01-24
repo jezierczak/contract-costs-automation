@@ -134,8 +134,8 @@ def load_invoice_excel_batch(path: Path) -> InvoiceExcelBatch:
                     tax_treatment=TaxTreatment(row["tax_treatment"]),
                 ),
                 contract_id=normalize(row.get("contract_code")),  # <-- CODE
-                cost_node_id=normalize(row.get("cost_node_code")),  # <-- CODE
-                cost_type_id=normalize(row.get("cost_type_code")),  # <-- CODE
+                contract_node_id=normalize(row.get("cost_node_code")),  # <-- CODE
+                value_type_code=normalize(row.get("cost_type_code")),  # <-- CODE
             )
         )
 

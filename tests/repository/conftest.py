@@ -4,7 +4,8 @@ from datetime import  datetime
 import pytest
 
 from contract_costs.model.amount import Amount, VatRate
-from contract_costs.model.cost_type import CostType
+from contract_costs.model.value_direction import ValueDirection
+from contract_costs.model.value_type import ValueType
 from contract_costs.model.invoice import Invoice, InvoiceStatus, PaymentMethod, PaymentStatus
 from contract_costs.model.invoice_line import InvoiceLine
 from contract_costs.model.unit_of_measure import UnitOfMeasure
@@ -91,8 +92,8 @@ def invoice_line_complete(contract_id_1):
         unit=UnitOfMeasure.PIECE,
         amount=Amount(Decimal("100"), VatRate.VAT_23),
         contract_id=contract_id_1,
-        cost_node_id=uuid4(),
-        cost_type_id=uuid4(),
+        contract_node_id=uuid4(),
+        value_type_id=uuid4(),
         description="Complete line",
         item_name="Kształtki"
     )
@@ -107,8 +108,8 @@ def invoice_line_missing_cost_node(contract_id_1):
         unit=UnitOfMeasure.SERVICE,
         amount=Amount(Decimal("50"), VatRate.VAT_8),
         contract_id=contract_id_1,
-        cost_node_id=None,
-        cost_type_id=uuid4(),
+        contract_node_id=None,
+        value_type_id=uuid4(),
         description="Missing cost node",
         item_name="Missing item"
     )
@@ -123,30 +124,32 @@ def invoice_line_missing_cost_type(contract_id_2):
         unit=UnitOfMeasure.HOUR,
         amount=Amount(Decimal("200"), VatRate.VAT_23),
         contract_id=contract_id_2,
-        cost_node_id=uuid4(),
-        cost_type_id=None,
+        contract_node_id=uuid4(),
+        value_type_id=None,
         description="Missing cost type",
         item_name="Missing cost item"
     )
 
 @pytest.fixture
-def cost_type_material():
-    return CostType(
+def value_type_material():
+    return ValueType(
         id=uuid4(),
         code="MAT",
         name="Material",
         description="Description",
+        direction=ValueDirection.COST,
         is_active=True,
     )
 
 
 @pytest.fixture
-def cost_type_service():
-    return CostType(
+def value_type_service():
+    return ValueType(
         id=uuid4(),
         code="SRV",
         name="Service",
         is_active=True,
+        direction=ValueDirection.COST,
         description=None
     )
 

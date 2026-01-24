@@ -77,8 +77,8 @@ class InvoiceLineUpdate:
     amount: Amount
 
     contract_id: str | None
-    cost_node_id: str | None
-    cost_type_id: str | None
+    contract_node_id: str | None
+    value_type_code: str | None
 
 @dataclass(frozen=True)
 class InvoiceExcelBatch:

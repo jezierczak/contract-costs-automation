@@ -2,8 +2,8 @@ from contract_costs.repository.company_repository import CompanyRepository
 from contract_costs.repository.invoice_repository import InvoiceRepository
 from contract_costs.repository.invoice_line_repository import InvoiceLineRepository
 from contract_costs.repository.contract_repository import ContractRepository
-from contract_costs.repository.cost_node_repository import CostNodeRepository
-from contract_costs.repository.cost_type_repository import CostTypeRepository
+from contract_costs.repository.contract_node_repository import ContractNodeRepository
+from contract_costs.repository.value_type_repository import ValueTypeRepository
 from contract_costs.repository.cost_progress_snapshot_repository import (
     CostProgressSnapshotRepository,
 )
@@ -13,8 +13,8 @@ from contract_costs.repository.mysql.company_repository import MySQLCompanyRepos
 from contract_costs.repository.mysql.invoice_repository import MySQLInvoiceRepository
 from contract_costs.repository.mysql.invoice_line_repository import MySQLInvoiceLineRepository
 from contract_costs.repository.mysql.contract_repository import MySQLContractRepository
-from contract_costs.repository.mysql.cost_node_repository import MySQLCostNodeRepository
-from contract_costs.repository.mysql.cost_type_repository import MySQLCostTypeRepository
+from contract_costs.repository.mysql.contract_node_repository import MySQLContractNodeRepository
+from contract_costs.repository.mysql.value_type_repository import MySQLValueTypeRepository
 from contract_costs.repository.mysql.cost_progress_snapshot_repository import (
     MySQLCostProgressSnapshotRepository,
 )
@@ -24,8 +24,8 @@ from contract_costs.repository.inmemory.company_repository import InMemoryCompan
 from contract_costs.repository.inmemory.invoice_repository import InMemoryInvoiceRepository
 from contract_costs.repository.inmemory.invoice_line_repository import InMemoryInvoiceLineRepository
 from contract_costs.repository.inmemory.contract_repository import InMemoryContractRepository
-from contract_costs.repository.inmemory.cost_node_repository import InMemoryCostNodeRepository
-from contract_costs.repository.inmemory.cost_type_repository import InMemoryCostTypeRepository
+from contract_costs.repository.inmemory.contract_node_repository import InMemoryContractNodeRepository
+from contract_costs.repository.inmemory.value_type_repository import InMemoryValueTypeRepository
 from contract_costs.repository.inmemory.cost_progress_snapshot_repository import (
     InMemoryCostProgressSnapshotRepository,
 )
@@ -69,18 +69,18 @@ class RepositoryFactory:
             else InMemoryContractRepository()
         )
 
-    def cost_node_repository(self) -> CostNodeRepository:
+    def contract_node_repository(self) -> ContractNodeRepository:
         return (
-            MySQLCostNodeRepository()
+            MySQLContractNodeRepository()
             if self.backend == RepoBackend.MYSQL
-            else InMemoryCostNodeRepository()
+            else InMemoryContractNodeRepository()
         )
 
-    def cost_type_repository(self) -> CostTypeRepository:
+    def value_type_repository(self) -> ValueTypeRepository:
         return (
-            MySQLCostTypeRepository()
+            MySQLValueTypeRepository()
             if self.backend == RepoBackend.MYSQL
-            else InMemoryCostTypeRepository()
+            else InMemoryValueTypeRepository()
         )
 
     def cost_progress_snapshot_repository(self) -> CostProgressSnapshotRepository:
