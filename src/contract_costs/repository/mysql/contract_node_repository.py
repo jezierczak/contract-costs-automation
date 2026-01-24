@@ -1,5 +1,4 @@
 from uuid import UUID
-from typing import Iterable
 
 from contract_costs.model.contract_node import ContractNode
 from contract_costs.model.unit_of_measure import UnitOfMeasure
@@ -20,9 +19,9 @@ class MySQLContractNodeRepository(ContractNodeRepository):
         INSERT INTO contract_nodes (
             id, contract_id, parent_id,
             code, name,
-            budget, quantity, unit,is_active
+            budget, quantity, unit,is_active,progress
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s,%s)
         """
 
         values = [
@@ -35,7 +34,8 @@ class MySQLContractNodeRepository(ContractNodeRepository):
                 n.budget,
                 n.quantity,
                 n.unit.value if n.unit else None,
-                n.is_active
+                n.is_active,
+                n.progress
             )
             for n in contract_nodes
         ]
@@ -130,7 +130,8 @@ class MySQLContractNodeRepository(ContractNodeRepository):
             budget = %s,
             quantity = %s,
             unit = %s,
-            is_active = %s
+            is_active = %s,
+            progress = %s
         WHERE id = %s
         """
 
@@ -146,6 +147,7 @@ class MySQLContractNodeRepository(ContractNodeRepository):
                     contract_node.quantity,
                     contract_node.unit.value if contract_node.unit else None,
                     contract_node.is_active,
+                    contract_node.progress,
                     str(contract_node.id)
                 ),
             )
@@ -221,5 +223,6 @@ class MySQLContractNodeRepository(ContractNodeRepository):
             budget=row["budget"],
             quantity=row["quantity"],
             unit=UnitOfMeasure(row["unit"]) if row["unit"] else None,  # jeśli Enum → zmapuj
-            is_active=row["is_active"]
+            is_active=row["is_active"],
+            progress=row["progress"]
         )

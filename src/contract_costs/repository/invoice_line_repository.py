@@ -1,3 +1,4 @@
+from datetime import date
 from uuid import UUID
 from abc import ABC, abstractmethod
 
@@ -16,7 +17,7 @@ class InvoiceLineRepository(ABC):
         ...
 
     @abstractmethod
-    def list_by_invoice_ids(self, invoice_line_ids: list[UUID]) -> list[InvoiceLine]:
+    def list_by_invoice_ids(self, invoice_ids: list[UUID]) -> list[InvoiceLine]:
         ...
 
     @abstractmethod
@@ -56,5 +57,18 @@ class InvoiceLineRepository(ABC):
         """
         Return invoices that require assignment
         (status NEW or IN_PROGRESS)
+        """
+        ...
+
+    @abstractmethod
+    def list_by_contract_until(
+        self,
+        *,
+        contract_id: UUID,
+        snapshot_date: date,
+    ) -> list[InvoiceLine]:
+        """
+        Returns invoice lines that were KNOWN to the system
+        at snapshot_date (system time, created_at).
         """
         ...

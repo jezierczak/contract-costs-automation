@@ -157,9 +157,6 @@ from uuid import uuid4
 from datetime import date
 import pytest
 
-from contract_costs.model.cost_progress_snapshot import CostProgressSnapshot
-
-
 @pytest.fixture
 def contract_id():
     return uuid4()
@@ -169,41 +166,41 @@ def contract_id():
 def cost_node_id():
     return uuid4()
 
-
-@pytest.fixture
-def snapshot_1(contract_id, cost_node_id):
-    return CostProgressSnapshot(
-        id=uuid4(),
-        contract_id=contract_id,
-        cost_node_id=cost_node_id,
-        snapshot_date=date(2024, 1, 1),
-        planned_amount=Decimal("100"),
-        executed_amount=Decimal("25"),
-        progress_percent=Decimal("0.25"),
-    )
-
-
-@pytest.fixture
-def snapshot_2(contract_id, cost_node_id):
-    return CostProgressSnapshot(
-        id=uuid4(),
-        contract_id=contract_id,
-        cost_node_id=cost_node_id,
-        snapshot_date=date(2024, 2, 1),
-        planned_amount=Decimal("200"),
-        executed_amount=Decimal("100"),
-        progress_percent=Decimal("0.50"),
-    )
-
-
-@pytest.fixture
-def snapshot_other_node(contract_id):
-    return CostProgressSnapshot(
-        id=uuid4(),
-        contract_id=contract_id,
-        cost_node_id=None,
-        snapshot_date=date(2024, 3, 1),
-        planned_amount=Decimal("400"),
-        executed_amount=Decimal("300"),
-        progress_percent=Decimal("0.75"),
-    )
+#
+# @pytest.fixture
+# def snapshot_1(contract_id, cost_node_id):
+#     return CostProgressSnapshot(
+#         id=uuid4(),
+#         contract_id=contract_id,
+#         value_node_id=cost_node_id,
+#         snapshot_date=date(2024, 1, 1),
+#         planned_amount=Decimal("100"),
+#         executed_amount=Decimal("25"),
+#         progress_percent=Decimal("0.25"),
+#     )
+#
+#
+# @pytest.fixture
+# def snapshot_2(contract_id, cost_node_id):
+#     return CostProgressSnapshot(
+#         id=uuid4(),
+#         contract_id=contract_id,
+#         value_node_id=cost_node_id,
+#         snapshot_date=date(2024, 2, 1),
+#         planned_amount=Decimal("200"),
+#         executed_amount=Decimal("100"),
+#         progress_percent=Decimal("0.50"),
+#     )
+#
+#
+# @pytest.fixture
+# def snapshot_other_node(contract_id):
+#     return CostProgressSnapshot(
+#         id=uuid4(),
+#         contract_id=contract_id,
+#         value_node_id=None,
+#         snapshot_date=date(2024, 3, 1),
+#         planned_amount=Decimal("400"),
+#         executed_amount=Decimal("300"),
+#         progress_percent=Decimal("0.75"),
+#     )

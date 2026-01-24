@@ -100,6 +100,16 @@ class InputsContractsAssignmentFileManager(ExcelDomainFileManager):
 
         super().__init__(Path(path), name)
 
+class InputsContractsProgressFileManager(ExcelDomainFileManager):
+    def __init__(self, contract_code: str) -> None:
+        path = cfg.INPUTS_CONTRACTS_DIR
+
+        base_name = cfg.CONTRACT_PROGRESS_EXCEL_NAME  # np. "contract_progress"
+        name = f"{base_name}_{contract_code}"
+
+        super().__init__(Path(path), name)
+
+
 class InputsCompaniesAssignmentFileManager(ExcelDomainFileManager):
     def __init__(self) -> None:
         path = cfg.INPUTS_COMPANIES_DIR

@@ -18,11 +18,15 @@ from contract_costs.services.companies.providers.name import NameCandidateProvid
 from contract_costs.services.companies.providers.phone import PhoneCandidateProvider
 from contract_costs.services.companies.query.company_query_service import CompanyQueryService
 from contract_costs.services.companies.update_company_service import UpdateCompanyService
+from contract_costs.services.contracts.apply.apply_contract_progress_excel_service import \
+    ApplyContractProgressExcelService
 from contract_costs.services.contracts.apply.set_contract_status_service import SetContractStatusService
 from contract_costs.services.contracts.create_contract_service import CreateContractService
 # from contract_costs.services.contracts.export.export_contract_structure_excel_service import \
 #     ExportContractStructureExcelService
 from contract_costs.services.contracts.prepare.contract_prepare_excel_exporter import ContractPrepareExcelExporter
+from contract_costs.services.contracts.prepare.contract_prepare_progress_excel_exporter import \
+    ContractPrepareProgressExcelExporter
 from contract_costs.services.contracts.update_contract_service import UpdateContractService
 from contract_costs.services.contracts.apply.update_contract_structure_service import (
     UpdateContractStructureService,
@@ -40,6 +44,8 @@ from contract_costs.services.contracts.validators.contract_node_tree_validator i
     ContractNodeEntityValidator,
 )
 from contract_costs.services.invoices.assigment.ingest.completion_validator.invoice_completion_validator import InvoiceCompletionValidator
+from contract_costs.services.snapshots.contract_snapshot_query_service import ContractSnapshotQueryService
+from contract_costs.services.snapshots.create_contract_snapshot_service import CreateContractSnapshotService
 from contract_costs.services.value_types.apply.change_value_type_code_service import ChangeCostTypeCodeService
 from contract_costs.services.value_types.apply.deactivate_value_type_service import DeactivateValueTypeService
 from contract_costs.services.value_types.apply.update_value_type_service import UpdateValueTypeService
@@ -96,7 +102,9 @@ class Services:
         self._contract_repo = None
         self._contract_node_repo = None
         self._value_type_repo = None
-        self._cost_progress_snapshot_repo = None
+        self._contract_snapshot_repo = None
+        self._contract_node_snapshot_repo = None
+        self._contract_node_value_snapshot_repo = None
 
         # services
         # self._company_resolver = None
@@ -143,6 +151,10 @@ class Services:
         self._change_cost_type_code_service = None
         self._contract_prepare_excel_exporter =None
         self._set_contract_status_service = None
+        self._contract_prepare_progress_excel_exporter = None
+        self._apply_contract_progress_excel = None
+        self._create_contract_snapshot = None
+        self._contract_snapshot_query_service = None
 
         self._normalizer = InvoiceParseNormalizer()
 
@@ -185,11 +197,22 @@ class Services:
         return self._value_type_repo
 
     @property
-    def cost_progress_snapshot_repository(self):
-        if self._cost_progress_snapshot_repo is None:
-            self._cost_progress_snapshot_repo = self._factory.cost_progress_snapshot_repository()
-        return self._cost_progress_snapshot_repo
+    def contract_snapshot_repository(self):
+        if self._contract_snapshot_repo is None:
+            self._contract_snapshot_repo = self._factory.contract_snapshot_repository()
+        return self._contract_snapshot_repo
 
+    @property
+    def contract_node_snapshot_repository(self):
+        if self._contract_node_snapshot_repo is None:
+            self._contract_node_snapshot_repo = self._factory.contract_node_snapshot_repository()
+        return self._contract_node_snapshot_repo
+
+    @property
+    def contract_node_value_snapshot_repository(self):
+        if self._contract_node_value_snapshot_repo is None:
+            self._contract_node_value_snapshot_repo = self._factory.contract_node_value_snapshot_repository()
+        return self._contract_node_value_snapshot_repo
 
     # ---------- domain services ----------
     @property
@@ -547,6 +570,47 @@ class Services:
                 self.contract_repository
             )
         return self._set_contract_status_service
+
+    @property
+    def contract_prepare_progress_excel_exporter(self):
+        if self._contract_prepare_progress_excel_exporter is None:
+            self._contract_prepare_progress_excel_exporter = ContractPrepareProgressExcelExporter()
+        return self._contract_prepare_progress_excel_exporter
+
+    @property
+    def apply_contract_progress_excel(self):
+        if self._apply_contract_progress_excel is None:
+            self._apply_contract_progress_excel = ApplyContractProgressExcelService(
+                contract_node_repository=self.contract_node_repository
+            )
+        return self._apply_contract_progress_excel
+
+    @property
+    def create_contract_snapshot(self):
+        if self._create_contract_snapshot is None:
+            self._create_contract_snapshot = CreateContractSnapshotService(
+                contract_repo=self.contract_repository,
+                contract_node_repo=self.contract_node_repository,
+                invoice_line_repo=self.invoice_line_repository,
+                snapshot_repo=self.contract_snapshot_repository,
+                node_snapshot_repo=self.contract_node_snapshot_repository,
+                value_snapshot_repo=self.contract_node_value_snapshot_repository
+            )
+        return self._create_contract_snapshot
+
+    @property
+    def contract_snapshot_query_service(self):
+        if self._contract_snapshot_query_service is None:
+            self._contract_snapshot_query_service = ContractSnapshotQueryService(
+                contract_repo=self.contract_repository,
+                contract_node_repo=self.contract_node_repository,
+                value_type_repo=self.value_type_repository,
+                snapshot_repo=self.contract_snapshot_repository,
+                node_snapshot_repo=self.contract_node_snapshot_repository,
+                value_snapshot_repo=self.contract_node_value_snapshot_repository,
+            )
+        return self._contract_snapshot_query_service
+
 
 _services: Dict[str, Services] = {}
 

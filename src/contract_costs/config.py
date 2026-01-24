@@ -31,6 +31,7 @@ COMPANY_EXCEL_NAME = "company"
 # CONTRACT_EXCEL_FILENAME = "contract.xlsx"
 #CONTRACT_EDIT_EXCEL_TEMPLATE = "contract_{code}.xlsx"
 CONTRACT_EXCEL_NAME = "contract"
+CONTRACT_PROGRESS_EXCEL_NAME = "contract_progress"
 
 # INVOICES_EXCEL_FILENAME = "invoices.xlsx"
 # INVOICES_ASSIGN_EXCEL_FILENAME = "invoice_assignment.xlsx"

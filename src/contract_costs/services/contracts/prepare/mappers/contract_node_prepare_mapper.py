@@ -1,8 +1,5 @@
-from collections import defaultdict
-from typing import Iterable
-from uuid import UUID
-
 from contract_costs.model.contract_node import ContractNode
+from contract_costs.services.contracts.prepare.contract_node_tree_index import ContractNodeTreeIndex
 from contract_costs.services.contracts.prepare.dto.contract_node_prepare_dto import (
     ContractNodePrepareDTO,
 )
@@ -14,16 +11,15 @@ class ContractNodePrepareMapper:
     """
 
     @staticmethod
-    def map(nodes: Iterable[ContractNode]) -> list[ContractNodePrepareDTO]:
-        nodes_by_id = {n.id: n for n in nodes}
-        children_by_parent = ContractNodePrepareMapper.group_by_parent(nodes)
+    def map(nodes: list[ContractNode]) -> list[ContractNodePrepareDTO]:
+        tree = ContractNodeTreeIndex(nodes)
 
         rows: list[ContractNodePrepareDTO] = []
 
         def walk(node: ContractNode) -> None:
             parent_code = None
             if node.parent_id:
-                parent = nodes_by_id.get(node.parent_id)
+                parent = tree.nodes_by_id.get(node.parent_id)
                 parent_code = parent.code if parent else None
 
             rows.append(
@@ -38,25 +34,10 @@ class ContractNodePrepareMapper:
                 )
             )
 
-            for child in children_by_parent.get(node.id, []):
+            for child in tree.children_of(node.id):
                 walk(child)
 
-        # roots only
-        for root in children_by_parent.get(None, []):
+        for root in tree.roots():
             walk(root)
 
         return rows
-
-    @staticmethod
-    def group_by_parent(
-        nodes: Iterable[ContractNode],
-    ) -> dict[UUID | None, list[ContractNode]]:
-        grouped: dict[UUID | None, list[ContractNode]] = defaultdict(list)
-
-        for node in nodes:
-            grouped[node.parent_id].append(node)
-
-        for children in grouped.values():
-            children.sort(key=lambda n: n.code)
-
-        return grouped

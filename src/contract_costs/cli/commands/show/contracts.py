@@ -1,8 +1,5 @@
 import logging
-from collections import defaultdict
 from uuid import UUID
-
-import contract_costs.config as cfg
 
 from contract_costs.cli.context import get_services
 from contract_costs.cli.registry import REGISTRY
@@ -11,6 +8,7 @@ from contract_costs.infrastructure.excel.contracts.contract_cost_node_tree_excel
 from contract_costs.infrastructure.filesystem.show_file_manager import ContractsShowFileManager
 from contract_costs.model.contract import Contract
 from contract_costs.model.contract_node import ContractNode
+from contract_costs.services.contracts.prepare.contract_node_tree_index import ContractNodeTreeIndex
 from contract_costs.services.contracts.prepare.mappers.contract_node_prepare_mapper import ContractNodePrepareMapper
 
 logger = logging.getLogger(__name__)
@@ -79,10 +77,13 @@ def handle_show_contracts(args) -> None:
         print(f"Start:     {contract.start_date}")
         print(f"End:       {contract.end_date}")
 
+        nodes = node_repo.list_by_contract(contract.id)
+        tree = ContractNodeTreeIndex(nodes)
 
         print_contract_node_tree(
-            nodes_by_parent=ContractNodePrepareMapper.group_by_parent(node_repo.list_by_contract(contract.id)),
+            tree=tree,
         )
+
         print("- " * 23)
         return
 
@@ -144,33 +145,38 @@ REGISTRY.register_group("show", build_show_contracts)
 #     return tree
 
 def print_contract_node_tree(
-    nodes_by_parent: dict[UUID | None, list[ContractNode]],
+    *,
+    tree: ContractNodeTreeIndex,
     parent_id: UUID | None = None,
     prefix: str = "",
-    is_last: bool = True,
 ) -> None:
-    children = nodes_by_parent.get(parent_id, [])
-
+    if parent_id is None:
+        children = tree.roots()
+    else:
+        children = tree.children_of(parent_id)
+    nodes_by_parent = tree.children_by_parent  # lokalny wyjątek
 
     for index, node in enumerate(children):
         last = index == len(children) - 1
 
         connector = "└── " if last else "├── "
         status = "" if node.is_active else " [INACTIVE]"
-        calc_budget = ContractNode.calculate_budget_from_leaves(node.id, nodes_by_parent)
-        # budget = f" | budget={node.budget}" if node.budget is not None else ""
 
-        print(f"{prefix}{connector}{node.code} – {node.name} {status}  {calc_budget}"
-            
-              # f"{CostNode.calculate_budget_from_leaves(node.id,build_nodes_by_parent(children))}"
-              # f"{status}"
-              f"")
+        calc_budget = ContractNode.calculate_budget_from_leaves(
+            node.id,
+            nodes_by_parent,
+        )
+
+        print(
+            f"{prefix}{connector}{node.code} – {node.name}{status}  {calc_budget}"
+        )
 
         extension = "    " if last else "│   "
+
         print_contract_node_tree(
-            nodes_by_parent,
-            node.id,
-            prefix + extension,
-            last,
+            tree=tree,
+            parent_id=node.id,
+            prefix=prefix + extension,
         )
+
 

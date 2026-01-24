@@ -190,6 +190,7 @@ def root_node(node_contract_id):
         is_active=True,
         quantity= Decimal("1"),
         unit=None,
+        progress=None
     )
 
 
@@ -205,4 +206,5 @@ def child_node(node_contract_id, root_node):
         is_active=True,
         quantity=Decimal("10"),
         unit=UnitOfMeasure.METER,
+        progress=Decimal("0"),
     )

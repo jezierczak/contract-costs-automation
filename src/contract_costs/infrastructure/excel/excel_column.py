@@ -3,6 +3,7 @@ from enum import Enum
 from typing import Callable, Any
 
 class ExcelColumnType(Enum):
+    PERCENT = "percent"
     DISPLAY = "display"
     CHECKBOX = "checkbox"
     HIDDEN = "hidden"

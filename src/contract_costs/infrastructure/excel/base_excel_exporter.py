@@ -90,6 +90,11 @@ class BaseExcelExporter(Generic[T]):
                     case ExcelColumnType.CHECKBOX:
                         value = CheckBoxOptions.YES.value if value else CheckBoxOptions.NO.value
 
+                    case ExcelColumnType.PERCENT:
+                        # value expected as Decimal | int | float in range 0–100
+                        # leave as-is; formatting handled separately
+                        value = value
+
                     case ExcelColumnType.LINK:
                         if value:
                             abs_path = (cfg.WORK_DIR / Path(value)).resolve().as_posix()
@@ -120,6 +125,15 @@ class BaseExcelExporter(Generic[T]):
             # --- HIDDEN ---
             if col.column_type == ExcelColumnType.HIDDEN:
                 ws.column_dimensions[col_letter].hidden = True
+
+            if col.column_type == ExcelColumnType.PERCENT:
+                for (cell,) in ws.iter_rows(
+                        min_col=idx,
+                        max_col=idx,
+                        min_row=2,
+                        max_row=ws.max_row,
+                ):
+                    cell.number_format = "0.00"
 
             # --- PROTECTION ---
             for (cell,) in ws.iter_rows(
@@ -189,6 +203,9 @@ class BaseExcelExporter(Generic[T]):
                 source_ws=ws,
                 target_column=col_letter,
             )
+
+        # --- ENABLE SHEET PROTECTION ---
+        ws.protection.enable()
 
     def save(self, output_path: Path) -> None:
         """

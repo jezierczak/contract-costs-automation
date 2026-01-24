@@ -158,6 +158,7 @@ def cost_node_root(contract_1):
         unit=None,
         budget=Decimal("100000"),
         is_active=True,
+        progress=None,
     )
 
 
@@ -173,6 +174,7 @@ def cost_node_child(cost_node_root, contract_1):
         unit=UnitOfMeasure.PIECE,
         budget=Decimal("50000"),
         is_active=True,
+        progress=Decimal("0.5")
     )
 
 
@@ -188,6 +190,7 @@ def inactive_cost_node(contract_1):
         unit=None,
         budget=None,
         is_active=False,
+        progress=Decimal("0.5")
     )
 
 
@@ -214,6 +217,7 @@ def cost_node_input_tree():
         "quantity": None,
         "unit": None,
         "is_active": True,
+        "progress": None,
         "children": [
             {
                 "code": "CH1",
@@ -222,6 +226,7 @@ def cost_node_input_tree():
                 "quantity": Decimal("10"),
                 "unit": UnitOfMeasure.PIECE,
                 "is_active": True,
+                "progress": Decimal("0.5"),
                 "children": [],
             },
             {
@@ -231,6 +236,7 @@ def cost_node_input_tree():
                 "quantity": None,
                 "unit": None,
                 "is_active": False,
+                "progress": Decimal("0"),
                 "children": [],
             },
         ],

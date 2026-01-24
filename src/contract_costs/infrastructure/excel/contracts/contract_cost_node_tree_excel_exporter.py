@@ -10,6 +10,7 @@ from openpyxl.styles import Font, Alignment
 from contract_costs.infrastructure.excel.excel_common_methods import ExcelCommonMethods
 from contract_costs.model.contract import Contract
 from contract_costs.model.contract_node import ContractNode
+from contract_costs.services.contracts.prepare.contract_node_tree_index import ContractNodeTreeIndex
 from contract_costs.services.contracts.prepare.mappers.contract_node_prepare_mapper import ContractNodePrepareMapper
 
 FONT_ROOT = Font(bold=True, color="1F4E79")
@@ -104,11 +105,11 @@ class ContractTreeExcelExporter:
             cell.font = header_font
             cell.alignment = Alignment(vertical="center")
 
-        nodes_by_parent = ContractNodePrepareMapper.group_by_parent(cost_nodes)
+        tree = ContractNodeTreeIndex(cost_nodes)
 
         self._write_node_rows(
             ws=ws,
-            nodes_by_parent=nodes_by_parent,
+            tree=tree,
             parent_id=None,
             prefix="",
             is_last=True,
@@ -124,15 +125,20 @@ class ContractTreeExcelExporter:
     # =========================================================
 
     def _write_node_rows(
-        self,
-        *,
-        ws,
-        nodes_by_parent: dict[UUID | None, list[ContractNode]],
-        parent_id: UUID | None,
-        prefix: str,
-        is_last: bool,
+            self,
+            *,
+            ws,
+            tree: ContractNodeTreeIndex,
+            parent_id: UUID | None,
+            prefix: str,
+            is_last: bool,
     ) -> None:
-        children = nodes_by_parent.get(parent_id, [])
+        if parent_id is None:
+            children = tree.roots()
+        else:
+            children = tree.children_of(parent_id)
+
+        nodes_by_parent = tree.children_by_parent  # lokalny wyjątek
 
         for idx, node in enumerate(children):
             last = idx == len(children) - 1
@@ -159,13 +165,14 @@ class ContractTreeExcelExporter:
             )
             row_idx = ws.max_row
 
-            # wykrycie dzieci
-            children = [
-                c for c in nodes_by_parent.get(node.id, [])
+            active_children = [
+                c for c in tree.children_of(node.id)
                 if c.is_active
             ]
-            is_leaf = not children
+
+            is_leaf = not active_children
             is_root = node.parent_id is None
+
             if not node.is_active:
                 font = FONT_INACTIVE
             elif is_root:
@@ -174,6 +181,7 @@ class ContractTreeExcelExporter:
                 font = FONT_GROUP
             else:
                 font = FONT_LEAF
+
             for col in range(1, ws.max_column + 1):
                 ws.cell(row=row_idx, column=col).font = font
 
@@ -181,7 +189,7 @@ class ContractTreeExcelExporter:
 
             self._write_node_rows(
                 ws=ws,
-                nodes_by_parent=nodes_by_parent,
+                tree=tree,
                 parent_id=node.id,
                 prefix=prefix + extension,
                 is_last=last,

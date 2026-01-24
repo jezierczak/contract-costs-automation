@@ -1,7 +1,7 @@
+from datetime import datetime, date
 from decimal import Decimal
 from uuid import UUID
 
-from contract_costs.model.invoice import InvoiceStatus
 from contract_costs.model.invoice_line import InvoiceLine
 from contract_costs.model.amount import Amount, VatRate, TaxTreatment
 from contract_costs.model.unit_of_measure import UnitOfMeasure
@@ -93,10 +93,10 @@ class MySQLInvoiceLineRepository(InvoiceLineRepository):
 
         return [self._map_row(r) for r in rows]
 
-    def list_by_invoice_ids(self, invoice_line_ids: list[UUID]) -> list[InvoiceLine]:
+    def list_by_invoice_ids(self, invoice_ids: list[UUID]) -> list[InvoiceLine]:
         result: list[InvoiceLine] = []
 
-        for invoice_id in invoice_line_ids:
+        for invoice_id in invoice_ids:
             result.extend(self.list_by_invoice(invoice_id))
 
         return result
@@ -193,6 +193,34 @@ class MySQLInvoiceLineRepository(InvoiceLineRepository):
         conn = get_connection()
         with conn.cursor(dictionary=True) as cur:
             cur.execute(sql)
+            rows = cur.fetchall()
+
+        return [self._map_row(r) for r in rows]
+
+    def list_by_contract_until(
+            self,
+            *,
+            contract_id: UUID,
+            snapshot_date: date,
+    ) -> list[InvoiceLine]:
+        cutoff = datetime.combine(snapshot_date, datetime.max.time())
+
+        sql = """
+              SELECT *
+              FROM invoice_lines
+              WHERE contract_id = %s
+                AND created_at <= %s \
+              """
+
+        conn = get_connection()
+        with conn.cursor(dictionary=True) as cur:
+            cur.execute(
+                sql,
+                (
+                    str(contract_id),
+                    cutoff,
+                ),
+            )
             rows = cur.fetchall()
 
         return [self._map_row(r) for r in rows]

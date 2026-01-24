@@ -26,6 +26,7 @@ class ContractNode:
     quantity: Decimal | None
     unit: UnitOfMeasure | None
     budget: Decimal | None
+    progress: Decimal | None  # zakres 0.0 – 1.0
     is_active: bool
 
 
@@ -58,3 +59,49 @@ class ContractNode:
         )
 
         return node.budget or Decimal("0")
+
+    def is_leaf(self, nodes_by_parent: dict[UUID | None, list["ContractNode"]]) -> bool:
+        return len(nodes_by_parent.get(self.id, [])) == 0
+
+    def can_have_progress(self, nodes_by_parent: dict[UUID | None, list["ContractNode"]]) -> bool:
+        return self.is_active and self.is_leaf(nodes_by_parent)
+
+    @staticmethod
+    def calculate_progress_from_leaves(
+            node_id: UUID,
+            nodes_by_parent: dict[UUID | None, list["ContractNode"]],
+    ) -> Decimal | None:
+        children = [
+            c for c in nodes_by_parent.get(node_id, [])
+            if c.is_active
+        ]
+
+        # jeśli są dzieci → liczmy z dzieci
+        if children:
+            weighted_sum = Decimal("0")
+            total_budget = Decimal("0")
+
+            for child in children:
+                child_progress = ContractNode.calculate_progress_from_leaves(
+                    child.id, nodes_by_parent
+                )
+                if child_progress is None or child.budget is None:
+                    continue
+
+                weighted_sum += child_progress * child.budget
+                total_budget += child.budget
+
+            if total_budget == 0:
+                return None
+
+            return weighted_sum / total_budget
+
+        # liść
+        node = next(
+            n
+            for nodes in nodes_by_parent.values()
+            for n in nodes
+            if n.id == node_id
+        )
+
+        return node.progress

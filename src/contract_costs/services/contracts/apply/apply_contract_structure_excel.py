@@ -65,12 +65,12 @@ class ApplyContractStructureExcelService:
         self._create_contract.execute()
 
     def apply_update(self, *, excel_path: Path, contract_id: UUID) -> None:
-        starter, cost_nodes = self._load_from_excel(excel_path)
+        starter, contract_nodes = self._load_from_excel(excel_path)
 
         self._update_contract.execute(
             contract_id=contract_id,
             contract_starter=starter,
-            contract_node_input=cost_nodes,
+            contract_node_input=contract_nodes,
         )
 
     # =====================================================

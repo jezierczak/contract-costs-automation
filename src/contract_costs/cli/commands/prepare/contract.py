@@ -1,9 +1,8 @@
 import logging
-from uuid import UUID
 
-import contract_costs.config as cfg
 from contract_costs.cli.context import get_services
 from contract_costs.cli.registry import REGISTRY
+from contract_costs.cli.utils.contract_resolver import resolve_contract
 from contract_costs.infrastructure.filesystem.excel_domain_file_manager import InputsContractsAssignmentFileManager
 
 logger = logging.getLogger(__name__)
@@ -79,7 +78,7 @@ def handle_prepare_contract(args) -> None:
         print(f"Prepared NEW contract Excel:\n{output_path}")
         return
     else:
-        contract = _resolve_contract(contract_ref, services)
+        contract = resolve_contract(contract_ref, services)
 
         fm = InputsContractsAssignmentFileManager(contract_code=contract.code)
         # filename = cfg.CONTRACT_EDIT_EXCEL_TEMPLATE.format(code=contract.code)
@@ -131,22 +130,6 @@ def handle_prepare_contract(args) -> None:
 # =========================================================
 # UTILS
 # =========================================================
-
-def _resolve_contract(contract_ref: str, services):
-    repo = services.contract_repository
-
-    try:
-        contract = repo.get(UUID(contract_ref))
-        if contract:
-            return contract
-    except ValueError:
-        pass
-
-    contract = repo.get_by_code(contract_ref)
-    if contract:
-        return contract
-
-    raise RuntimeError(f"Contract not found: {contract_ref}")
 
 
 # =========================================================
