@@ -4,6 +4,7 @@ from decimal import Decimal
 from contract_costs.cli.context import get_services
 from contract_costs.cli.registry import REGISTRY
 from contract_costs.model.invoice import InvoiceStatus, PaymentStatus
+from contract_costs.model.value_direction import ValueDirection
 from contract_costs.services.invoices.review.dto.invoice_review_query import InvoiceReviewQuery, CompanyReviewQuery
 
 logger = logging.getLogger(__name__)
@@ -47,6 +48,12 @@ def build_show_invoices(subparsers):
         "--unpaid",
         action="store_true",
         help="Show only unpaid invoices",
+    )
+
+    p.add_argument(
+        "--direction",
+        choices=["COST", "REVENUE", "INTERNAL"],
+        help="Type invoice direction (COST,REVENUE,INTERNAL)",
     )
 
     p.add_argument("--from", dest="from_date")
@@ -96,6 +103,8 @@ def handle_show_invoices(args) -> None:
         role = args.seller_role
     )
 
+
+
     review_query = InvoiceReviewQuery(
         buyer_query=buyer_query,
         seller_query=seller_query,
@@ -103,6 +112,11 @@ def handle_show_invoices(args) -> None:
         payment_statuses = [PaymentStatus.UNPAID, PaymentStatus.PARTIALLY_PAID, PaymentStatus.UNKNOWN] if args.unpaid else None,
         from_date=args.from_date,
         to_date=args.to_date,
+        direction=(
+            ValueDirection[args.direction]
+            if args.direction
+            else None
+        )
     )
     print("Preparing invoices... ")
     if review_query.statuses:
@@ -113,6 +127,8 @@ def handle_show_invoices(args) -> None:
         print(f"From date: {review_query.from_date}")
     if review_query.to_date:
         print(f"To date: {review_query.to_date}")
+    if review_query.direction:
+        print(f"Direction: {review_query.direction}")
     if args.last:
         print(f"Last {args.last} invoices")
     print("=" * 192)

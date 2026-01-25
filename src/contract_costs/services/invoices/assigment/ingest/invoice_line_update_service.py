@@ -48,16 +48,21 @@ class InvoiceLineUpdateService:
         # If invoice_number is changed, line references MUST be updated in the batch.
         # The system does not auto-migrate invoice lines.
 
-        # invoice_line_states: dict[UUID, list[bool]] = defaultdict(list)
-        # invoice_lines_directions: dict[UUID, set[ValueDirection]] = defaultdict(set)
-
         invoice_lines_updated: defaultdict[UUID,list[InvoiceLine]] = defaultdict(list) #fist is invoice id, second updated invoice_line_ids,
 
-        invoice_ids_from_excel: set[UUID] = {
+        # invoice_ids_from_excel: set[UUID] = {
+        #     ref.invoice_id
+        #     for ref in ref_map.values()
+        #     if ref.invoice_id is not None
+        # }
+
+        invoice_ids_subject_to_cleanup: set[UUID] = {
             ref.invoice_id
             for ref in ref_map.values()
             if ref.invoice_id is not None
+               and ref.action == InvoiceApplyAction.APPLIED
         }
+
         value_type_directions: dict[UUID, ValueDirection] = {
             value_type.id: value_type.direction for value_type in self._value_type_repository.list()
         }
@@ -141,7 +146,7 @@ class InvoiceLineUpdateService:
         for inv_id, lines_up in invoice_lines_updated.items():
             invoice_lines_ids_updated[inv_id] = [line_up.id for line_up in lines_up]
 
-        self._delete_items_erased_from_excel(invoice_ids_from_excel,invoice_lines_ids_updated)
+        self._delete_items_erased_from_excel(invoice_ids_subject_to_cleanup,invoice_lines_ids_updated)
 
         logger.info(
             "Invoice lines processed: total=%d, invoices_affected=%d",
@@ -176,6 +181,14 @@ class InvoiceLineUpdateService:
             invoice_lines_ids_updated: dict[UUID, list[UUID]],
     ) -> None:
         for invoice_id in invoice_ids:
+
+            if invoice_id not in invoice_lines_ids_updated:
+                logger.debug(
+                    "Skipping cleanup for invoice_id=%s (no lines updated in batch)",
+                    invoice_id,
+                )
+                continue
+
             keep_ids = set(invoice_lines_ids_updated.get(invoice_id, []))
 
             deleted = self._invoice_line_repository.delete_not_in_ids(

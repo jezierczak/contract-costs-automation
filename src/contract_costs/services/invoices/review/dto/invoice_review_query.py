@@ -6,6 +6,8 @@ from pydantic import BaseModel
 
 from contract_costs.model.company import CompanyType
 from contract_costs.model.invoice import InvoiceStatus, PaymentStatus
+from contract_costs.model.value_direction import ValueDirection
+
 
 class CompanyReviewQuery(TypedDict,total=False):
     any: str
@@ -24,6 +26,7 @@ class InvoiceReviewQuery(BaseModel):
     to_date: date | None = None
 
     only_ready_for_accountant: bool | None = None
+    direction: ValueDirection | None = None
 
     @staticmethod
     def build_company_query(**kwargs) -> CompanyReviewQuery | None:

@@ -274,7 +274,20 @@ class MySQLInvoiceRepository(InvoiceRepository):
             conditions.append("invoice_date <= %s")
             params.append(query.to_date)
 
-        if query.seller_query or query.buyer_query:
+        if query.direction:
+            conditions.append(
+                """
+                CASE
+                    WHEN buyer.role = 'Own' AND seller.role != 'Own' THEN 'COST'
+                    WHEN buyer.role != 'Own' AND seller.role = 'Own' THEN 'REVENUE'
+                    WHEN buyer.role = 'Own' AND seller.role = 'Own' THEN 'INTERNAL'
+                END = %s
+                """
+            )
+            params.append(query.direction.value)
+
+
+        if query.seller_query or query.buyer_query or query.direction:
             sql = """
                   SELECT invoices.*
                   FROM invoices

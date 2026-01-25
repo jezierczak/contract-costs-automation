@@ -3,9 +3,7 @@ from dataclasses import replace
 from datetime import datetime
 from uuid import uuid4
 
-from contract_costs.model.company import CompanyType
 from contract_costs.model.invoice import Invoice, InvoiceStatus
-from contract_costs.model.value_direction import ValueDirection
 from contract_costs.services.invoices.assigment.apply.commands.invoice_command import InvoiceCommand
 from contract_costs.services.invoices.assigment.ingest.completion_validator.invoice_completion_validator import \
     InvoiceCompletionValidator

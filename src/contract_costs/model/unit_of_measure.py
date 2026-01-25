@@ -12,3 +12,4 @@ class UnitOfMeasure(Enum):
     DAY = "day"          # dzień
     SERVICE = "services"  # usługa
     UNKNOWN = "unknown"
+    LITER = "l"
