@@ -1,11 +1,17 @@
 import logging
-from decimal import Decimal
+
+from contract_costs.cli.commands.header_builder.invoice_report_header_builder import InvoiceReportHeaderBuilder
+from contract_costs.cli.printers.table_printer.cmd_printer import CmdPrinter
+from contract_costs.cli.printers.table_printer.table_printer import TablePrinter
+from contract_costs.cli.printers.table_printer.excel_printer import ExcelPrinter
+from contract_costs.infrastructure.filesystem.show_file_manager import  InvoicesShowFileManager
 
 from contract_costs.cli.context import get_services
 from contract_costs.cli.registry import REGISTRY
 from contract_costs.model.invoice import InvoiceStatus, PaymentStatus
 from contract_costs.model.value_direction import ValueDirection
-from contract_costs.services.invoices.review.dto.invoice_review_query import InvoiceReviewQuery, CompanyReviewQuery
+from contract_costs.reports.invoices.invoice_list_columns import invoice_list_columns
+from contract_costs.services.invoices.review.dto.invoice_review_query import InvoiceReviewQuery
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +62,18 @@ def build_show_invoices(subparsers):
         help="Type invoice direction (COST,REVENUE,INTERNAL)",
     )
 
+    p.add_argument(
+        "--contract",
+        nargs="+",
+        help="Filter by contract code(s)",
+    )
+
+    p.add_argument(
+        "--excel",
+        action="store_true",
+        help="Export invoices list to Excel",
+    )
+
     p.add_argument("--from", dest="from_date")
     p.add_argument("--to", dest="to_date")
 
@@ -68,24 +86,12 @@ def build_show_invoices(subparsers):
 
     p.set_defaults(handler=handle_show_invoices)
 
+REGISTRY.register_group("show", build_show_invoices)
+
+
 
 def handle_show_invoices(args) -> None:
     services = get_services()
-
-    # ==========================================================
-    # 🔹 BRANCH: raport po NIP sprzedawcy
-    # ==========================================================
-    # if args.seller_nip:
-    #     summary = services.invoice_seller_summary_query_service.get_by_seller_nip(
-    #         args.seller_nip
-    #     )
-    #
-    #     _print_seller_invoice_summary(summary)
-    #     return
-
-    # ==========================================================
-    # 🔹 DEFAULT: lista faktur (to co masz teraz)
-    # ==========================================================
     query_service = services.review_query_service
 
     statuses = [InvoiceStatus[s] for s in args.status] if args.status else None
@@ -103,8 +109,6 @@ def handle_show_invoices(args) -> None:
         role = args.seller_role
     )
 
-
-
     review_query = InvoiceReviewQuery(
         buyer_query=buyer_query,
         seller_query=seller_query,
@@ -112,26 +116,15 @@ def handle_show_invoices(args) -> None:
         payment_statuses = [PaymentStatus.UNPAID, PaymentStatus.PARTIALLY_PAID, PaymentStatus.UNKNOWN] if args.unpaid else None,
         from_date=args.from_date,
         to_date=args.to_date,
+        contract_codes=args.contract,
         direction=(
             ValueDirection[args.direction]
             if args.direction
             else None
         )
     )
-    print("Preparing invoices... ")
-    if review_query.statuses:
-        print(f"Statuses in: {[status.name for status in review_query.statuses]}")
-    if review_query.payment_statuses:
-        print(f"Payment statuses in: {[p.name for p in review_query.payment_statuses]}")
-    if review_query.from_date:
-        print(f"From date: {review_query.from_date}")
-    if review_query.to_date:
-        print(f"To date: {review_query.to_date}")
-    if review_query.direction:
-        print(f"Direction: {review_query.direction}")
-    if args.last:
-        print(f"Last {args.last} invoices")
-    print("=" * 192)
+
+    header = InvoiceReportHeaderBuilder.from_args(args)
 
     result_invoices = query_service.list_for_review(review_query)
     if not result_invoices:
@@ -141,92 +134,27 @@ def handle_show_invoices(args) -> None:
     if args.last:
         result_invoices = result_invoices[:args.last]
 
-    print(
-        f"{fmt("NUMER FAKTURY", 50)} "
-      
-        f"{fmt("DATA FAKT.", 10)} "
-        f"{fmt("NABYWCA", 10)} "
-        f"{fmt("SPRZEDAWCA", 10)} "
-        f"{fmt("NETTO", 10)} "
-        f"{fmt("VAT", 10)} "
-        f"{fmt("BRUTTO", 10)} "
-        f"{fmt("NIEOPOD.", 10)} "
-        f"{fmt("METODA PŁ.", 15)} "
-        f"{fmt("STATUS PŁ.", 10)} "
-        f"{fmt("ZAPŁ. DO", 12)}"
-        f"{fmt("STATUS", 18)} "
-        f"{fmt("DIRECTION", 10)} "
-        f"{fmt("CONTRACTS", 18)} "
-    )
-    NET: Decimal = Decimal("0.00")
-    VAT: Decimal = Decimal("0.00")
-    GROSS: Decimal = Decimal("0.00")
-    NOT_EVIDENCE: Decimal = Decimal("0.00")
-    for inv in result_invoices:
-        # inv = invoice_details_service.get_invoice(i.id)
-        print(
-            f"{fmt(inv.invoice_number, 50)} "
-            
-            f"{fmt(inv.invoice_date, 10)} "
-            f"{fmt(inv.buyer_tax_number, 10)} "
-            f"{fmt(inv.seller_tax_number, 10)} "
-            f"{fmt(inv.total_net, 10)} "
-            f"{fmt(inv.total_vat, 10)} "
-            f"{fmt(inv.total_gross, 10)} "
-            f"{fmt(inv.total_not_evidenced, 10)} "
-            f"{fmt(inv.payment_method, 15)} "
-            f"{fmt(inv.payment_status, 10)} "
-            f"{fmt(inv.due_date, 12)}"
-            f"{fmt(inv.status, 18)} "
-            f"{fmt(inv.direction, 10)} "
-            f"{fmt(inv.contract_codes, 18)} "
+    columns = invoice_list_columns()
+
+    if args.excel:
+        fm = InvoicesShowFileManager(prefix="show_invoices")
+        output_path = fm.create_output_file()
+        printer: TablePrinter = ExcelPrinter(output_path=output_path)
+        printer.print(
+            items=result_invoices,
+            columns=columns,
+            header=header,
         )
-        NET += inv.total_net
-        VAT += inv.total_vat
-        GROSS+=inv.total_gross
-        NOT_EVIDENCE+=inv.total_not_evidenced
+        print(f"Invoice list exported to Excel: {output_path}")
+        return
 
-    print("-" * 192)
-    print(  f"{fmt("SUMA", 98)} "
-            f"{fmt(NET, 10)} "
-            f"{fmt(VAT, 10)} "
-            f"{fmt(GROSS, 10)} "
-            f"{fmt(NOT_EVIDENCE, 10)} ")
-
-def fmt(value, width: int) -> str:
-    if value is None:
-        return "-".ljust(width)
-    return str(value).ljust(width)
-
-def _print_seller_invoice_summary(summary):
-    print("=" * 100)
-    print(f"SELLER: {summary.seller_name}")
-    print(f"NIP:    {summary.seller_tax_number}")
-    print("=" * 100)
-
-    print(
-        f"{'INVOICE':<20} {'DATE':<12} {'STATUS':<10} "
-        f"{'NET':>10} {'VAT':>10} {'GROSS':>10} {'PAID':>6}"
-    )
-    print("-" * 100)
-
-    for r in summary.invoices:
-        print(
-            f"{r.invoice_number:<20} "
-            f"{r.invoice_date or '-':<12} "
-            f"{r.status.name:<10} "
-            f"{r.net:>10.2f} "
-            f"{r.vat:>10.2f} "
-            f"{r.gross:>10.2f} "
-            f"{'YES' if r.paid else 'NO':>6}"
-        )
-
-    print("-" * 100)
-    print(
-        f"{'TOTAL':<44} "
-        f"{summary.total_net:>10.2f} "
-        f"{summary.total_vat:>10.2f} "
-        f"{summary.total_gross:>10.2f}"
+    printer = CmdPrinter()
+    printer.print(
+        items=result_invoices,
+        columns=columns,
+        header=header,
     )
 
-REGISTRY.register_group("show", build_show_invoices)
+
+
+

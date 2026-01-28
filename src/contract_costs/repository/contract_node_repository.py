@@ -1,3 +1,5 @@
+from datetime import date
+from decimal import Decimal
 from uuid import UUID
 from abc import ABC, abstractmethod
 
@@ -75,4 +77,14 @@ class ContractNodeRepository(ABC):
     @abstractmethod
     def node_has_values(self, contract_node_id: UUID) -> bool:
         """Check if any values are assigned to this node"""
+        ...
+
+
+    @abstractmethod
+    def add_progress(
+        self,
+        node_id: UUID,
+        progress: Decimal,
+        progress_date: date,
+    ) -> None:
         ...

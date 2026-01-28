@@ -1,11 +1,11 @@
-from uuid import UUID
+from datetime import datetime
 
 from contract_costs.cli.context import get_services
-from contract_costs.cli.printers.snapshot_tree_printer import print_snapshot_tree
+from contract_costs.cli.printers.table_printer.cmd_printer import CmdPrinter
+from contract_costs.cli.printers.table_printer.excel_printer import ExcelPrinter
 from contract_costs.cli.registry import REGISTRY
-from contract_costs.infrastructure.excel.contracts.contract_snapshot_excel_exporter import ContractSnapshotExcelExporter
-from contract_costs.infrastructure.filesystem.show_file_manager import ContractsShowFileManager, \
-    SnapshotsShowFileManager
+from contract_costs.infrastructure.filesystem.show_file_manager import  SnapshotShowFileManager
+from contract_costs.reports.snapshots.snapshot_tree_columns import snapshot_tree_columns
 
 
 # =========================================================
@@ -43,22 +43,35 @@ def handle_show_snapshot(args):
 
     dto = query.get_snapshot(snapshot_id=snapshot_ref)
 
-    if args.excel:
-        exporter = ContractSnapshotExcelExporter()
+    header = {
+        "Snapshot ID": [str(dto.snapshot_id)],
+        "Snapshot Date": [str(dto.snapshot_date)],
+        "Contract": [dto.contract_code],
+        "Generated": [datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
+    }
 
-        fm = SnapshotsShowFileManager(
+
+    if args.excel:
+
+        fm = SnapshotShowFileManager(
             contract_code=dto.contract_code,
             contract_date=dto.snapshot_date,
         )
         output_path = fm.create_output_file()
 
-        exporter.export(
-            snapshot=dto,
-            output_path=output_path,
+        printer = ExcelPrinter(output_path)
+        printer.print(
+            items=dto.nodes,
+            columns=snapshot_tree_columns(),
+            header=header,
         )
         print(f"Contract snapshot exported to Excel: {output_path}")
         return
 
-    print(f"\nSNAPSHOT {dto.snapshot_id} | {dto.contract_code} | {dto.snapshot_date}\n")
-    print_snapshot_tree(dto.nodes)
+    printer = CmdPrinter()
+    printer.print(
+        items=dto.nodes,
+        columns=snapshot_tree_columns(),
+        header=header,
+    )
 

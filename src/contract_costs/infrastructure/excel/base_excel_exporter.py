@@ -1,6 +1,4 @@
-
 from pathlib import Path
-from typing import Generic, TypeVar
 
 from openpyxl import Workbook
 from openpyxl.styles import Protection, Alignment
@@ -16,10 +14,8 @@ from contract_costs.infrastructure.excel.excel_common_methods import (
 )
 import contract_costs.config as cfg
 
-T = TypeVar("T")
 
-
-class BaseExcelExporter(Generic[T]):
+class BaseExcelExporter[T]:
     """
     Excel exporter supporting:
     - single-sheet export (static API)

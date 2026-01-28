@@ -35,6 +35,7 @@
     <file url="file://$PROJECT_DIR$/.idea/queries/Query_7.sql" value="cfdc8db7-dd0a-4232-8f82-c2510172cbad" />
     <file url="file://$PROJECT_DIR$/.idea/queries/Query_8.sql" value="cfdc8db7-dd0a-4232-8f82-c2510172cbad" />
     <file url="file://$PROJECT_DIR$/.idea/queries/Query_9.sql" value="cfdc8db7-dd0a-4232-8f82-c2510172cbad" />
+    <file url="file://$PROJECT_DIR$/src/contract_costs/repository/mysql/contract_node_repository.py" value="cfdc8db7-dd0a-4232-8f82-c2510172cbad" />
     <file url="file://$PROJECT_DIR$/src/contract_costs/repository/mysql/invoice_repository.py" value="cfdc8db7-dd0a-4232-8f82-c2510172cbad" />
   </component>
 </project>

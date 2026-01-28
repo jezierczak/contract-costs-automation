@@ -83,18 +83,6 @@ def handle_prepare_invoices_for_review(args) -> None:
         view=view
     )
     output_path = fm.create_output_file()
-    # output_path = InvoiceExcel
-    # PathResolver.resolve(
-    #     view=view,
-    #     query=review_query,
-    # )
-
-    # if output_path.exists():
-    #     raise RuntimeError(
-    #         f"Excel already exists: {output_path}\n"
-    #         "Apply or remove it before preparing again."
-    #     )
-
     services.invoice_excel_export_service.export(
         review_query=review_query,
         view=view,

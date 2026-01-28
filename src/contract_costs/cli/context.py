@@ -27,6 +27,7 @@ from contract_costs.services.contracts.create_contract_service import CreateCont
 from contract_costs.services.contracts.prepare.contract_prepare_excel_exporter import ContractPrepareExcelExporter
 from contract_costs.services.contracts.prepare.contract_prepare_progress_excel_exporter import \
     ContractPrepareProgressExcelExporter
+from contract_costs.services.contracts.query.contract_query_service import ContractQueryService
 from contract_costs.services.contracts.update_contract_service import UpdateContractService
 from contract_costs.services.contracts.apply.update_contract_structure_service import (
     UpdateContractStructureService,
@@ -62,7 +63,7 @@ from contract_costs.services.invoices.assigment.prepare.export.export_invoice_as
     ExportInvoiceAssignmentExcelService
 from contract_costs.services.invoices.excel.invoice_excel_export_service import InvoiceExcelExportService
 from contract_costs.services.invoices.queries.invoice_details_query_service import InvoiceDetailsQueryService
-from contract_costs.services.invoices.queries.invoice_seller_summary_query_service import InvoiceSellerSummaryQueryService
+# from contract_costs.services.invoices.queries.invoice_seller_summary_query_service import InvoiceSellerSummaryQueryService
 from contract_costs.services.invoices.assigment.ingest.invoice_line_update_service import InvoiceLineUpdateService
 from contract_costs.services.invoices.assigment.ingest.invoice_ingest_orchestrator import (
     InvoiceIngestOrchestrator,
@@ -132,7 +133,9 @@ class Services:
 
         self._invoice_query_service = None
 
-        self._invoice_seller_summary_query_service = None
+        # self._invoice_seller_summary_query_service = None
+
+        self._contract_query_service = None
 
         self._invoice_excel_export_service = None
 
@@ -466,15 +469,15 @@ class Services:
             )
         return self._invoice_excel_export_service
 
-    @property
-    def invoice_seller_summary_query_service(self):
-        if self._invoice_seller_summary_query_service is None:
-            self._invoice_seller_summary_query_service = InvoiceSellerSummaryQueryService(
-                invoice_repo=self.invoice_repository,
-                invoice_line_repo=self.invoice_line_repository,
-                company_repo=self.company_repository,
-            )
-        return self._invoice_seller_summary_query_service
+    # @property
+    # def invoice_seller_summary_query_service(self):
+    #     if self._invoice_seller_summary_query_service is None:
+    #         self._invoice_seller_summary_query_service = InvoiceSellerSummaryQueryService(
+    #             invoice_repo=self.invoice_repository,
+    #             invoice_line_repo=self.invoice_line_repository,
+    #             company_repo=self.company_repository,
+    #         )
+    #     return self._invoice_seller_summary_query_service
 
 
     @property
@@ -611,6 +614,16 @@ class Services:
             )
         return self._contract_snapshot_query_service
 
+    @property
+    def contract_query_service(self):
+        if self._contract_query_service is None:
+            self._contract_query_service = ContractQueryService(
+                contract_repo=self.contract_repository,
+                contract_node_repo=self.contract_node_repository,
+                invoice_line_repo=self.invoice_line_repository,
+                value_type_repo=self.value_type_repository,
+            )
+        return self._contract_query_service
 
 _services: Dict[str, Services] = {}
 

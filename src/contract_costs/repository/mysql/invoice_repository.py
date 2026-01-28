@@ -232,6 +232,8 @@ class MySQLInvoiceRepository(InvoiceRepository):
         conditions: list[str] = []
         params: list[object] = []
 
+        needs_contract_join = bool(query.contract_codes)
+
         if query.buyer_query:
             self._apply_company_query(
                 alias="buyer",
@@ -249,17 +251,22 @@ class MySQLInvoiceRepository(InvoiceRepository):
             )
 
         if query.only_ready_for_accountant:
-            conditions.append("status = %s")
+            conditions.append("invoices.status = %s")
             params.append(InvoiceStatus.PROCESSED.value)
 
         elif query.statuses:
             placeholders = ", ".join(["%s"] * len(query.statuses))
-            conditions.append(f"status IN ({placeholders})")
+            conditions.append(f"invoices.status IN ({placeholders})")
             params.extend(s.value for s in query.statuses)
 
         else:
-            conditions.append("status != %s")
+            conditions.append("invoices.status != %s")
             params.append(InvoiceStatus.DELETED.value)
+
+        if query.contract_codes:
+            placeholders = ", ".join(["%s"] * len(query.contract_codes))
+            conditions.append(f"contracts.code IN ({placeholders})")
+            params.extend(query.contract_codes)
 
         if query.payment_statuses:
             placeholders = ", ".join(["%s"] * len(query.payment_statuses))
@@ -286,22 +293,30 @@ class MySQLInvoiceRepository(InvoiceRepository):
             )
             params.append(query.direction.value)
 
+        sql = """
+              SELECT DISTINCT invoices.*
+              FROM invoices \
+              """
 
         if query.seller_query or query.buyer_query or query.direction:
-            sql = """
-                  SELECT invoices.*
-                  FROM invoices
-                           JOIN companies buyer ON buyer.id = invoices.buyer_id
-                           JOIN companies seller ON seller.id = invoices.seller_id \
-                  """
-        else:
-            sql = "SELECT * FROM invoices"
+            sql += """
+                JOIN companies buyer ON buyer.id = invoices.buyer_id
+                JOIN companies seller ON seller.id = invoices.seller_id
+            """
+
+        if needs_contract_join:
+            sql += """
+                JOIN invoice_lines il ON il.invoice_id = invoices.id
+                JOIN contracts ON contracts.id = il.contract_id
+            """
 
         if conditions:
             sql += " WHERE " + " AND ".join(conditions)
-        if  not query.payment_statuses:
+
+        if not query.payment_statuses:
             sql += " ORDER BY invoice_date DESC, timestamp DESC"
-        else: sql += " ORDER BY due_date , timestamp "
+        else:
+            sql += " ORDER BY due_date, timestamp"
 
         conn = get_connection()
         with conn.cursor(dictionary=True) as cur:

@@ -3,6 +3,7 @@ from pathlib import Path
 from uuid import UUID
 from collections import defaultdict
 
+from mypy.nodes import RaiseStmt
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment
 
@@ -41,7 +42,7 @@ class SnapshotTreeIndex:
     def roots(self) -> list[ContractNodeSnapshotDTO]:
         return self.children.get(None, [])
 
-    def children_of(self, parent_id: UUID) -> list[ContractNodeSnapshotDTO]:
+    def children_of(self, parent_id: UUID | None) -> list[ContractNodeSnapshotDTO]:
         return self.children.get(parent_id, [])
 
 # =========================================================
@@ -60,6 +61,9 @@ class ContractSnapshotExcelExporter:
     ) -> None:
         wb = Workbook()
         ws = wb.active
+        if not ws:
+            raise RuntimeError(f"No worksheet with name {self.SHEET_NAME}")
+
         ws.title = self.SHEET_NAME
 
         self._write_metadata(ws, snapshot)
@@ -67,7 +71,7 @@ class ContractSnapshotExcelExporter:
 
         tree = SnapshotTreeIndex(snapshot.nodes)
 
-        start_row = ws.max_row + 1
+        # start_row = ws.max_row + 1
         self._write_nodes(
             ws=ws,
             tree=tree,

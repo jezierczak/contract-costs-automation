@@ -2,12 +2,12 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 from uuid import UUID
+from datetime import date
 
 from contract_costs.infrastructure.excel.contracts.contract_node_progress_prepare_columns import \
     CONTRACT_NODE_PROGRESS_PREPARE_COLUMNS
 from contract_costs.infrastructure.excel.excel_loader import ExcelLoader
 from contract_costs.model.contract import Contract
-from contract_costs.model.contract_node import ContractNode
 from contract_costs.repository.contract_node_repository import ContractNodeRepository
 import contract_costs.config as cfg
 from contract_costs.services.contracts.prepare.contract_node_tree_index import ContractNodeTreeIndex
@@ -67,7 +67,8 @@ class ApplyContractProgressExcelService:
         tree = ContractNodeTreeIndex(nodes)
         nodes_by_id = {n.id: n for n in nodes}
 
-        updated_nodes: list[ContractNode] = []
+        today = date.today()  # albo data z nagłówka Excela później
+
         for row in rows:
             # --- contract safety ---
             if row["Contract"] != contract.code:
@@ -106,7 +107,9 @@ class ApplyContractProgressExcelService:
             if not node.is_active:
                 continue  # albo raise – decyzja domenowa
 
-            node.progress = new_progress / Decimal("100")
-            updated_nodes.append(node)
-
-        self._node_repo.update_many(updated_nodes)
+            # ✅ JEDYNA POPRAWNA OPERACJA
+            self._node_repo.add_progress(
+                node_id=node.id,
+                progress=new_progress / Decimal("100"),
+                progress_date=today,
+            )

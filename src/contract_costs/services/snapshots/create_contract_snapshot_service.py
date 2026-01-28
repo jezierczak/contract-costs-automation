@@ -109,7 +109,9 @@ class CreateContractSnapshotService:
 
         for node in tree.leaves():
             planned_budget[node.id] = node.budget or Decimal("0")
-            progress[node.id] = node.progress or Decimal("0")
+
+            p = node.progress_at(snapshot_date)
+            progress[node.id] = p if p is not None else Decimal("0")
 
         # ==================================================
         # PROPAGATE PLANNED + PROGRESS UP

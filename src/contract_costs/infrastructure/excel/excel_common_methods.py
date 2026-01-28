@@ -1,3 +1,5 @@
+import re
+
 from openpyxl.formatting.rule import FormulaRule
 from openpyxl.styles import PatternFill, Alignment, Font
 from openpyxl.utils import get_column_letter
@@ -119,3 +121,44 @@ class ExcelCommonMethods:
 
         end_col = get_column_letter(ws.max_column)
         ws.auto_filter.ref = f"A1:{end_col}{ws.max_row}"
+
+    @staticmethod
+    def safe_named_range(name: str) -> str:
+        """
+        Excel named range rules:
+        - must start with letter or underscore
+        - cannot contain spaces
+        - cannot look like cell reference
+        """
+        safe = re.sub(r"[^A-Za-z0-9_]", "_", str(name))
+
+        if safe[0].isdigit():
+            safe = f"_{safe}"
+
+        return safe
+
+    @staticmethod
+    def apply_named_dropdown(
+            *,
+            ws,
+            column: str,
+            from_row: int,
+            to_row: int,
+            formula: str,
+    ) -> None:
+        """
+        Apply dropdown validation to a column range.
+
+        formula examples:
+        - "=MY_NAMED_RANGE"
+        - "=INDIRECT($B2)"
+        """
+        dv = DataValidation(
+            type="list",
+            formula1=formula,
+            allow_blank=True,
+        )
+
+        ws.add_data_validation(dv)
+
+        dv.add(f"{column}{from_row}:{column}{to_row}")

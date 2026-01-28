@@ -1,4 +1,5 @@
-from  dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import date
 from decimal import Decimal
 from typing import TypedDict
 from uuid import UUID
@@ -26,10 +27,39 @@ class ContractNode:
     quantity: Decimal | None
     unit: UnitOfMeasure | None
     budget: Decimal | None
-    progress: Decimal | None  # zakres 0.0 – 1.0
+    # progress: Decimal | None  # zakres 0.0 – 1.0
     is_active: bool
 
+    progress_history: dict[date, Decimal]
 
+    @property
+    def progress(self) -> Decimal | None:
+        if not self.progress_history:
+            return None
+        latest_date = max(self.progress_history.keys())
+        return self.progress_history[latest_date]
+
+    def progress_at(self, at_date: date) -> Decimal | None:
+        """
+        Zwraca progress obowiązujący NA DANY DZIEŃ.
+        (ostatni zapis <= at_date)
+        """
+        if not self.progress_history:
+            return None
+
+        applicable_dates = [
+            d for d in self.progress_history.keys()
+            if d <= at_date
+        ]
+
+        if not applicable_dates:
+            return None
+
+        latest_date = max(applicable_dates)
+        return self.progress_history[latest_date]
+
+    def has_progress(self) -> bool:
+        return bool(self.progress_history)
 
     @staticmethod
     def calculate_budget_from_leaves(
@@ -105,3 +135,44 @@ class ContractNode:
         )
 
         return node.progress
+
+    @staticmethod
+    def calculate_progress_from_leaves_at(
+            node_id: UUID,
+            nodes_by_parent: dict[UUID | None, list["ContractNode"]],
+            at_date: date,
+    ) -> Decimal | None:
+        children = [
+            c for c in nodes_by_parent.get(node_id, [])
+            if c.is_active
+        ]
+
+        if children:
+            weighted_sum = Decimal("0")
+            total_budget = Decimal("0")
+
+            for child in children:
+                child_progress = ContractNode.calculate_progress_from_leaves_at(
+                    child.id, nodes_by_parent, at_date
+                )
+
+                if child_progress is None or child.budget is None:
+                    continue
+
+                weighted_sum += child_progress * child.budget
+                total_budget += child.budget
+
+            if total_budget == 0:
+                return None
+
+            return weighted_sum / total_budget
+
+        # liść
+        node = next(
+            n
+            for nodes in nodes_by_parent.values()
+            for n in nodes
+            if n.id == node_id
+        )
+
+        return node.progress_at(at_date)

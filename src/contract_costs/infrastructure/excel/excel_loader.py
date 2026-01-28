@@ -7,10 +7,8 @@ from contract_costs.infrastructure.excel.excel_column import (
     ExcelColumnType,
 )
 
-T = TypeVar("T")
 
-
-class ExcelLoader(Generic[T]):
+class ExcelLoader[T]:
 
     @staticmethod
     def load(

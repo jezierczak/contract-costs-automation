@@ -25,6 +25,8 @@ class InvoiceReviewQuery(BaseModel):
     from_date: date | None = None
     to_date: date | None = None
 
+    contract_codes: list[str] | None = None
+
     only_ready_for_accountant: bool | None = None
     direction: ValueDirection | None = None
 

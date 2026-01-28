@@ -67,3 +67,7 @@ class Contract:
         safe_name = contract_name.replace(" ", "_").lower()
         return Path(owner.name) / safe_name
 
+
+    @property
+    def is_active(self) -> bool:
+        return self.status == ContractStatus.ACTIVE

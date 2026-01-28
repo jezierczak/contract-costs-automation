@@ -1,4 +1,6 @@
-from uuid import UUID
+from datetime import date
+from decimal import Decimal
+from uuid import UUID, uuid4
 
 from contract_costs.model.contract_node import ContractNode
 from contract_costs.model.unit_of_measure import UnitOfMeasure
@@ -19,9 +21,9 @@ class MySQLContractNodeRepository(ContractNodeRepository):
         INSERT INTO contract_nodes (
             id, contract_id, parent_id,
             code, name,
-            budget, quantity, unit,is_active,progress
+            budget, quantity, unit,is_active
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s,%s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s)
         """
 
         values = [
@@ -34,8 +36,8 @@ class MySQLContractNodeRepository(ContractNodeRepository):
                 n.budget,
                 n.quantity,
                 n.unit.value if n.unit else None,
-                n.is_active,
-                n.progress
+                n.is_active
+
             )
             for n in contract_nodes
         ]
@@ -45,6 +47,42 @@ class MySQLContractNodeRepository(ContractNodeRepository):
             cur.executemany(sql, values)
         conn.commit()
 
+    # =========================================================
+    # PROGRESS
+    # =========================================================
+
+    def add_progress(
+            self,
+            node_id: UUID,
+            progress: Decimal,
+            progress_date: date,
+    ) -> None:
+        sql = """
+              INSERT INTO contract_node_progress (id, 
+                                                  contract_node_id, 
+                                                  progress_date, 
+                                                  progress)
+              VALUES (%s, %s, %s, %s)
+              ON DUPLICATE KEY UPDATE progress   = VALUES(progress), 
+                                      created_at = CURRENT_TIMESTAMP 
+              """
+
+        conn = get_connection()
+        with conn.cursor() as cur:
+            cur.execute(
+                sql,
+                (
+                    str(uuid4()),
+                    str(node_id),
+                    progress_date,
+                    progress,
+                ),
+            )
+        conn.commit()
+    # =========================================================
+    # READ
+    # =========================================================
+
     def get(self, contract_node_id: UUID) -> ContractNode | None:
         sql = "SELECT * FROM contract_nodes WHERE id = %s"
 
@@ -53,8 +91,12 @@ class MySQLContractNodeRepository(ContractNodeRepository):
             cur.execute(sql, (str(contract_node_id),))
             row = cur.fetchone()
 
-        return self._map_row(row) if row else None
+        if not row:
+            return None
 
+        node = self._map_row_base(row)
+        self._attach_progress_history([node])
+        return node
 
     def get_by_code(self, contract_node_code: str) -> ContractNode | None:
         sql = "SELECT * FROM contract_nodes WHERE code = %s"
@@ -64,7 +106,12 @@ class MySQLContractNodeRepository(ContractNodeRepository):
             cur.execute(sql, (contract_node_code,))
             row = cur.fetchone()
 
-        return self._map_row(row) if row else None
+        if not row:
+            return None
+
+        node = self._map_row_base(row)
+        self._attach_progress_history([node])
+        return node
 
     def list_nodes(self) -> list[ContractNode]:
         sql = "SELECT * FROM contract_nodes"
@@ -74,7 +121,9 @@ class MySQLContractNodeRepository(ContractNodeRepository):
             cur.execute(sql)
             rows = cur.fetchall()
 
-        return [self._map_row(r) for r in rows]
+        nodes = [self._map_row_base(r) for r in rows]
+        self._attach_progress_history(nodes)
+        return nodes
 
     def list_by_parent(self, parent_id: UUID) -> list[ContractNode]:
         sql = "SELECT * FROM contract_nodes WHERE parent_id = %s"
@@ -84,22 +133,27 @@ class MySQLContractNodeRepository(ContractNodeRepository):
             cur.execute(sql, (str(parent_id),))
             rows = cur.fetchall()
 
-        return [self._map_row(r) for r in rows]
+        nodes = [self._map_row_base(r) for r in rows]
+        self._attach_progress_history(nodes)
+        return nodes
 
     def list_by_contract(self, contract_id: UUID) -> list[ContractNode]:
         sql = """
               SELECT *
               FROM contract_nodes
               WHERE contract_id = %s
-              ORDER BY IF(parent_id IS NULL, 0, 1), code 
+              ORDER BY IF(parent_id IS NULL, 0, 1), code \
               """
+
         conn = get_connection()
         with conn.cursor(dictionary=True) as cur:
-
             cur.execute(sql, (str(contract_id),))
             rows = cur.fetchall()
 
-        return [self._map_row(r) for r in rows]
+        nodes = [self._map_row_base(r) for r in rows]
+        self._attach_progress_history(nodes)
+        return nodes
+
 
     def list_leaf_nodes_for_active_contracts(self) -> list[ContractNode]:
         sql = """
@@ -119,7 +173,14 @@ class MySQLContractNodeRepository(ContractNodeRepository):
             cur.execute(sql)
             rows = cur.fetchall()
 
-        return [self._map_row(r) for r in rows]
+        nodes = [self._map_row_base(r) for r in rows]
+        self._attach_progress_history(nodes)
+        return nodes
+    # =========================================================
+    # UPDATE / DELETE
+    # =========================================================
+
+
 
     def update(self, contract_node: ContractNode) -> None:
         sql = """
@@ -130,8 +191,7 @@ class MySQLContractNodeRepository(ContractNodeRepository):
             budget = %s,
             quantity = %s,
             unit = %s,
-            is_active = %s,
-            progress = %s
+            is_active = %s
         WHERE id = %s
         """
 
@@ -147,8 +207,7 @@ class MySQLContractNodeRepository(ContractNodeRepository):
                     contract_node.quantity,
                     contract_node.unit.value if contract_node.unit else None,
                     contract_node.is_active,
-                    contract_node.progress,
-                    str(contract_node.id)
+                    str(contract_node.id),
                 ),
             )
         conn.commit()
@@ -159,7 +218,6 @@ class MySQLContractNodeRepository(ContractNodeRepository):
 
     def delete_by_contract(self, contract_id: UUID) -> None:
         sql = "DELETE FROM contract_nodes WHERE contract_id = %s"
-
         conn = get_connection()
         with conn.cursor() as cur:
             cur.execute(sql, (str(contract_id),))
@@ -176,6 +234,7 @@ class MySQLContractNodeRepository(ContractNodeRepository):
         with conn.cursor() as cur:
             cur.execute(sql, tuple(str(i) for i in ids))
         conn.commit()
+
 
     def exists(self, contract_node_id: UUID) -> bool:
         sql = "SELECT 1 FROM contract_nodes WHERE id = %s LIMIT 1"
@@ -210,10 +269,12 @@ class MySQLContractNodeRepository(ContractNodeRepository):
         with conn.cursor() as cur:
             cur.execute(sql, (str(contract_node_id),))
             return cur.fetchone() is not None
+    # =========================================================
+    # INTERNAL HELPERS
+    # =========================================================
 
-    # ---------- mapping ----------
     @staticmethod
-    def _map_row( row: dict) -> ContractNode:
+    def _map_row_base(row: dict) -> ContractNode:
         return ContractNode(
             id=UUID(row["id"]),
             contract_id=UUID(row["contract_id"]),
@@ -222,7 +283,44 @@ class MySQLContractNodeRepository(ContractNodeRepository):
             name=row["name"],
             budget=row["budget"],
             quantity=row["quantity"],
-            unit=UnitOfMeasure(row["unit"]) if row["unit"] else None,  # jeśli Enum → zmapuj
+            unit=UnitOfMeasure(row["unit"]) if row["unit"] else None,
             is_active=row["is_active"],
-            progress=row["progress"]
+            progress_history={},  # uzupełniane później
         )
+
+    def _attach_progress_history(self, nodes: list[ContractNode]) -> None:
+        if not nodes:
+            return
+
+        node_ids = [n.id for n in nodes]
+        history_map = self._load_progress_history(node_ids)
+
+        for n in nodes:
+            n.progress_history = history_map.get(n.id, {})
+
+    @staticmethod
+    def _load_progress_history(
+            node_ids: list[UUID],
+    ) -> dict[UUID, dict[date, Decimal]]:
+        if not node_ids:
+            return {}
+
+        placeholders = ",".join(["%s"] * len(node_ids))
+        sql = f"""
+            SELECT contract_node_id, progress_date, progress
+            FROM contract_node_progress
+            WHERE contract_node_id IN ({placeholders})
+        """
+
+        conn = get_connection()
+        with conn.cursor(dictionary=True) as cur:
+            cur.execute(sql, [str(i) for i in node_ids])
+            rows = cur.fetchall()
+
+        history: dict[UUID, dict[date, Decimal]] = {}
+
+        for r in rows:
+            nid = UUID(r["contract_node_id"])
+            history.setdefault(nid, {})[r["progress_date"]] = r["progress"]
+
+        return history

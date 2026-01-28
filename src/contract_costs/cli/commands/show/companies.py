@@ -1,7 +1,9 @@
 from contract_costs.cli.context import get_services
 from contract_costs.cli.printers.company_printer import CompanyTablePrinter
+from contract_costs.cli.printers.table_printer.cmd_printer import CmdPrinter
 from contract_costs.cli.registry import REGISTRY
 from contract_costs.model.company import CompanyType
+from contract_costs.reports.companies.company_list_columns import company_list_columns
 from contract_costs.services.companies.query.dto.company_query import CompanyQuery
 
 
@@ -21,9 +23,9 @@ def build_show_companies(subparsers):
 
 REGISTRY.register_group("show", build_show_companies)
 
+
 def handle_show_companies(args) -> None:
     services = get_services()
-
     role = None
     if args.role:
         try:
@@ -40,12 +42,52 @@ def handle_show_companies(args) -> None:
         role=role,
     )
 
-    companies = services.company_query_service.list_companies(query)
+    items = services.company_query_service.list_companies(query)
 
-    if not companies:
+    if not items:
         print("No companies found.")
         return
 
-    CompanyTablePrinter.print(companies)
+    columns = company_list_columns()
+
+    header = {
+        "Report": ["Companies list"],
+        "Count": [str(len(items))],
+    }
+
+    printer = CmdPrinter(style="pipe")
+    printer.print(
+        items=items,
+        columns=columns,
+        header=header,
+    )
+
+
+# def handle_show_companies(args) -> None:
+#     services = get_services()
+#
+#     role = None
+#     if args.role:
+#         try:
+#             role = CompanyType[args.role.upper()]
+#         except KeyError:
+#             print(f"Invalid role: {args.role}")
+#             return
+#
+#     query = CompanyQuery(
+#         tax_number=args.nip,
+#         own_only=args.own,
+#         include_inactive=args.inactive,
+#         search=args.search,
+#         role=role,
+#     )
+#
+#     companies = services.company_query_service.list_companies(query)
+#
+#     if not companies:
+#         print("No companies found.")
+#         return
+#
+#     CompanyTablePrinter.print(companies)
 
 
