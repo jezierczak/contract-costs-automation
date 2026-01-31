@@ -35,6 +35,12 @@ class InvoiceReviewListQueryService:
 
         contracts: dict[UUID, str] = {item.id:item.code for item in self._contract_repo.list()}
 
+        filter_contract_codes = (
+            set(review_query.contract_codes)
+            if review_query.contract_codes
+            else None
+        )
+
         for inv in invoices:
             buyer = self._company_repo.get(inv.buyer_id)
             seller = self._company_repo.get(inv.seller_id)
@@ -51,7 +57,17 @@ class InvoiceReviewListQueryService:
             contract_codes = set()
 
 
+
             for line in lines:
+                # --- FILTER BY CONTRACT CODES (if provided) ---
+                if filter_contract_codes is not None:
+                    if line.contract_id is None:
+                        continue
+
+                    contract_code = contracts.get(line.contract_id)
+                    if contract_code not in filter_contract_codes:
+                        continue
+
                 net = line.amount.net
                 vat = line.amount.tax
                 gross = line.amount.gross

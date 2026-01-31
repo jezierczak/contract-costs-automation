@@ -16,7 +16,7 @@ from contract_costs.services.invoices.assigment.invoice_sources.dto.common impor
 )
 from contract_costs.model.invoice import InvoiceStatus, PaymentStatus
 from contract_costs.model.unit_of_measure import UnitOfMeasure
-from contract_costs.model.amount import Amount, VatRate, TaxTreatment
+from contract_costs.model.amount import Amount, VatRate, TaxTreatment, AmountInputType
 from contract_costs.model.invoice import PaymentMethod
 from contract_costs.services.invoices.assigment.prepare.dto.company_export import CompanyExport
 
@@ -126,12 +126,26 @@ def load_invoice_excel_batch(path: Path) -> InvoiceExcelBatch:
                 description=normalize(row.get("description")),
                 quantity=Decimal(str(row["quantity"])),
                 unit=normalize(UnitOfMeasure(row["unit"])),
-                amount=Amount(
-                    value=Decimal(str(row["net"])),
-                    vat_rate=_parse_vat_rate(row["vat_rate"])
-                    if not pd.isna(row["vat_rate"])
-                    else VatRate.VAT_ZW,
-                    tax_treatment=TaxTreatment(row["tax_treatment"]),
+                # amount=Amount(
+                #     value=Decimal(str(row["net"])),
+                #     vat_rate=_parse_vat_rate(row["vat_rate"])
+                #     if not pd.isna(row["vat_rate"])
+                #     else VatRate.VAT_ZW,
+                #     tax_treatment=TaxTreatment(row["tax_treatment"]),
+                # ),
+                amount=Amount.from_input(
+                    value=Decimal(str(row["amount"])),  # <- fizyczna liczba z Excela
+                    input_type=(
+                        AmountInputType(row["amount_type"])
+                        if not pd.isna(row["amount_type"])
+                        else AmountInputType.NET
+                    ),
+                    vat_rate=(
+                        _parse_vat_rate(row["vat_rate"])
+                        if not pd.isna(row["vat_rate"])
+                        else VatRate.VAT_ZW
+                    ),
+                    tax_treatment=TaxTreatment(row["tax_treatment"])
                 ),
                 contract_id=normalize(row.get("contract_code")),  # <-- CODE
                 contract_node_id=normalize(row.get("cost_node_code")),  # <-- CODE

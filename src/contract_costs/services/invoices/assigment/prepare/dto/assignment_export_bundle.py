@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Type
 
-from contract_costs.model.amount import TaxTreatment, VatRate
+from contract_costs.model.amount import TaxTreatment, VatRate, AmountInputType
 from contract_costs.model.invoice import PaymentMethod, PaymentStatus
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 from contract_costs.services.invoices.assigment.apply.commands.invoice_command import InvoiceCommand
@@ -25,6 +25,10 @@ class InvoiceAssignmentExportBundle:
 
     cost_nodes: list[CostNodeExport]
     cost_types: list[CostTypeExport]
+
+    amount_input_types: dict[str, str] = field(
+        default_factory=lambda: InvoiceAssignmentExportBundle.enum_to_dict(AmountInputType)
+    )
 
     amount_types: dict[str, str] = field(
         default_factory=lambda: InvoiceAssignmentExportBundle.enum_to_dict(TaxTreatment)

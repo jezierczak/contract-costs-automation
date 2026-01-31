@@ -201,7 +201,7 @@ class BaseExcelExporter[T]:
             )
 
         # --- ENABLE SHEET PROTECTION ---
-        ws.protection.enable()
+        # ws.protection.enable()
 
     def save(self, output_path: Path) -> None:
         """

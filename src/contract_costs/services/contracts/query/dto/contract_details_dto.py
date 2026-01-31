@@ -10,7 +10,7 @@ class ContractDetailsDTO:
     contract_id: UUID
     code: str
     name: str
-    description: str
+    description: str | None
     status: str
     start_date: date | None
     end_date: date | None

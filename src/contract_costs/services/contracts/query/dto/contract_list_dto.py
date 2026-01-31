@@ -16,5 +16,6 @@ class ContractListDTO:
     net: Decimal
     gross: Decimal
     non_deduction: Decimal
+    revenue_non_deductible:Decimal
 
     revenue: Decimal

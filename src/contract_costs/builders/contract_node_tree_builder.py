@@ -95,8 +95,8 @@ class DefaultContractNodeTreeBuilder(ContractNodeTreeBuilder):
         else:
             node_id = uuid4()
 
-        existing_node = existing_nodes.get(code) #potrzebne do przepisania progressu jeśli istniał
-        has_children = bool(node_input.get("children"))
+        # existing_node = existing_nodes.get(code) #potrzebne do przepisania progressu jeśli istniał
+        # has_children = bool(node_input.get("children"))
 
         node = ContractNode(
             id=node_id,
@@ -108,11 +108,9 @@ class DefaultContractNodeTreeBuilder(ContractNodeTreeBuilder):
             quantity=node_input.get("quantity"),
             unit=node_input.get("unit"),
             is_active=node_input.get("is_active", True),
-            progress=(
-                existing_node.progress
-                if existing_node and not has_children
-                else None
-            ), #przepisanie progessu jeśli istniał już contract_node
+            progress_history={}, # loaded separately from progress repository
+            # progress to osobna tabela z referencją na istniejący cost node
+            # do zapisania w bazie nie potrzebujemy tej historii
         )
 
         nodes = [node]

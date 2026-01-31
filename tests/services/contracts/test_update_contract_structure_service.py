@@ -185,7 +185,7 @@ monkeypatch):
         unit=None,
         budget=Decimal("100000"),
         is_active=True,
-        progress=None
+        progress_history={}
     )
     cost_node_repo.add(root)
 

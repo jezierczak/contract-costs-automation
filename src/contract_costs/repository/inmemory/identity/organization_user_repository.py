@@ -1,0 +1,88 @@
+from uuid import UUID
+
+from contract_costs.model.identity.organization_user import OrganizationUser
+from contract_costs.repository.identity.organization_user_repository import (
+    OrganizationUserRepository
+)
+from contract_costs.repository.inmemory.identity.in_memory_storage_repository import InMemoryIdentityStorage
+
+
+class InMemoryOrganizationUserRepository(OrganizationUserRepository):
+
+    def __init__(self, storage: InMemoryIdentityStorage | None =None) -> None:
+        if not storage:
+            self._items: dict[UUID, OrganizationUser] = {}
+        else:
+            self._items = storage.organization_users
+
+    def add(self, organization_user: OrganizationUser) -> None:
+        if organization_user.id in self._items:
+            raise ValueError("OrganizationUser already exists")
+
+        # unikalność (organization_id, user_id)
+        if any(
+            ou.organization_id == organization_user.organization_id
+            and ou.user_id == organization_user.user_id
+            for ou in self._items.values()
+        ):
+            raise ValueError("User already assigned to organization")
+
+        self._items[organization_user.id] = organization_user
+
+    def update(self, organization_user: OrganizationUser) -> None:
+        if organization_user.id not in self._items:
+            raise ValueError("OrganizationUser does not exist")
+        self._items[organization_user.id] = organization_user
+
+    def get(self, organization_user_id: UUID) -> OrganizationUser | None:
+        return self._items.get(organization_user_id)
+
+    def get_by_org_and_user(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+    ) -> OrganizationUser | None:
+        for ou in self._items.values():
+            if ou.organization_id == organization_id and ou.user_id == user_id:
+                return ou
+        return None
+
+    def list_by_organization(
+        self,
+        organization_id: UUID,
+        *,
+        active_only: bool = False,
+    ) -> list[OrganizationUser]:
+        result = [
+            ou for ou in self._items.values()
+            if ou.organization_id == organization_id
+        ]
+        if active_only:
+            result = [ou for ou in result if ou.is_active]
+        return result
+
+    def list_by_user(
+        self,
+        user_id: UUID,
+        *,
+        active_only: bool = False,
+    ) -> list[OrganizationUser]:
+        result = [
+            ou for ou in self._items.values()
+            if ou.user_id == user_id
+        ]
+        if active_only:
+            result = [ou for ou in result if ou.is_active]
+        return result
+
+    def exists(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+    ) -> bool:
+        return any(
+            ou.organization_id == organization_id and ou.user_id == user_id
+            for ou in self._items.values()
+        )

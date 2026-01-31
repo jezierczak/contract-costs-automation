@@ -51,7 +51,7 @@ def cost_nodes(contract):
         unit=None,
         budget=None,
         is_active=True,
-        progress=None
+        progress_history={}
     )
 
     leaf = ContractNode(
@@ -64,7 +64,7 @@ def cost_nodes(contract):
         unit=None,
         budget=None,
         is_active=True,
-        progress=Decimal("0.5"),
+        progress_history={}
     )
 
     return root, leaf

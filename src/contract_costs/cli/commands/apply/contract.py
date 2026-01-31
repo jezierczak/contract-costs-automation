@@ -1,5 +1,4 @@
 import logging
-from uuid import UUID
 
 from contract_costs.cli.context import get_services
 from contract_costs.cli.registry import REGISTRY

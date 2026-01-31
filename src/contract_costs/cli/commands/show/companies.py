@@ -1,9 +1,10 @@
 from contract_costs.cli.context import get_services
-from contract_costs.cli.printers.company_printer import CompanyTablePrinter
 from contract_costs.cli.printers.table_printer.cmd_printer import CmdPrinter
+from contract_costs.cli.printers.table_printer.table_printer import TablePrinter
 from contract_costs.cli.registry import REGISTRY
 from contract_costs.model.company import CompanyType
 from contract_costs.reports.companies.company_list_columns import company_list_columns
+from contract_costs.services.companies.query.dto.company_dto import CompanyDTO
 from contract_costs.services.companies.query.dto.company_query import CompanyQuery
 
 
@@ -55,7 +56,7 @@ def handle_show_companies(args) -> None:
         "Count": [str(len(items))],
     }
 
-    printer = CmdPrinter(style="pipe")
+    printer: TablePrinter[CompanyDTO] = CmdPrinter(style="pipe")
     printer.print(
         items=items,
         columns=columns,

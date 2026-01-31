@@ -1,7 +1,12 @@
 from contract_costs.builders.contract_node_tree_builder import DefaultContractNodeTreeBuilder
+from contract_costs.common.context.context_provider import ContextProvider
+from contract_costs.common.context.file_context_provider import FileContextProvider
 from contract_costs.config import INVOICE_INPUT_DIR
 from contract_costs.infrastructure.excel.base_excel_exporter import BaseExcelExporter
 from contract_costs.infrastructure.excel.invoice_action_excel_loader import InvoiceActionExcelLoader
+from contract_costs.repository.identity.organization_repository import OrganizationRepository
+from contract_costs.repository.identity.organization_user_repository import OrganizationUserRepository
+from contract_costs.repository.identity.user_repository import UserRepository
 from contract_costs.services.catalogues.invoice_file_organizer import InvoiceFileOrganizer
 from contract_costs.services.catalogues.invoice_file_workflow_service import InvoiceFileWorkflowService
 from contract_costs.services.companies.activate_company_service import ActivateCompanyService
@@ -22,8 +27,7 @@ from contract_costs.services.contracts.apply.apply_contract_progress_excel_servi
     ApplyContractProgressExcelService
 from contract_costs.services.contracts.apply.set_contract_status_service import SetContractStatusService
 from contract_costs.services.contracts.create_contract_service import CreateContractService
-# from contract_costs.services.contracts.export.export_contract_structure_excel_service import \
-#     ExportContractStructureExcelService
+
 from contract_costs.services.contracts.prepare.contract_prepare_excel_exporter import ContractPrepareExcelExporter
 from contract_costs.services.contracts.prepare.contract_prepare_progress_excel_exporter import \
     ContractPrepareProgressExcelExporter
@@ -35,15 +39,17 @@ from contract_costs.services.contracts.apply.update_contract_structure_service i
 from contract_costs.services.contracts.apply.apply_contract_structure_excel import (
     ApplyContractStructureExcelService,
 )
-# from contract_costs.services.contracts.generate_contract_structure_excel import (
-#     GenerateContractStructureBundleService,
-# )
-# from contract_costs.services.contracts.export.contract_structure_excel_generator import (
-#     ContractStructureExcelGenerator,
-# )
+
 from contract_costs.services.contracts.validators.contract_node_tree_validator import (
     ContractNodeEntityValidator,
 )
+from contract_costs.services.identity.add.add_organization_user_service import AddOrganizationUserService
+from contract_costs.services.identity.add.create_organization_with_owner import CreateOrganizationWithOwnerService
+from contract_costs.services.identity.add.create_user_service import CreateUserService
+from contract_costs.services.identity.query.show_organization_users import ShowOrganizationUsersQueryService
+from contract_costs.services.identity.query.show_organizations import ShowOrganizationsQueryService
+from contract_costs.services.identity.remove.remove_organization_user_service import RemoveOrganizationUserService
+from contract_costs.services.identity.use.use_organization_service import UseOrganizationService
 from contract_costs.services.invoices.assigment.ingest.completion_validator.invoice_completion_validator import InvoiceCompletionValidator
 from contract_costs.services.snapshots.contract_snapshot_query_service import ContractSnapshotQueryService
 from contract_costs.services.snapshots.create_contract_snapshot_service import CreateContractSnapshotService
@@ -63,7 +69,6 @@ from contract_costs.services.invoices.assigment.prepare.export.export_invoice_as
     ExportInvoiceAssignmentExcelService
 from contract_costs.services.invoices.excel.invoice_excel_export_service import InvoiceExcelExportService
 from contract_costs.services.invoices.queries.invoice_details_query_service import InvoiceDetailsQueryService
-# from contract_costs.services.invoices.queries.invoice_seller_summary_query_service import InvoiceSellerSummaryQueryService
 from contract_costs.services.invoices.assigment.ingest.invoice_line_update_service import InvoiceLineUpdateService
 from contract_costs.services.invoices.assigment.ingest.invoice_ingest_orchestrator import (
     InvoiceIngestOrchestrator,
@@ -93,8 +98,15 @@ from contract_costs.services.workers.ai_invoice_worker import InvoiceAIWorker
 
 
 class Services:
-    def __init__(self, backend: RepoBackend = RepoBackend.MYSQL) -> None:
+    def __init__(self,
+                 backend: RepoBackend = RepoBackend.MYSQL,
+                 context_provider: ContextProvider | None = None,
+
+                ) -> None:
         self._factory = RepositoryFactory(backend)
+        if context_provider is None:
+            raise RuntimeError("ContextProvider must be provided")
+        self._context = context_provider
 
         # repos
         self._company_repo = None
@@ -106,6 +118,9 @@ class Services:
         self._contract_snapshot_repo = None
         self._contract_node_snapshot_repo = None
         self._contract_node_value_snapshot_repo = None
+        self._organization_repo = None
+        self._organization_user_repo = None
+        self._user_repo = None
 
         # services
         # self._company_resolver = None
@@ -158,6 +173,16 @@ class Services:
         self._apply_contract_progress_excel = None
         self._create_contract_snapshot = None
         self._contract_snapshot_query_service = None
+
+        self._create_organization_with_owner =None
+        self._show_organizations = None
+        self._show_organization_users = None
+        self._add_organization_user = None
+        self._create_user = None
+        self._remove_organization_user = None
+        self._change_organization_user_role = None
+        self._deactivate_organization_user = None
+        self._accept_organization_invite = None
 
         self._normalizer = InvoiceParseNormalizer()
 
@@ -216,6 +241,25 @@ class Services:
         if self._contract_node_value_snapshot_repo is None:
             self._contract_node_value_snapshot_repo = self._factory.contract_node_value_snapshot_repository()
         return self._contract_node_value_snapshot_repo
+
+    @property
+    def organization_repository(self) :
+        if self._organization_repo is None:
+            self._organization_repo = self._factory.organization_repository()
+        return self._organization_repo
+
+
+    @property
+    def organization_user_repository(self) :
+        if self._organization_user_repo is None:
+            self._organization_user_repo = self._factory.organization_user_repository()
+        return self._organization_user_repo
+
+    @property
+    def user_repository(self) :
+        if self._user_repo is None:
+            self._user_repo = self._factory.user_repository()
+        return self._user_repo
 
     # ---------- domain services ----------
     @property
@@ -625,6 +669,113 @@ class Services:
             )
         return self._contract_query_service
 
+    @property
+    def create_organization_with_owner(self):
+        if self._create_organization_with_owner is None:
+            self._create_organization_with_owner = CreateOrganizationWithOwnerService(
+                organization_repo=self.organization_repository,
+                organization_user_repo=self.organization_user_repository,
+                user_repo=self.user_repository,
+            )
+        return self._create_organization_with_owner
+
+    @property
+    def show_organizations(self):
+        if self._show_organizations is None:
+            self._show_organizations = ShowOrganizationsQueryService(
+                organization_repo=self.organization_repository,
+                organization_user_repo=self.organization_user_repository,
+            )
+        return self._show_organizations
+
+    @property
+    def context(self) -> ContextProvider:
+        return self._context
+
+    @property
+    def use_organization(self):
+        return UseOrganizationService(
+            organization_repo=self.organization_repository,
+            organization_user_repo=self.organization_user_repository,
+            context=self.context,
+        )
+
+    @property
+    def show_organization_users(self):
+        if self._show_organization_users is None:
+            self._show_organization_users = ShowOrganizationUsersQueryService(
+                organization_user_repo=self.organization_user_repository,
+                user_repo=self.user_repository,
+            )
+        return self._show_organization_users
+
+    @property
+    def add_organization_user(self):
+        if self._add_organization_user is None:
+            self._add_organization_user = AddOrganizationUserService(
+                organization_repo=self.organization_repository,
+                user_repo=self.user_repository,
+                organization_user_repo=self.organization_user_repository,
+            )
+        return self._add_organization_user
+
+    @property
+    def create_user(self):
+        if self._create_user is None:
+            self._create_user = CreateUserService(
+                user_repo=self.user_repository,
+            )
+        return self._create_user
+
+    @property
+    def remove_organization_user(self):
+        if self._remove_organization_user is None:
+            self._remove_organization_user = RemoveOrganizationUserService(
+                organization_user_repo=self.organization_user_repository
+            )
+        return self._remove_organization_user
+
+    @property
+    def change_organization_user_role(self):
+        if self._change_organization_user_role is None:
+            from contract_costs.services.identity.change.change_organization_user_role_service import (
+                ChangeOrganizationUserRoleService,
+            )
+            self._change_organization_user_role = ChangeOrganizationUserRoleService(
+                organization_user_repo=self.organization_user_repository
+            )
+        return self._change_organization_user_role
+
+    @property
+    def deactivate_organization_user(self):
+        if self._deactivate_organization_user is None:
+            from contract_costs.services.identity.deactivate.deactivate_organization_user_service import (
+                DeactivateOrganizationUserService,
+            )
+            self._deactivate_organization_user = DeactivateOrganizationUserService(
+                organization_user_repo=self.organization_user_repository
+            )
+        return self._deactivate_organization_user
+
+    @property
+    def accept_organization_invite(self):
+        if self._accept_organization_invite is None:
+            from contract_costs.services.identity.accept.accept_organization_invite_service import (
+                AcceptOrganizationInviteService,
+            )
+            self._accept_organization_invite = AcceptOrganizationInviteService(
+                organization_user_repo=self.organization_user_repository
+            )
+        return self._accept_organization_invite
+
+    # @staticmethod
+    # def current_user_id() -> UUID:
+    #     session = load_session()
+    #     if not session:
+    #         raise RuntimeError("Not logged in. Run: login <user>")
+    #
+    #     return UUID(session["user_id"])
+
 _services: Dict[str, Services] = {}
 
 def get_services(env: str = "prod") -> Services:
@@ -634,5 +785,10 @@ def get_services(env: str = "prod") -> Services:
             if env in {"test", "tests", "memory"}
             else RepoBackend.MYSQL
         )
-        _services[env] = Services(backend=backend)
+        context = FileContextProvider()
+
+        _services[env] = Services(
+            backend=backend,
+            context_provider=context,
+        )
     return _services[env]

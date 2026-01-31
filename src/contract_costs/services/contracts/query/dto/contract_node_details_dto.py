@@ -18,3 +18,4 @@ class ContractNodeDetailsDTO:
     net: Decimal              # koszty
     revenue: Decimal          # przychody
     non_deductible: Decimal
+    revenue_non_deductible: Decimal

@@ -1,9 +1,10 @@
 from contract_costs.infrastructure.excel.excel_column_v2.excel_column import ExcelColumn
 from contract_costs.infrastructure.excel.excel_column_v2.excel_column_type import ExcelColumnType
 from contract_costs.model.value_type import ValueType
+from contract_costs.services.value_types.query.dto.value_type_dto import ValueTypeDTO
 
 
-def value_type_list_columns() -> list[ExcelColumn[ValueType]]:
+def value_type_list_columns() -> list[ExcelColumn[ValueTypeDTO]]:
     return ExcelColumn.from_lists(
         headers=[
             "CODE",

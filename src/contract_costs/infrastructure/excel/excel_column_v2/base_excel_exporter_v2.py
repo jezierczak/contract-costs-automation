@@ -1,5 +1,6 @@
 from decimal import Decimal
 from pathlib import Path
+from typing import cast
 
 from openpyxl import Workbook
 from openpyxl.styles import Protection, Alignment, Font
@@ -7,7 +8,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.workbook.defined_name import DefinedName
 from openpyxl.worksheet.worksheet import Worksheet
 
-from openpyxl.cell import WriteOnlyCell
+from openpyxl.cell.cell import Cell, MergedCell
 
 from contract_costs.infrastructure.excel.checkbox_options import CheckBoxOptions
 from contract_costs.infrastructure.excel.excel_column_v2.excel_column import ExcelColumn
@@ -169,7 +170,7 @@ class BaseExcelExporterV2[T]:
                 ws.column_dimensions[col_letter].hidden = True
 
             if col.column_type == ExcelColumnType.DISPLAY:
-                for (cell,) in ws.iter_rows(
+                for (cell,) in ws.iter_rows( # type: ignore[attr-defined]
                         min_col=idx,
                         max_col=idx,
                         min_row=data_start_row,
@@ -179,16 +180,17 @@ class BaseExcelExporterV2[T]:
                         cell.number_format = '#,##0.00'
 
             if col.column_type == ExcelColumnType.PERCENT:
-                for (cell,) in ws.iter_rows(
+                for (cell,) in ws.iter_rows( # type: ignore[attr-defined]
                         min_col=idx,
                         max_col=idx,
                         min_row=data_start_row,
                         max_row=ws.max_row,
                 ):
+
                     cell.number_format = "0.0%"
 
             # --- PROTECTION ---
-            for (cell,) in ws.iter_rows(
+            for (cell,) in ws.iter_rows( # type: ignore[attr-defined]
                 min_col=idx,
                 max_col=idx,
                 min_row=data_start_row,
@@ -212,7 +214,7 @@ class BaseExcelExporterV2[T]:
             col_letter = get_column_letter(idx)
 
             if col.column_type == ExcelColumnType.TREE:
-                for (cell,) in ws.iter_rows(
+                for (cell,) in ws.iter_rows( # type: ignore[attr-defined]
                         min_col=idx,
                         max_col=idx,
                         min_row=data_start_row,

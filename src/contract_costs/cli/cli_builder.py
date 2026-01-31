@@ -21,6 +21,16 @@ def build_cli_parser() -> argparse.ArgumentParser:
             p = subparsers.add_parser(p_data[0])
         p.set_defaults(handler=handler)
 
+    # ---------- SIMPLE COMMAND BUILDERS ----------
+    for name, builder in REGISTRY.simple_builders():
+        p_data = name.split(";")
+        if len(p_data) == 2:
+            p = subparsers.add_parser(p_data[0], description=p_data[1])
+        else:
+            p = subparsers.add_parser(p_data[0])
+        # p = subparsers.add_parser(name)
+        builder(p)
+
     # ---------- GROUP COMMANDS ----------
     for group, builders in REGISTRY.groups():
         group_parser = subparsers.add_parser(group)

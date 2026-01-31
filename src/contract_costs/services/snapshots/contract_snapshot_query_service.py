@@ -145,6 +145,7 @@ class ContractSnapshotQueryService:
             gross = Decimal("0")
             non_deductible = Decimal("0")
             revenue = Decimal("0")
+            revenue_non_deductible = Decimal("0")
 
             for v in values:
                 vt = value_type_by_id.get(v.value_type_id)
@@ -159,6 +160,7 @@ class ContractSnapshotQueryService:
 
                 elif vt.direction == ValueDirection.REVENUE:
                     revenue += v.net
+                    revenue_non_deductible += v.non_deductible
 
             result_nodes.append(
                 ContractNodeSnapshotDTO(
@@ -174,6 +176,7 @@ class ContractSnapshotQueryService:
                     gross=gross,
                     non_deductible=non_deductible,
                     revenue=revenue,
+                    revenue_non_deductible=revenue_non_deductible
                 )
             )
 

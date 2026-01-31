@@ -18,7 +18,7 @@ class TestCostNode:
             name="Root",
             quantity=None,
             unit = None,
-            progress=None
+            progress_history={}
         )
 
         assert node.parent_id is None
@@ -35,7 +35,7 @@ class TestCostNode:
             name="Child",
             quantity=Decimal("100"),
             unit=UnitOfMeasure.METER,
-            progress=Decimal("0"),
+            progress_history={}
         )
 
         assert node.parent_id == parent_id

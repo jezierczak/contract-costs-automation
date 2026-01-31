@@ -3,6 +3,7 @@ import os
 import sys
 
 from contract_costs.cli.cli_builder import build_cli_parser
+from contract_costs.cli.ui.session_handler import print_session_header
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
@@ -32,7 +33,11 @@ def main(argv: list[str] | None = None) -> None:
             exit(1)
 
     parser = build_cli_parser()
+
     args = parser.parse_args(argv)
+
+    print_session_header()
+
     # ---------- ROUTING ----------
     if hasattr(args, "handler"):
         args.handler(args)

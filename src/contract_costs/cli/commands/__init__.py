@@ -10,3 +10,9 @@ from contract_costs.cli.commands import run      # noqa
 from contract_costs.cli.commands import reports   # noqa
 from contract_costs.cli.commands import show   # noqa
 from contract_costs.cli.commands import set   # noqa
+from contract_costs.cli.commands import login   # noqa
+from contract_costs.cli.commands import logout   # noqa
+from contract_costs.cli.commands import whoami   # noqa
+from contract_costs.cli.commands import use_organization   # noqa
+from contract_costs.cli.commands import remove   # noqa
+from contract_costs.cli.commands import accept_organization   # noqa

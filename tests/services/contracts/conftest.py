@@ -20,7 +20,7 @@ def simple_tree_nodes() -> list[ContractNode]:
         quantity=None,
         unit=None,
         is_active=True,
-        progress=None,
+        progress_history={}
     )
 
     a = ContractNode(
@@ -33,7 +33,7 @@ def simple_tree_nodes() -> list[ContractNode]:
         quantity=None,
         unit=None,
         is_active=True,
-        progress=None,
+        progress_history={}
     )
 
     a1 = ContractNode(
@@ -46,7 +46,7 @@ def simple_tree_nodes() -> list[ContractNode]:
         quantity=None,
         unit=None,
         is_active=True,
-        progress=Decimal("0.5"),
+        progress_history={}
     )
 
     a2 = ContractNode(
@@ -59,7 +59,7 @@ def simple_tree_nodes() -> list[ContractNode]:
         quantity=None,
         unit=None,
         is_active=True,
-        progress=Decimal("0.25"),
+        progress_history={}
     )
 
     b = ContractNode(
@@ -72,7 +72,7 @@ def simple_tree_nodes() -> list[ContractNode]:
         quantity=None,
         unit=None,
         is_active=True,
-        progress=Decimal("1.0"),
+        progress_history={}
     )
 
     return [root, a, a1, a2, b]

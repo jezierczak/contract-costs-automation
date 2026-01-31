@@ -23,6 +23,7 @@ class ContractNodeSnapshotDTO:
     non_deductible: Decimal
 
     revenue: Decimal
+    revenue_non_deductible:Decimal
 
     @property
     def progress_percent(self) -> Decimal:

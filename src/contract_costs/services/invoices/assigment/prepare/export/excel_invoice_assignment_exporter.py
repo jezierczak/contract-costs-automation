@@ -1,5 +1,4 @@
 from enum import Enum
-from pathlib import Path
 
 from openpyxl import Workbook
 from openpyxl.workbook.defined_name import DefinedName
@@ -7,6 +6,7 @@ from openpyxl.workbook.defined_name import DefinedName
 from openpyxl.worksheet.worksheet import Worksheet
 
 from contract_costs.infrastructure.excel.excel_common_methods import ExcelCommonMethods
+from contract_costs.model.amount import AmountInputType
 from contract_costs.repository.contract_repository import ContractRepository
 from contract_costs.repository.contract_node_repository import ContractNodeRepository
 from contract_costs.repository.value_type_repository import ValueTypeRepository
@@ -42,7 +42,8 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
         contracts_ws = self._write_contracts(wb, bundle.contracts)
         cost_nodes_ws = self._write_cost_nodes(wb, bundle.cost_nodes)
         cost_types_ws = self._write_cost_types(wb, bundle.cost_types)
-        tax_treatment_ws = self._write_dictionary(wb,bundle.amount_types,cfg.DICTS_TAX_TREATMENTS)
+        amount_input_type_ws = self._write_dictionary(wb,bundle.amount_input_types,cfg.DICTS_AMOUNT_INPUT_TYPES)
+        tax_treatment_ws = self._write_dictionary(wb, bundle.amount_types, cfg.DICTS_TAX_TREATMENTS)
         payment_method_ws = self._write_dictionary(wb, bundle.payment_methods, cfg.DICTS_PAYMENT_METHODS)
         payment_status_ws = self._write_dictionary(wb, bundle.payment_status, cfg.DICTS_PAYMENT_STATUS)
         units_ws = self._write_dictionary(wb, bundle.units, cfg.DICTS_UNITS)
@@ -57,8 +58,9 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
             buyers_ws=buyers_ws,
             sellers_ws=sellers_ws,
             contracts_ws=contracts_ws,
-            cost_nodes_ws=cost_nodes_ws,
+            # cost_nodes_ws=cost_nodes_ws,
             cost_types_ws=cost_types_ws,
+            amount_input_type_ws= amount_input_type_ws,
             tax_treatments_ws=tax_treatment_ws,
             payment_method_ws=payment_method_ws,
             payment_status_ws=payment_status_ws,
@@ -161,8 +163,9 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
             "description",
             "quantity",
             "unit",
-            "net",
+            "amount",
             "vat_rate",
+            "amount_type",
             "tax_treatment",
             "contract_code",
             "cost_node_code",
@@ -195,6 +198,7 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
                 l.unit.value,
                 l.net,
                 l.vat_rate.name if isinstance(l.vat_rate, Enum) else l.vat_rate,
+                AmountInputType.NET.value,
                 l.tax_treatment.value,
                 contracts.get(l.contract_id),
                 cost_nodes.get(l.contract_node_id),
@@ -338,7 +342,8 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
         buyers_ws: Worksheet,
         sellers_ws: Worksheet,
         contracts_ws: Worksheet,
-        cost_nodes_ws: Worksheet,
+        # cost_nodes_ws: Worksheet,
+        amount_input_type_ws:Worksheet,
         cost_types_ws: Worksheet,
         tax_treatments_ws: Worksheet,
         payment_method_ws: Worksheet,
@@ -409,10 +414,18 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
 
         ExcelCommonMethods.apply_one_dropdown(
             max_rows,
+            amount_input_type_ws,
+            cfg.DICTS_AMOUNT_INPUT_TYPES,
+            lines_ws,
+            "I"
+        )
+
+        ExcelCommonMethods.apply_one_dropdown(
+            max_rows,
             tax_treatments_ws,
             cfg.DICTS_TAX_TREATMENTS,
             lines_ws,
-            "I"
+            "J"
         )
 
         ExcelCommonMethods.apply_one_dropdown(
@@ -420,7 +433,7 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
             contracts_ws,
             cfg.DICTS_CONTRACTS,
             lines_ws,
-            "J"
+            "K"
         )
 
         # ExcelCommonMethods.apply_one_dropdown(
@@ -433,8 +446,8 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
 
         ExcelCommonMethods.apply_formula_dropdown(
             source_ws=lines_ws,
-            target_column="K",
-            formula="=INDIRECT($J2)",
+            target_column="L",
+            formula="=INDIRECT($K2)",
             max_rows=2000,
         )
 
@@ -443,7 +456,7 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
             cost_types_ws,
             cfg.DICTS_COST_TYPES,
             lines_ws,
-            "L"
+            "M"
         )
 
 

@@ -2,3 +2,6 @@ from contract_costs.cli.commands.add.company import build_add_company
 from contract_costs.cli.commands.add.contract import build_add_contract
 from contract_costs.cli.commands.add.value_type import build_add_value_type
 from contract_costs.cli.commands.add.add_contract_snapshot import build_add_contract_snapshot
+from contract_costs.cli.commands.add.add_organization import build_add_organization
+from contract_costs.cli.commands.add.add_organization_user import build_add_organization_user
+from contract_costs.cli.commands.add.add_user import build_add_user

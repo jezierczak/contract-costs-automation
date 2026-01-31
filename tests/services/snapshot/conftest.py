@@ -42,7 +42,7 @@ def contract_and_nodes():
         quantity=None,
         unit=None,
         is_active=True,
-        progress=None,
+        progress_history={}
     )
 
     a = ContractNode(
@@ -55,7 +55,7 @@ def contract_and_nodes():
         quantity=None,
         unit=None,
         is_active=True,
-        progress=None,
+        progress_history={}
     )
 
     a1 = ContractNode(
@@ -68,7 +68,7 @@ def contract_and_nodes():
         quantity=None,
         unit=None,
         is_active=True,
-        progress=Decimal("0.5"),
+        progress_history={}
     )
 
     a2 = ContractNode(
@@ -81,7 +81,7 @@ def contract_and_nodes():
         quantity=None,
         unit=None,
         is_active=True,
-        progress=Decimal("0.25"),
+        progress_history={}
     )
 
     return contract, [root, a, a1, a2]

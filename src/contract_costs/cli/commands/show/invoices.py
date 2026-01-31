@@ -10,7 +10,7 @@ from contract_costs.cli.context import get_services
 from contract_costs.cli.registry import REGISTRY
 from contract_costs.model.invoice import InvoiceStatus, PaymentStatus
 from contract_costs.model.value_direction import ValueDirection
-from contract_costs.reports.invoices.invoice_list_columns import invoice_list_columns
+from contract_costs.reports.invoices.invoice_list_columns import invoice_list_columns, invoice_list_columns_excel
 from contract_costs.services.invoices.review.dto.invoice_review_query import InvoiceReviewQuery
 
 logger = logging.getLogger(__name__)
@@ -135,6 +135,7 @@ def handle_show_invoices(args) -> None:
         result_invoices = result_invoices[:args.last]
 
     columns = invoice_list_columns()
+    columns_excel = invoice_list_columns_excel()
 
     if args.excel:
         fm = InvoicesShowFileManager(prefix="show_invoices")
@@ -142,7 +143,7 @@ def handle_show_invoices(args) -> None:
         printer: TablePrinter = ExcelPrinter(output_path=output_path)
         printer.print(
             items=result_invoices,
-            columns=columns,
+            columns=columns_excel,
             header=header,
         )
         print(f"Invoice list exported to Excel: {output_path}")

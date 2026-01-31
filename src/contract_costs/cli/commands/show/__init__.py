@@ -5,3 +5,5 @@ from contract_costs.cli.commands.show.invoice import build_show_invoice
 from contract_costs.cli.commands.show.value_types import build_show_value_types
 from contract_costs.cli.commands.show.snapshots import build_show_snapshots
 from contract_costs.cli.commands.show.snapshot import build_show_snapshot
+from contract_costs.cli.commands.show.organizations import build_show_organizations
+from contract_costs.cli.commands.show.organizations_users import build_show_organization_users

@@ -11,13 +11,13 @@ CONTRACT_PREPARE_COLUMNS: list[ExcelColumn[ContractPrepareDTO]] = [
     # =====================
     # BUSINESS KEYS
     # =====================
-    ExcelColumn("Code", lambda x: x.code, editable=False),
+    ExcelColumn("Code", lambda x: x.code, editable=True),
     ExcelColumn("Name", lambda x: x.name, editable=True),
 
     # =====================
     # PARTIES
     # =====================
-    ExcelColumn("Owner NIP", lambda x: x.owner_nip, editable=False),
+    ExcelColumn("Owner NIP", lambda x: x.owner_nip, editable=True),
     ExcelColumn("Client NIP", lambda x: x.client_nip, editable=True),
 
     # =====================
@@ -39,7 +39,7 @@ CONTRACT_PREPARE_COLUMNS: list[ExcelColumn[ContractPrepareDTO]] = [
     # =====================
     # TECH / META
     # =====================
-    ExcelColumn("Path", lambda x: x.path, editable=False),
+    ExcelColumn("Path", lambda x: x.path, editable=True),
 
     ExcelColumn(
         "Status",

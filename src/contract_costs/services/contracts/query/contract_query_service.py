@@ -1,6 +1,7 @@
 from collections import defaultdict
 from datetime import date
 from decimal import Decimal
+from typing import Any
 from uuid import UUID
 
 from contract_costs.model.contract import ContractStatus
@@ -62,7 +63,8 @@ class ContractQueryService:
             net_cost = Decimal("0")
             revenue = Decimal("0")
             gross = Decimal("0")
-            non_deductible = Decimal("0")
+            non_deductible_cost = Decimal("0")
+            non_deductible_rev= Decimal("0")
 
             for line in invoice_lines:
                 if not line.amount or not line.value_type_id:
@@ -72,12 +74,14 @@ class ContractQueryService:
                 amt = line.amount
 
                 gross += amt.gross
-                non_deductible += amt.non_tax_cost
+
 
                 if direction == ValueDirection.COST:
                     net_cost += amt.net
+                    non_deductible_cost += amt.non_tax_cost
                 elif direction == ValueDirection.REVENUE:
                     revenue += amt.net
+                    non_deductible_rev += amt.non_tax_cost
 
             result.append(
                 ContractListDTO(
@@ -89,8 +93,9 @@ class ContractQueryService:
                     progress=progress,
                     net=net_cost,
                     gross=gross,
-                    non_deduction=non_deductible,
+                    non_deduction=non_deductible_cost,
                     revenue=revenue,
+                    revenue_non_deductible = non_deductible_rev
                 )
             )
 
@@ -123,28 +128,35 @@ class ContractQueryService:
         invoice_lines = self._invoice_line_repo.list_by_contract(contract_id)
 
         # ---------- AGG STRUCTURES ----------
-        values = defaultdict(lambda: {
+        values: dict[Any,dict[str,Decimal]] = defaultdict(lambda: {
             "net": Decimal("0"),
             "gross": Decimal("0"),
             "non_deductible": Decimal("0"),
             "revenue": Decimal("0"),
+            "revenue_non_deductible": Decimal("0")
         })
 
         for line in invoice_lines:
-            if not line.contract_node_id or not line.amount:
+            if (
+                    line.contract_node_id is None
+                    or line.value_type_id is None
+                    or line.amount is None
+            ):
                 continue
 
             node_id = line.contract_node_id
-            direction = vt_direction.get(line.value_type_id)
+            direction = vt_direction[line.value_type_id]
 
             amt = line.amount
             # values[node_id]["gross"] += amt.gross
-            values[node_id]["non_deductible"] += amt.non_tax_cost
+
 
             if direction == ValueDirection.COST:
                 values[node_id]["net"] += amt.net
+                values[node_id]["non_deductible"] += amt.non_tax_cost
             elif direction == ValueDirection.REVENUE:
                 values[node_id]["revenue"] += amt.net
+                values[node_id]["revenue_non_deductible"] += amt.non_tax_cost
 
         for node in tree.postorder():
             if tree.is_leaf(node):
@@ -194,6 +206,7 @@ class ContractQueryService:
                     net=values[node.id]["net"],
                     non_deductible=values[node.id]["non_deductible"],
                     revenue=values[node.id]["revenue"],
+                    revenue_non_deductible=values[node.id]["revenue_non_deductible"]
                 )
             )
 

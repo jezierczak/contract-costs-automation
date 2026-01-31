@@ -1,8 +1,17 @@
 from contract_costs.repository.company_repository import CompanyRepository
+from contract_costs.repository.identity.organization_repository import OrganizationRepository
+from contract_costs.repository.identity.organization_user_repository import OrganizationUserRepository
+from contract_costs.repository.identity.user_repository import UserRepository
+from contract_costs.repository.inmemory.identity.organization_repository import InMemoryOrganizationRepository
+from contract_costs.repository.inmemory.identity.organization_user_repository import InMemoryOrganizationUserRepository
+from contract_costs.repository.inmemory.identity.user_repository import InMemoryUserRepository
 from contract_costs.repository.invoice_repository import InvoiceRepository
 from contract_costs.repository.invoice_line_repository import InvoiceLineRepository
 from contract_costs.repository.contract_repository import ContractRepository
 from contract_costs.repository.contract_node_repository import ContractNodeRepository
+from contract_costs.repository.mysql.identity.organization_repository import MySqlOrganizationRepository
+from contract_costs.repository.mysql.identity.organization_user_repository import MySqlOrganizationUserRepository
+from contract_costs.repository.mysql.identity.user_repository import MySqlUserRepository
 from contract_costs.repository.value_type_repository import ValueTypeRepository
 from contract_costs.repository.snapshot.contract_node_snapshot_repository import ContractNodeSnapshotRepository
 from contract_costs.repository.snapshot.contract_node_value_snapshot_repository import \
@@ -110,4 +119,25 @@ class RepositoryFactory:
             MySQLContractNodeValueSnapshotRepository()
             if self.backend == RepoBackend.MYSQL
             else InMemoryContractNodeValueSnapshotRepository()
+        )
+
+    def organization_repository(self) -> OrganizationRepository:
+        return (
+            MySqlOrganizationRepository()
+            if self.backend == RepoBackend.MYSQL
+            else InMemoryOrganizationRepository()
+        )
+
+    def organization_user_repository(self) -> OrganizationUserRepository:
+        return (
+            MySqlOrganizationUserRepository()
+            if self.backend == RepoBackend.MYSQL
+            else InMemoryOrganizationUserRepository()
+        )
+
+    def user_repository(self) -> UserRepository:
+        return (
+            MySqlUserRepository()
+            if self.backend == RepoBackend.MYSQL
+            else InMemoryUserRepository()
         )

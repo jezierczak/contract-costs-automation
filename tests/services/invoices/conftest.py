@@ -158,7 +158,7 @@ def cost_node_root(contract_1):
         unit=None,
         budget=Decimal("100000"),
         is_active=True,
-        progress=None,
+        progress_history={}
     )
 
 
@@ -174,7 +174,7 @@ def cost_node_child(cost_node_root, contract_1):
         unit=UnitOfMeasure.PIECE,
         budget=Decimal("50000"),
         is_active=True,
-        progress=Decimal("0.5")
+        progress_history={}
     )
 
 
@@ -190,7 +190,7 @@ def inactive_cost_node(contract_1):
         unit=None,
         budget=None,
         is_active=False,
-        progress=Decimal("0.5")
+        progress_history={}
     )
 
 
