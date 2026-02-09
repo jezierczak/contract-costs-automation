@@ -1,9 +1,17 @@
+import os
 from pathlib import Path
 import json
 from uuid import UUID
 
 
-SESSION_FILE = Path.home() / ".contract_costs" / "session.json"
+APP_ENV = os.getenv("APP_ENV", "local")
+
+SESSION_FILE = (
+    Path.home()
+    / ".contract_costs"
+    / APP_ENV
+    / "session.json"
+)
 
 
 def save_session(*, user_id: UUID, organization_id: UUID | None = None) -> None:

@@ -7,22 +7,33 @@ from contract_costs.model.snapshot.contract_snapshot import ContractSnapshot
 
 class ContractSnapshotRepository(ABC):
 
+    # =========================
+    # CREATE
+    # =========================
+
     @abstractmethod
     def add(self, snapshot: ContractSnapshot) -> None:
         ...
 
-    @abstractmethod
-    def get(self, snapshot_id: UUID) -> ContractSnapshot | None:
-        ...
 
-    # @abstractmethod
-    # def find_by_id_prefix(self, prefix: str) -> list[ContractSnapshot]:
-    #     ...
+    # =========================
+    # READ
+    # =========================
+
+    @abstractmethod
+    def get(
+        self,
+        *,
+        organization_id: UUID,
+        snapshot_id: UUID,
+    ) -> ContractSnapshot | None:
+        ...
 
     @abstractmethod
     def get_by_contract_and_date(
         self,
         *,
+        organization_id: UUID,
         contract_id: UUID,
         snapshot_date: date,
     ) -> ContractSnapshot | None:
@@ -31,10 +42,20 @@ class ContractSnapshotRepository(ABC):
     @abstractmethod
     def list_by_contract(
         self,
+        *,
+        organization_id: UUID,
         contract_id: UUID,
     ) -> list[ContractSnapshot]:
         ...
 
-    # techniczne
+    # =========================
+    # TECHNICAL / ADMIN
+    # =========================
+
     @abstractmethod
-    def list_all(self) -> list[ContractSnapshot]: ...
+    def list_all(
+        self,
+        *,
+        organization_id: UUID,
+    ) -> list[ContractSnapshot]:
+        ...

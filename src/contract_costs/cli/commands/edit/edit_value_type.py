@@ -3,6 +3,8 @@ from contract_costs.cli.registry import REGISTRY
 from types import SimpleNamespace
 from contract_costs.cli.context import get_services
 from contract_costs.cli.prompts.interactive import interactive_prompt
+from contract_costs.cli.utils.context_helpers import require_organization_id, require_user_id
+from contract_costs.common.context.exceptions import ContextError
 
 
 def build_edit_value_type(subparsers):
@@ -18,6 +20,12 @@ def handle_edit_value_type(args=None) -> None:
         args = SimpleNamespace(deactivate=False)
 
     services = get_services()
+
+    try:
+        organization_id = require_organization_id(services.context)
+        actor_user_id = require_user_id(services.context)
+    except ContextError:
+        return
     repo = services.value_type_repository
 
     code = input("Type value type code:\n-> ").strip()
@@ -30,6 +38,8 @@ def handle_edit_value_type(args=None) -> None:
     if args.deactivate:
         deactivate_value_type_from_cli(
             value_type=value_type,
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
             deactivate_value_type_service=services.deactivate_value_type_service,
         )
         print("Value type deactivated.")
@@ -62,6 +72,8 @@ def handle_edit_value_type(args=None) -> None:
     update_value_type_from_cli(
         value_type=value_type,
         data=data,
+        organization_id = organization_id,
+        actor_user_id = actor_user_id,
         update_value_type_service=services.update_value_type_service,
     )
 

@@ -2,7 +2,9 @@ import logging
 
 from contract_costs.cli.context import get_services
 from contract_costs.cli.registry import REGISTRY
+from contract_costs.cli.utils.context_helpers import require_organization_id
 from contract_costs.cli.utils.contract_resolver import resolve_contract
+from contract_costs.common.context.exceptions import ContextError
 from contract_costs.infrastructure.filesystem.excel_domain_file_manager import InputsContractsAssignmentFileManager
 
 logger = logging.getLogger(__name__)
@@ -25,6 +27,7 @@ def build_prepare_contract(subparsers):
 
     p.set_defaults(handler=handle_prepare_contract)
 
+REGISTRY.register_group("prepare", build_prepare_contract)
 
 # =========================================================
 # HANDLER
@@ -38,61 +41,40 @@ def handle_prepare_contract(args) -> None:
     contract_ref = args.ref
     services = get_services()
 
-    # service = services.generate_contract_structure_bundle
     exporter = services.contract_prepare_excel_exporter
 
-    # ---------------- NEW CONTRACT ----------------
+    try:
+        organization_id = require_organization_id(services.context)
+    except ContextError:
+        return
 
-    # if contract_ref == "new":
-    #     output_path = (
-    #         cfg.INPUTS_CONTRACTS_NEW_DIR /
-    #         cfg.CONTRACT_EXCEL_FILENAME
-    #     )
-    #
-    #     if output_path.exists():
-    #         raise RuntimeError(
-    #             f"Contract Excel already exists: {output_path}\n"
-    #             "Apply or remove it before preparing a new one."
-    #         )
-    #
-    #     bundle = service.generate_empty()
-    #     logger.info("Empty contract structure Excel generated: %s", output_path)
-    #     print(f"Prepared NEW contract Excel:\n{output_path}")
-    #     return
 
     if contract_ref == "new":
-        fm = InputsContractsAssignmentFileManager()
-        # out = (
-        #     cfg.INPUTS_CONTRACTS_NEW_DIR /
-        #     cfg.CONTRACT_EXCEL_FILENAME
-        # )
+        fm = InputsContractsAssignmentFileManager(organization_id=organization_id)
 
-        # if out.exists():
-        #     raise RuntimeError(
-        #         f"Contract Excel already exists: {out}\n"
-        #         "Apply or remove it before preparing a new one."
-        #     )
         output_path = fm.prepare_target()
-        exporter.export_new(output_path=output_path)
+        exporter.export_new(output_path=output_path,organization_id=organization_id)
         logger.info("Empty contract structure Excel generated: %s", output_path)
         print(f"Prepared NEW contract Excel:\n{output_path}")
         return
     else:
-        contract = resolve_contract(contract_ref, services)
+        contract = resolve_contract(contract_ref,organization_id, services)
 
-        fm = InputsContractsAssignmentFileManager(contract_code=contract.code)
-        # filename = cfg.CONTRACT_EDIT_EXCEL_TEMPLATE.format(code=contract.code)
-        # output_path = cfg.INPUTS_CONTRACTS_EDIT_DIR / filename
-        # if output_path.exists():
-        #     raise RuntimeError(
-        #         f"Contract Excel already exists: {output_path}\n"
-        #         "Apply or remove it before preparing again."
-        #     )
+        fm = InputsContractsAssignmentFileManager(
+            organization_id=organization_id,
+            contract_code=contract.code)
+
         output_path = fm.prepare_target()
+
+        # TODO zamienić to na query !!
         exporter.export_existing(
+            organization_id=organization_id,
             contract=contract,
-            cost_nodes=services.contract_node_repository.list_by_contract(contract.id),
-            output_path=output_path,
+            cost_nodes=services.contract_node_repository.list_by_contract(
+                organization_id=organization_id,
+                contract_id=contract.id
+            ),
+            output_path=output_path
         )
 
         logger.info(
@@ -102,38 +84,5 @@ def handle_prepare_contract(args) -> None:
         )
         print(f"Prepared contract '{contract.code}' for editing:\n{output_path}")
 
-    # ---------------- EDIT CONTRACT ----------------
-
-    # contract = _resolve_contract(contract_ref, services)
-    #
-    # filename = cfg.CONTRACT_EDIT_EXCEL_TEMPLATE.format(code=contract.code)
-    # output_path = cfg.INPUTS_CONTRACTS_EDIT_DIR / filename
-    #
-    # if output_path.exists():
-    #     raise RuntimeError(
-    #         f"Contract Excel already exists: {output_path}\n"
-    #         "Apply or remove it before preparing again."
-    #     )
-    #
-    # bundle = service.generate_from_contract(contract.id)
-    #
-    # services.export_contract_structure_excel.execute(bundle, output_path)
-    #
-    # logger.info(
-    #     "Contract structure Excel generated: contract=%s path=%s",
-    #     contract.code,
-    #     output_path,
-    # )
-    # print(f"Prepared contract '{contract.code}' for editing:\n{output_path}")
 
 
-# =========================================================
-# UTILS
-# =========================================================
-
-
-# =========================================================
-# REGISTRY
-# =========================================================
-
-REGISTRY.register_group("prepare", build_prepare_contract)

@@ -43,7 +43,8 @@ class PdfImageTextExtractor:
             return ""
 
     def extract_from_pdf_path(self, pdf_path: Path) -> str:
-        text = self.extract_with_pdfplumber_safe(pdf_path, timeout=5)
+
+        text = self.extract_with_pdfplumber_safe(pdf_path)
         if text.strip():
             logger.info("PDF extractor used pdfplumber")
             return text

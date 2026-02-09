@@ -2,7 +2,7 @@ from uuid import uuid4
 
 from contract_costs.repository.inmemory.contract_repository import InMemoryContractRepository
 from contract_costs.model.contract import Contract
-from contract_costs.repository.inmemory.invoice_line_repository import InMemoryInvoiceLineRepository
+from contract_costs.repository.inmemory.financial_record_line_repository import InMemoryFinancialRecordLineRepository
 
 
 class TestInMemoryContractRepository:
@@ -44,7 +44,7 @@ class TestInMemoryContractRepository:
             invoice_line_1,
             invoice_line_2,
     ):
-        repo = InMemoryInvoiceLineRepository()
+        repo = InMemoryFinancialRecordLineRepository()
 
         repo.add(invoice_line_1)  # contract_1
         repo.add(invoice_line_2)  # contract_2

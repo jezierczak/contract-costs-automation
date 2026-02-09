@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
@@ -22,20 +22,32 @@ from contract_costs.services.contracts.validators.contract_node_tree_validator i
 # ---------------------------------------------------------------------
 # FIXTURES – DOMAIN
 # ---------------------------------------------------------------------
+NOW= datetime.now()
+TEST_ORG_ID = uuid4()
+TEST_USER_ID = uuid4()
 
 @pytest.fixture
 def owner_company() -> Company:
     return Company(
         id=uuid4(),
+        organization_id=TEST_ORG_ID,
+
         name="Owner",
         tax_number="1111111111",
         description=None,
+
         address=None,
         contact=None,
         bank_account=None,
+
         role=CompanyType.OWN,
         tags=set(),
         is_active=True,
+
+        created_at=NOW,
+        created_by_user_id=TEST_USER_ID,
+        updated_at=None,
+        updated_by_user_id=None,
     )
 
 
@@ -43,15 +55,24 @@ def owner_company() -> Company:
 def client_company() -> Company:
     return Company(
         id=uuid4(),
+        organization_id=TEST_ORG_ID,
+
         name="Client",
         tax_number="2222222222",
         description=None,
+
         address=None,
         contact=None,
         bank_account=None,
+
         role=CompanyType.CLIENT,
         tags=set(),
         is_active=True,
+
+        created_at=NOW,
+        created_by_user_id=TEST_USER_ID,
+        updated_at=None,
+        updated_by_user_id=None,
     )
 
 

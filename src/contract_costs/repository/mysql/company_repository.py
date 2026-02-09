@@ -1,4 +1,4 @@
-from typing import Iterable
+import logging
 from uuid import UUID
 
 from contract_costs.model.company import Company, CompanyType
@@ -6,15 +6,16 @@ from contract_costs.model.company import Address, BankAccount, Contact
 from contract_costs.repository.company_repository import CompanyRepository
 from contract_costs.infrastructure.db.mysql_connection import get_connection
 
+logger = logging.getLogger(__name__)
 
 class MySQLCompanyRepository(CompanyRepository):
 
     # ---------- helpers ----------
-
     @staticmethod
     def _row_to_company(row: dict) -> Company:
         return Company(
             id=UUID(row["id"]),
+            organization_id=UUID(row["organization_id"]),
             name=row["name"],
             description=row["description"],
             tax_number=row["tax_number"],
@@ -30,7 +31,7 @@ class MySQLCompanyRepository(CompanyRepository):
             ),
             bank_account=(
                 BankAccount(
-                    number=row["bank_account_number"],
+                    account_number=row["bank_account_number"],
                     country_code=row["bank_account_country_code"],
                 )
                 if row["bank_account_number"]
@@ -39,6 +40,18 @@ class MySQLCompanyRepository(CompanyRepository):
             role=CompanyType(row["role"]),
             tags=set(),  # TODO
             is_active=bool(row["is_active"]),
+            created_at=row["created_at"],
+            created_by_user_id=(
+                UUID(row["created_by_user_id"])
+                if row["created_by_user_id"]
+                else None
+            ),
+            updated_at=row["updated_at"],
+            updated_by_user_id=(
+                UUID(row["updated_by_user_id"])
+                if row["updated_by_user_id"]
+                else None
+            ),
         )
 
     # ---------- CRUD ----------
@@ -50,16 +63,29 @@ class MySQLCompanyRepository(CompanyRepository):
         cur.execute(
             """
             INSERT INTO companies (
-                id, name, description, tax_number,
-                street, city, zip_code, country,
-                phone_number, email,
-                bank_account_number, bank_account_country_code,
-                role, is_active
-            )
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    id,
+                    organization_id,
+                    name,
+                    description,
+                    tax_number,
+                    street,
+                    city,
+                    zip_code,
+                    country,
+                    phone_number,
+                    email,
+                    bank_account_number,
+                    bank_account_country_code,
+                    role,
+                    is_active,
+                    created_at,
+                    created_by_user_id
+                )   
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """,
             (
                 str(company.id),
+                str(company.organization_id),
                 company.name,
                 company.description,
                 company.tax_number,
@@ -69,10 +95,12 @@ class MySQLCompanyRepository(CompanyRepository):
                 company.address.country if company.address else None,
                 company.contact.phone_number if company.contact else None,
                 company.contact.email if company.contact else None,
-                company.bank_account.number if company.bank_account else None,
+                company.bank_account.account_number if company.bank_account else None,
                 company.bank_account.country_code if company.bank_account else None,
                 company.role.value,
                 company.is_active,
+                company.created_at,
+                str(company.created_by_user_id) if company.created_by_user_id else None
             ),
         )
 
@@ -86,8 +114,8 @@ class MySQLCompanyRepository(CompanyRepository):
 
         cur.execute(
             """
-            UPDATE companies SET
-                name=%s,
+            UPDATE companies
+            SET name=%s,
                 description=%s,
                 tax_number=%s,
                 street=%s,
@@ -99,8 +127,11 @@ class MySQLCompanyRepository(CompanyRepository):
                 bank_account_number=%s,
                 bank_account_country_code=%s,
                 role=%s,
-                is_active=%s
-            WHERE id=%s
+                is_active=%s,
+                updated_at=%s,
+                updated_by_user_id=%s
+            WHERE id = %s
+              AND organization_id = %s
             """,
             (
                 company.name,
@@ -112,38 +143,50 @@ class MySQLCompanyRepository(CompanyRepository):
                 company.address.country if company.address else None,
                 company.contact.phone_number if company.contact else None,
                 company.contact.email if company.contact else None,
-                company.bank_account.number if company.bank_account else None,
+                company.bank_account.account_number if company.bank_account else None,
                 company.bank_account.country_code if company.bank_account else None,
                 company.role.value,
                 company.is_active,
+                company.updated_at,
+                str(company.updated_by_user_id) if company.updated_by_user_id else None,
                 str(company.id),
+                str(company.organization_id),
             ),
         )
 
+        if cur.rowcount == 0:
+            # sprawdź czy rekord istnieje
+            cur.execute(
+                "SELECT 1 FROM companies WHERE id=%s AND organization_id=%s",
+                (str(company.id), str(company.organization_id)),
+            )
+            if cur.fetchone() is None:
+                raise RuntimeError("Company not found or org mismatch")
+            logger.info("Company unchanged (no update needed)")
         conn.commit()
         cur.close()
         conn.close()
 
-    def delete(self, company_id: UUID) -> None:
+    def delete(self, company_id: UUID, organization_id: UUID) -> None:
         conn = get_connection()
         cur = conn.cursor()
 
         cur.execute(
-            "DELETE FROM companies WHERE id = %s LIMIT 1",
-            (str(company_id),),
+            "DELETE FROM companies WHERE id = %s and organization_id=%s LIMIT 1",
+            (str(company_id),str(organization_id)),
         )
 
         conn.commit()
         cur.close()
         conn.close()
 
-    def get(self, company_id: UUID) -> Company | None:
+    def get(self, company_id: UUID, organization_id: UUID) -> Company | None:
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
 
         cur.execute(
-            "SELECT * FROM companies WHERE id = %s",
-            (str(company_id),),
+            "SELECT * FROM companies WHERE id = %s and organization_id = %s",
+            (str(company_id),str(organization_id)),
         )
 
         row = cur.fetchone()
@@ -152,11 +195,11 @@ class MySQLCompanyRepository(CompanyRepository):
 
         return self._row_to_company(row) if row else None
 
-    def list_all(self) -> list[Company]:
+    def list_all(self, organization_id: UUID) -> list[Company]:
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
 
-        cur.execute("SELECT * FROM companies")
+        cur.execute("SELECT * FROM companies where organization_id = %s", (str(organization_id),))
         rows = cur.fetchall()
 
         cur.close()
@@ -164,13 +207,13 @@ class MySQLCompanyRepository(CompanyRepository):
 
         return [self._row_to_company(row) for row in rows]
 
-    def exists(self, company_id: UUID) -> bool:
+    def exists(self, company_id: UUID, organization_id: UUID) -> bool:
         conn = get_connection()
         cur = conn.cursor()
 
         cur.execute(
-            "SELECT 1 FROM companies WHERE id = %s LIMIT 1",
-            (str(company_id),),
+            "SELECT 1 FROM companies WHERE id = %s and organization_id = %s LIMIT 1",
+            (str(company_id),str(organization_id)),
         )
 
         exists = cur.fetchone() is not None
@@ -181,13 +224,13 @@ class MySQLCompanyRepository(CompanyRepository):
 
     # ---------- identity ----------
 
-    def get_by_tax_number(self, tax_number: str) -> Company | None:
+    def get_by_tax_number(self, tax_number: str, organization_id: UUID) -> Company | None:
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
 
         cur.execute(
-            "SELECT * FROM companies WHERE tax_number = %s",
-            (tax_number,),
+            "SELECT * FROM companies WHERE tax_number = %s and organization_id = %s",
+            (tax_number,str(organization_id)),
         )
 
         row = cur.fetchone()
@@ -196,13 +239,19 @@ class MySQLCompanyRepository(CompanyRepository):
 
         return self._row_to_company(row) if row else None
 
-    def get_owners(self) -> list[Company]:
+    def get_owners(self, organization_id: UUID) -> list[Company]:
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
 
         cur.execute(
-            "SELECT * FROM companies WHERE role = %s AND is_active = 1",
-            (CompanyType.OWN.value,),
+            """
+            SELECT *
+            FROM companies
+            WHERE role = %s
+              AND is_active = 1
+              AND organization_id = %s
+            """,
+            (CompanyType.OWN.value, str(organization_id)),
         )
 
         rows = cur.fetchall()
@@ -211,13 +260,13 @@ class MySQLCompanyRepository(CompanyRepository):
 
         return [self._row_to_company(row) for row in rows]
 
-    def exists_owner(self) -> bool:
+    def exists_owner(self, organization_id: UUID) -> bool:
         conn = get_connection()
         cur = conn.cursor()
 
         cur.execute(
-            "SELECT 1 FROM companies WHERE role = %s AND is_active = 1 LIMIT 1",
-            (CompanyType.OWN.value,),
+            "SELECT 1 FROM companies WHERE role = %s AND is_active = 1 and organization_id = %s LIMIT 1",
+            (CompanyType.OWN.value,str(organization_id)),
         )
 
         exists = cur.fetchone() is not None
@@ -228,13 +277,13 @@ class MySQLCompanyRepository(CompanyRepository):
 
     # ---------- candidate search ----------
 
-    def find_by_bank_account(self, bank_account: str) -> list[Company]:
+    def find_by_bank_account(self, organization_id: UUID, bank_account_number: str) -> list[Company]:
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
 
         cur.execute(
-            "SELECT * FROM companies WHERE bank_account_number = %s",
-            (bank_account,),
+            "SELECT * FROM companies WHERE bank_account_number = %s and organization_id = %s",
+            (bank_account_number,str(organization_id)),
         )
 
         rows = cur.fetchall()
@@ -243,13 +292,13 @@ class MySQLCompanyRepository(CompanyRepository):
 
         return [self._row_to_company(row) for row in rows]
 
-    def find_by_email(self, email: str) -> list[Company]:
+    def find_by_email(self, organization_id: UUID, email: str) -> list[Company]:
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
 
         cur.execute(
-            "SELECT * FROM companies WHERE email = %s",
-            (email,),
+            "SELECT * FROM companies WHERE email = %s and organization_id = %s",
+            (email,str(organization_id)),
         )
 
         rows = cur.fetchall()
@@ -258,13 +307,13 @@ class MySQLCompanyRepository(CompanyRepository):
 
         return [self._row_to_company(row) for row in rows]
 
-    def find_by_phone(self, phone_number: str) -> list[Company]:
+    def find_by_phone(self, organization_id: UUID, phone_number: str) -> list[Company]:
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
 
         cur.execute(
-            "SELECT * FROM companies WHERE phone_number = %s",
-            (phone_number,),
+            "SELECT * FROM companies WHERE phone_number = %s and organization_id = %s",
+            (phone_number,str(organization_id)),
         )
 
         rows = cur.fetchall()
@@ -273,13 +322,13 @@ class MySQLCompanyRepository(CompanyRepository):
 
         return [self._row_to_company(row) for row in rows]
 
-    def find_by_name_like(self, name: str) -> list[Company]:
+    def find_by_name_like(self, organization_id: UUID, name: str) -> list[Company]:
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
 
         cur.execute(
-            "SELECT * FROM companies WHERE name LIKE %s",
-            (f"%{name}%",),
+            "SELECT * FROM companies WHERE name LIKE %s and organization_id = %s",
+            (f"%{name}%",str(organization_id)),
         )
 
         rows = cur.fetchall()
@@ -288,7 +337,7 @@ class MySQLCompanyRepository(CompanyRepository):
 
         return [self._row_to_company(row) for row in rows]
 
-    def find_by_street_tokens(self, tokens: list[str]) -> list[Company]:
+    def find_by_street_tokens(self, organization_id: UUID, tokens: list[str]) -> list[Company]:
         if not tokens:
             return []
 
@@ -296,7 +345,7 @@ class MySQLCompanyRepository(CompanyRepository):
         cur = conn.cursor(dictionary=True)
 
         where_clauses = []
-        params = []
+        params = [str(organization_id)]
 
         for token in tokens:
             where_clauses.append("LOWER(street) LIKE %s")
@@ -305,7 +354,7 @@ class MySQLCompanyRepository(CompanyRepository):
         sql = f"""
             SELECT *
             FROM companies
-            WHERE street IS NOT NULL
+            WHERE street IS NOT NULL and organization_id = %s
               AND {' AND '.join(where_clauses)}
         """
 

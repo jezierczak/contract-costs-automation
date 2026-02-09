@@ -1,6 +1,7 @@
 from contract_costs.cli.context import get_services
 from contract_costs.cli.printers.table_printer.cmd_printer import CmdPrinter
 from contract_costs.cli.registry import REGISTRY
+from contract_costs.cli.utils.context_helpers import require_organization_id
 from contract_costs.common.context.exceptions import ContextError
 from contract_costs.infrastructure.excel.excel_column_v2.excel_column import ExcelColumn
 from contract_costs.infrastructure.excel.excel_column_v2.excel_column_type import ExcelColumnType
@@ -17,9 +18,8 @@ REGISTRY.register_group("show", build_show_organization_users)
 def handle_show_organization_users(args):
     services = get_services()
     try:
-        org_id = services.context.current_organization_id()
-    except ContextError as e:
-        print(f"❌ {e}")
+        org_id = require_organization_id(services.context)
+    except ContextError:
         return
     users = services.show_organization_users.execute(org_id)
     organization = services.organization_repository.get(org_id)

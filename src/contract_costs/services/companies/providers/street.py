@@ -1,9 +1,10 @@
 import re
+from uuid import UUID
 
 from contract_costs.model.company import Company
 from contract_costs.repository.company_repository import CompanyRepository
 from contract_costs.services.companies.providers.candidate_provider import CompanyCandidateProvider
-from contract_costs.services.invoices.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
+from contract_costs.services.financial_records.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
 
 
 STOPWORDS = {
@@ -45,11 +46,25 @@ def extract_street_tokens(street: str) -> list[str]:
         if len(t) >= 3 and t not in STOPWORDS
     ]
 
+
 class StreetCandidateProvider(CompanyCandidateProvider):
+    """
+    Provider oparty o adres (ulica + numer).
+
+    ⚠️ najsłabszy sygnał → fallback
+    ✔️ działa dobrze przy lokalnych firmach
+    """
+
     def __init__(self, repo: CompanyRepository) -> None:
         self._repo = repo
 
-    def find_candidates(self, input_: CompanyInput) -> list[Company]:
+    def find_candidates(
+        self,
+        *,
+        organization_id: UUID,
+        input_: CompanyInput,
+    ) -> list[Company]:
+
         if not input_.street:
             return []
 
@@ -59,31 +74,30 @@ class StreetCandidateProvider(CompanyCandidateProvider):
         if not input_tokens:
             return []
 
-        # tokeny do SQL (z numerem jeśli jest)
-        query_tokens = input_tokens + ([input_number] if input_number else [])
+        # tokeny do SQL (numer osobno – NIE jako token nazwy)
+        candidates = self._repo.find_by_street_tokens(
+            organization_id=organization_id,
+            tokens=input_tokens,
+        )
 
-        candidates: list[Company] = []
+        result: list[Company] = []
 
-        for company in self._repo.find_by_street_tokens(query_tokens):
+        for company in candidates:
             if not company.address or not company.address.street:
                 continue
 
             company_tokens = extract_street_tokens(company.address.street)
             company_number = extract_street_number(company.address.street)
 
-            # 🔹 REGUŁY MATCHOWANIA
-
             # 1️⃣ numer + przynajmniej 1 token
             if input_number and company_number == input_number:
                 if any(t in company_tokens for t in input_tokens):
-                    candidates.append(company)
+                    result.append(company)
                     continue
 
             # 2️⃣ bez numeru → minimum 2 wspólne tokeny
             common_tokens = set(input_tokens) & set(company_tokens)
             if len(common_tokens) >= 2:
-                candidates.append(company)
+                result.append(company)
 
-        return candidates
-
-
+        return result

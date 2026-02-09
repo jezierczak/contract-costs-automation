@@ -2,6 +2,7 @@ from contract_costs.cli.context import get_services
 from contract_costs.cli.prompts.interactive import interactive_prompt
 from contract_costs.cli.registry import REGISTRY
 from contract_costs.cli.schemas.organization_users import ORG_USER_FIELDS
+from contract_costs.cli.utils.context_helpers import require_user_id, require_organization_id
 from contract_costs.common.context.exceptions import ContextError
 from contract_costs.services.identity.add.dto.assign_user_to_organization_command import AssignUserToOrganizationCommand
 
@@ -18,13 +19,13 @@ REGISTRY.register_group("add", build_add_organization_user)
 
 def handle_add_organization_user(args):
     services = get_services()
-    ctx = services.context
+
     try:
-        org_id = ctx.current_organization_id()
-        current_user_id = ctx.current_user_id()
-    except ContextError as e:
-        print(f"❌ {e}")
+        current_user_id = require_user_id(services.context)
+        org_id = require_organization_id(services.context)
+    except ContextError:
         return
+
     data = interactive_prompt(ORG_USER_FIELDS)
 
     print("\nAdd user to organization:")

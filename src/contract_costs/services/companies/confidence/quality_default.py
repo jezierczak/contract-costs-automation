@@ -9,7 +9,7 @@ from contract_costs.services.companies.confidence.fields import (
 )
 from contract_costs.services.companies.confidence.quality import CompanyDataQuality
 from contract_costs.services.companies.validators.company import CompanyValidator
-from contract_costs.services.invoices.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
+from contract_costs.services.financial_records.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +81,7 @@ class DefaultCompanyQuality(CompanyDataQuality):
                 CompanyField.PHONE_NUMBER: company.contact.phone_number if company.contact else None,
                 CompanyField.EMAIL: company.contact.email if company.contact else None,
                 CompanyField.BANK_ACCOUNT: (
-                    company.bank_account.number if company.bank_account else None
+                    company.bank_account.account_number if company.bank_account else None
                 ),
             }),
             source or CompanyDataSource.SYSTEM,

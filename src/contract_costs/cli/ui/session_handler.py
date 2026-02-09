@@ -33,3 +33,4 @@ def print_session_header() -> None:
         print("🏢 Org:  — not selected —")
 
     print("----------------------------------")
+    print()

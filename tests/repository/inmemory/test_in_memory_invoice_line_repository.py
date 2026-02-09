@@ -1,12 +1,12 @@
 from dataclasses import replace
 
-from contract_costs.repository.inmemory.invoice_line_repository import InMemoryInvoiceLineRepository
+from contract_costs.repository.inmemory.financial_record_line_repository import InMemoryFinancialRecordLineRepository
 
 
 class TestInMemoryInvoiceLineRepository:
 
     def test_invoice_line_repository_add_and_get(self, invoice_line_complete):
-        repo = InMemoryInvoiceLineRepository()
+        repo = InMemoryFinancialRecordLineRepository()
 
         repo.add(invoice_line_complete)
         result = repo.get(invoice_line_complete.id)
@@ -14,7 +14,7 @@ class TestInMemoryInvoiceLineRepository:
         assert result == invoice_line_complete
 
     def test_invoice_line_repository_exists(self, invoice_line_complete):
-        repo = InMemoryInvoiceLineRepository()
+        repo = InMemoryFinancialRecordLineRepository()
 
         assert repo.exists(invoice_line_complete.id) is False
 
@@ -27,7 +27,7 @@ class TestInMemoryInvoiceLineRepository:
             invoice_line_complete,
             invoice_line_missing_cost_node,
     ):
-        repo = InMemoryInvoiceLineRepository()
+        repo = InMemoryFinancialRecordLineRepository()
 
         repo.add(invoice_line_complete)
         repo.add(invoice_line_missing_cost_node)
@@ -44,7 +44,7 @@ class TestInMemoryInvoiceLineRepository:
             invoice_line_missing_cost_type,
             contract_id_1,
     ):
-        repo = InMemoryInvoiceLineRepository()
+        repo = InMemoryFinancialRecordLineRepository()
 
         repo.add(invoice_line_complete)  # contract_id_1
         repo.add(invoice_line_missing_cost_type)  # contract_id_2
@@ -56,7 +56,7 @@ class TestInMemoryInvoiceLineRepository:
 
 
     def test_invoice_line_repository_update(self, invoice_line_complete):
-        repo = InMemoryInvoiceLineRepository()
+        repo = InMemoryFinancialRecordLineRepository()
         repo.add(invoice_line_complete)
 
         updated = replace(invoice_line_complete, description="Updated")
@@ -72,7 +72,7 @@ class TestInMemoryInvoiceLineRepository:
             invoice_line_missing_cost_node,
             invoice_line_missing_cost_type,
     ):
-        repo = InMemoryInvoiceLineRepository()
+        repo = InMemoryFinancialRecordLineRepository()
 
         repo.add(invoice_line_complete)  # OK
         repo.add(invoice_line_missing_cost_node)  # missing cost_node

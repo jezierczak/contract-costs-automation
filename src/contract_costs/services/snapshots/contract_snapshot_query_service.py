@@ -36,9 +36,10 @@ class ContractSnapshotQueryService:
     def list_snapshots(
             self,
             *,
+            organization_id: UUID,
             contract_id: UUID | None = None,
     ) -> list[ContractSnapshotListDTO]:
-        value_types = self._value_type_repo.list()
+        value_types = self._value_type_repo.list_all(organization_id=organization_id)
 
         value_type_by_id = {
             vt.id: vt
@@ -46,15 +47,19 @@ class ContractSnapshotQueryService:
         }
 
         snapshots = (
-            self._snapshot_repo.list_by_contract(contract_id)
+            self._snapshot_repo.list_by_contract(
+                organization_id=organization_id,
+                contract_id=contract_id)
             if contract_id
-            else self._snapshot_repo.list_all()
+            else self._snapshot_repo.list_all(organization_id=organization_id)
         )
 
         result: list[ContractSnapshotListDTO] = []
 
         for s in snapshots:
-            contract = self._contract_repo.get(s.contract_id)
+            contract = self._contract_repo.get(
+                organization_id=organization_id,
+                contract_id=s.contract_id)
             if not contract:
                 continue
 
@@ -112,16 +117,25 @@ class ContractSnapshotQueryService:
     def get_snapshot(
             self,
             *,
+            organization_id: UUID,
             snapshot_id: UUID,
     ) -> ContractSnapshotDTO:
 
-        snapshot = self.resolve_snapshot(str(snapshot_id),self._snapshot_repo)
+        snapshot = self.resolve_snapshot(
+            organization_id=organization_id,
+            prefix=str(snapshot_id),
+            repo=self._snapshot_repo,
+        )
         if not snapshot:
             raise ValueError("Snapshot not found")
         snapshot_id = snapshot.id
 
-        contract = self._contract_repo.get(snapshot.contract_id)
-        nodes = self._node_repo.list_by_contract(snapshot.contract_id)
+        contract = self._contract_repo.get(
+            organization_id=organization_id,
+            contract_id=snapshot.contract_id)
+        nodes = self._node_repo.list_by_contract(
+            organization_id=organization_id,
+            contract_id=snapshot.contract_id)
 
         node_snapshots = self._node_snapshot_repo.list_by_snapshot(snapshot_id)
         value_snapshots = self._value_snapshot_repo.list_by_snapshot(snapshot_id)
@@ -129,7 +143,7 @@ class ContractSnapshotQueryService:
         nodes_by_id = {n.id: n for n in nodes}
         values_by_node_snapshot = defaultdict(list)
 
-        value_types = self._value_type_repo.list()
+        value_types = self._value_type_repo.list_all(organization_id=organization_id)
         value_type_by_id = {vt.id: vt for vt in value_types}
 
         for v in value_snapshots:
@@ -191,18 +205,25 @@ class ContractSnapshotQueryService:
         )
 
     @staticmethod
-    def resolve_snapshot(prefix: str, repo) -> ContractSnapshot:
-        # pełny UUID
-        snapshots = repo.list_all()
+    def resolve_snapshot(
+            *,
+            organization_id: UUID,
+            prefix: str,
+            repo: ContractSnapshotRepository,
+    ) -> ContractSnapshot:
 
-        # def find_by_id_prefix(self, prefix: str) -> list[ContractSnapshot]:
-        matches =  [snap for snap in snapshots if str(snap.id).startswith(prefix)]
+        snapshots = repo.list_all(organization_id=organization_id)
+
+        matches = [
+            snap for snap in snapshots
+            if str(snap.id).startswith(prefix)
+        ]
 
         if not matches:
             raise ValueError(f"No snapshot found for '{prefix}'")
 
         if len(matches) > 1:
-            ids = ", ".join(s.short_id for s in matches)
+            ids = ", ".join(str(s.id)[:8] for s in matches)
             raise ValueError(
                 f"Snapshot id '{prefix}' is ambiguous. Matches: {ids}"
             )

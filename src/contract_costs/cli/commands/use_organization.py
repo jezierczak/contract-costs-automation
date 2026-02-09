@@ -1,5 +1,6 @@
 from contract_costs.cli.context import get_services
 from contract_costs.cli.registry import REGISTRY
+from contract_costs.cli.utils.context_helpers import require_user_id
 from contract_costs.common.context.exceptions import ContextError
 from contract_costs.services.identity.use.dto.use_organization_command import UseOrganizationCommand
 
@@ -15,13 +16,14 @@ REGISTRY.register_group("use", build_use_organization)
 def handle_use_organization(args):
     services = get_services()
     try:
-        cmd = UseOrganizationCommand(
-            user_id=services.context.current_user_id(),
-            organization_code=args.code,
-        )
-    except ContextError as e:
-        print(f"❌ {e}")
+        user_id = require_user_id(services.context)
+    except ContextError:
         return
+    cmd = UseOrganizationCommand(
+        user_id=user_id,
+        organization_code=args.code,
+    )
+
     services.use_organization.execute(cmd)
 
     print(f"Active organization set to: {args.code}")

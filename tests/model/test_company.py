@@ -13,7 +13,7 @@ class TestBankAccount:
 
     def test_bank_account_invalid_length_logs_warning(self,caplog):
         with caplog.at_level(logging.WARNING):
-            BankAccount(number="123", country_code="PL")
+            BankAccount(account_number="123", country_code="PL")
 
         assert "Polish account number must have 26 digits" in caplog.text
 

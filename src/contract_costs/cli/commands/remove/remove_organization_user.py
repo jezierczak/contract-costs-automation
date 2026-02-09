@@ -3,6 +3,7 @@ from contract_costs.cli.context import get_services
 from contract_costs.cli.prompts.interactive import interactive_prompt
 from contract_costs.cli.registry import REGISTRY
 from contract_costs.cli.schemas.organization_users_remove import ORG_USER_REMOVE_FIELDS
+from contract_costs.cli.utils.context_helpers import require_organization_id, require_user_id
 from contract_costs.common.context.exceptions import ContextError
 from contract_costs.services.identity.remove.dto.remove_organization_user_command import (
     RemoveOrganizationUserCommand,
@@ -25,11 +26,11 @@ def handle_remove_organization_user(args):
     ctx = services.context
 
     try:
-        organization_id = ctx.current_organization_id()
-        actor_user_id = ctx.current_user_id()
-    except ContextError as e:
-        print(f"❌ {e}")
+        organization_id = require_organization_id(services.context)
+        actor_user_id = require_user_id(services.context)
+    except ContextError:
         return
+
 
     data = interactive_prompt(ORG_USER_REMOVE_FIELDS)
 

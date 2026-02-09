@@ -1,13 +1,16 @@
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from uuid import UUID
-from datetime import date
+from datetime import date, datetime
 
+from contract_costs.common.ids import new_uuid
+from contract_costs.common.time import utc_now
 from contract_costs.infrastructure.excel.contracts.contract_node_progress_prepare_columns import \
     CONTRACT_NODE_PROGRESS_PREPARE_COLUMNS
 from contract_costs.infrastructure.excel.excel_loader import ExcelLoader
 from contract_costs.model.contract import Contract
+from contract_costs.model.contract_node_progress import ContractNodeProgress
 from contract_costs.repository.contract_node_repository import ContractNodeRepository
 import contract_costs.config as cfg
 from contract_costs.services.contracts.prepare.contract_node_tree_index import ContractNodeTreeIndex
@@ -25,20 +28,28 @@ class ApplyContractProgressExcelService:
     def __init__(
         self,
         contract_node_repository: ContractNodeRepository,
+        id_generator: Callable[[], UUID] = new_uuid,
+        clock: Callable[[], datetime] = utc_now,
     ) -> None:
         self._node_repo = contract_node_repository
+        self._id_generator = id_generator
+        self._clock = clock
 
     def apply(
             self,
             *,
             contract: Contract,
             excel_path: Path,
+            organization_id: UUID,
+            actor_user_id: UUID,
     ) -> None:
         rows = self._load_from_excel(excel_path)
 
         self._apply_progress_rows(
             contract=contract,
             rows=rows,
+            organization_id=organization_id,
+            actor_user_id=actor_user_id
         )
 
     def _load_from_excel(
@@ -59,11 +70,13 @@ class ApplyContractProgressExcelService:
     def _apply_progress_rows(
             self,
             *,
+            organization_id: UUID,
+            actor_user_id: UUID,
             contract: Contract,
             rows: list[dict[str, Any]],
     ) -> None:
 
-        nodes = self._node_repo.list_by_contract(contract.id)
+        nodes = self._node_repo.list_by_contract(organization_id=organization_id,contract_id=contract.id)
         tree = ContractNodeTreeIndex(nodes)
         nodes_by_id = {n.id: n for n in nodes}
 
@@ -106,10 +119,18 @@ class ApplyContractProgressExcelService:
 
             if not node.is_active:
                 continue  # albo raise – decyzja domenowa
-
+            progress = ContractNodeProgress(
+                organization_id=organization_id,
+                created_at=self._clock(),
+                created_by_user_id = actor_user_id,
+                updated_at=None,
+                updated_by_user_id = None,
+                id= self._id_generator(),
+                contract_node_id=node.id,
+                progress=new_progress / Decimal("100"),
+                progress_date=today
+            )
             # ✅ JEDYNA POPRAWNA OPERACJA
             self._node_repo.add_progress(
-                node_id=node.id,
-                progress=new_progress / Decimal("100"),
-                progress_date=today,
+                progress=progress,
             )

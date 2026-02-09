@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Any
+from uuid import UUID
 
 from contract_costs.infrastructure.excel.base_excel_exporter import (
     BaseExcelExporter,
@@ -15,7 +16,6 @@ import contract_costs.config as cfg
 
 from contract_costs.model.contract import Contract
 from contract_costs.model.contract_node import ContractNode
-from contract_costs.services.contracts.prepare.dto.contract_prepare_dto import ContractPrepareDTO
 from contract_costs.services.contracts.prepare.mappers.contract_prepare_mapper import ContractPrepareMapper
 from contract_costs.services.contracts.prepare.mappers.contract_node_prepare_mapper import ContractNodePrepareMapper
 
@@ -37,16 +37,18 @@ class ContractPrepareExcelExporter:
     # PUBLIC API
     # =====================================================
 
-    def export_new(self, *, output_path: Path) -> None:
+    def export_new(self, *, output_path: Path, organization_id: UUID) -> None:
         exporter = BaseExcelExporter[Any]()
 
         exporter.add_sheet(
+            organization_id=organization_id,
             sheet_name=self.CONTRACT_SHEET,
             items=[],
             columns=CONTRACT_PREPARE_COLUMNS,
         )
 
         exporter.add_sheet(
+            organization_id=organization_id,
             sheet_name=self.COST_NODES_SHEET,
             items=[],
             columns=CONTRACT_NODE_PREPARE_COLUMNS,
@@ -57,6 +59,7 @@ class ContractPrepareExcelExporter:
     def export_existing(
         self,
         *,
+        organization_id: UUID,
         contract: Contract,
         cost_nodes: list[ContractNode],
         output_path: Path,
@@ -72,12 +75,14 @@ class ContractPrepareExcelExporter:
         )
 
         exporter.add_sheet(
+            organization_id=organization_id,
             sheet_name=self.CONTRACT_SHEET,
             items=contract_dtos,
             columns=CONTRACT_PREPARE_COLUMNS,
         )
 
         exporter.add_sheet(
+            organization_id=organization_id,
             sheet_name=self.COST_NODES_SHEET,
             items=cost_node_dtos,
             columns=CONTRACT_NODE_PREPARE_COLUMNS,

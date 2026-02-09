@@ -3,10 +3,11 @@ from uuid import uuid4
 import pytest
 from unittest.mock import MagicMock
 
-
 from contract_costs.model.company import CompanyType
 from contract_costs.services.companies.apply.apply_companies_from_excel_service import ApplyCompaniesFromExcelService
 from contract_costs.services.companies.apply.command import CompanyActionCommand, CompanyActionType
+from contract_costs.services.companies.dto.activate_company_command import ActivateCompanyCommand
+from contract_costs.services.companies.dto.deactivate_company_command import DeactivateCompanyCommand
 
 
 @pytest.fixture
@@ -45,14 +46,20 @@ def test_apply_create_calls_create(apply_service: MagicMock, base_command: Compa
         "company_id": None,
     })
 
-    apply_service.apply([base_command])
+    apply_service.apply(
+        organization_id=uuid4(),
+        actor_user_id=uuid4(),
+        commands=[base_command])
 
     apply_service._create.execute.assert_called_once()
     apply_service._update.execute.assert_not_called()
 
 
 def test_apply_update_calls_update(apply_service: MagicMock, base_command: CompanyActionCommand):
-    apply_service.apply([base_command])
+    apply_service.apply(
+        organization_id=uuid4(),
+        actor_user_id=uuid4(),
+        commands=[base_command])
 
     apply_service._update.execute.assert_called_once()
     apply_service._create.execute.assert_not_called()
@@ -64,9 +71,23 @@ def test_apply_activate_calls_activate(apply_service: MagicMock, base_command: C
         "action": CompanyActionType.ACTIVATE,
     })
 
-    apply_service.apply([cmd])
+    org_id = uuid4()
+    user_id = uuid4()
 
-    apply_service._activate.execute.assert_called_once_with(cmd.company_id)
+    apply_service.apply(
+        organization_id=org_id,
+        actor_user_id=user_id,
+        commands=[cmd],
+    )
+
+    apply_service._activate.execute.assert_called_once()
+
+    called_cmd = apply_service._activate.execute.call_args.args[0]
+
+    assert isinstance(called_cmd, ActivateCompanyCommand)
+    assert called_cmd.company_id == cmd.company_id
+    assert called_cmd.organization_id == org_id
+    assert called_cmd.actor_user_id == user_id
 
 
 def test_apply_deactivate_calls_deactivate(apply_service: MagicMock, base_command: CompanyActionCommand):
@@ -74,10 +95,21 @@ def test_apply_deactivate_calls_deactivate(apply_service: MagicMock, base_comman
         **base_command.__dict__,
         "action": CompanyActionType.DEACTIVATE,
     })
+    org_id = uuid4()
+    user_id = uuid4()
+    apply_service.apply(
+        organization_id=org_id,
+        actor_user_id=user_id,
+        commands=[cmd])
 
-    apply_service.apply([cmd])
+    apply_service._deactivate.execute.assert_called_once()
 
-    apply_service._deactivate.execute.assert_called_once_with(cmd.company_id)
+    called_cmd = apply_service._deactivate.execute.call_args.args[0]
+
+    assert isinstance(called_cmd, DeactivateCompanyCommand)
+    assert called_cmd.company_id == cmd.company_id
+    assert called_cmd.organization_id == org_id
+    assert called_cmd.actor_user_id == user_id
 
 
 def test_apply_none_action_does_nothing(apply_service: MagicMock, base_command: CompanyActionCommand):
@@ -86,7 +118,10 @@ def test_apply_none_action_does_nothing(apply_service: MagicMock, base_command: 
         "action": CompanyActionType.NONE,
     })
 
-    apply_service.apply([cmd])
+    apply_service.apply(
+        organization_id=uuid4(),
+        actor_user_id=uuid4(),
+        commands=[cmd])
 
     apply_service._create.execute.assert_not_called()
     apply_service._update.execute.assert_not_called()
@@ -110,7 +145,10 @@ def test_apply_update_without_company_id_raises(apply_service, base_command):
     })
 
     with pytest.raises(RuntimeError) as exc_info:
-        apply_service.apply([cmd])
+        apply_service.apply(
+            organization_id=uuid4(),
+            actor_user_id=uuid4(),
+            commands=[cmd])
 
     # sprawdzamy przyczynę
     assert isinstance(exc_info.value.__cause__, ValueError)

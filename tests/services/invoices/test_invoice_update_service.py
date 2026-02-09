@@ -3,18 +3,18 @@ from uuid import uuid4
 
 import pytest
 
-from contract_costs.model.invoice import InvoiceStatus, Invoice, PaymentMethod, PaymentStatus
-from contract_costs.repository.inmemory.invoice_repository import InMemoryInvoiceRepository
-from contract_costs.services.invoices.assigment.apply.commands.invoice_command import InvoiceCommand
-from contract_costs.services.invoices.assigment.ingest.dto.invoice_ref_result import InvoiceApplyAction, InvoiceSource
+from contract_costs.model.financial_record import FinancialRecordStatus, FinancialRecord, PaymentMethod, PaymentStatus
+from contract_costs.repository.inmemory.financial_record_repository import InMemoryFinancialRecordRepository
+from contract_costs.services.financial_records.assigment.apply.commands.invoice_command import InvoiceCommand
+from contract_costs.services.financial_records.assigment.ingest.dto.invoice_ref_result import RecordApplyAction, InvoiceSource
 
 # from contract_costs.services.invoices.assigment.ingest.invoice_update_service import InvoiceUpdateService
-from contract_costs.services.invoices.assigment.invoice_sources.dto.common import ResolvedInvoiceUpdate
+from contract_costs.services.financial_records.assigment.invoice_sources.dto.common import ResolvedFinancialRecordUpdate
 
 
 @pytest.fixture
 def invoice_repo():
-    return InMemoryInvoiceRepository()
+    return InMemoryFinancialRecordRepository()
 
 # @pytest.fixture
 # def service(invoice_repo):
@@ -23,9 +23,9 @@ def invoice_repo():
 
 
 def resolved_update(**kwargs):
-    return ResolvedInvoiceUpdate(
-        invoice_number=kwargs.get("invoice_number", "FV/1"),
-        old_invoice_number=kwargs.get("old_invoice_number"),
+    return ResolvedFinancialRecordUpdate(
+        reference=kwargs.get("invoice_number", "FV/1"),
+        old_record_reference=kwargs.get("old_invoice_number"),
         invoice_date=date(2024, 1, 1),
         selling_date=date(2024, 1, 1),
         buyer=kwargs.get("buyer_id", uuid4()),
@@ -34,7 +34,7 @@ def resolved_update(**kwargs):
         payment_status=PaymentStatus.UNPAID,
         due_date=date(2024, 1, 31),
         paid_date=None,
-        status=kwargs.get("status", InvoiceStatus.IN_PROGRESS),
+        status=kwargs.get("status", FinancialRecordStatus.IN_PROGRESS),
         command=kwargs.get("command", InvoiceCommand.APPLY),
         scan_filename=None,
         tags=None

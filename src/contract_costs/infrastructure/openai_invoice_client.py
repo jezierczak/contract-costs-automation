@@ -7,7 +7,7 @@ from openai import OpenAI
 from openai import RateLimitError
 
 from contract_costs.model.company import Company
-from contract_costs.services.invoices.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
+from contract_costs.services.financial_records.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +143,7 @@ class OpenAIInvoiceClient:
             "country": c.address.country if c.address else None,
             "phone_number": c.contact.phone_number if c.contact else None,
             "email": c.contact.email if c.contact else None,
-            "bank_account": c.bank_account.number if c.bank_account else None,
+            "bank_account": c.bank_account.account_number if c.bank_account else None,
             # "role": c.role.value,
             # "is_active": c.is_active,
         }
@@ -209,6 +209,6 @@ class OpenAIInvoiceClient:
             country=c.address.country if c.address else None,
             phone_number=c.contact.phone_number if c.contact else None,
             email=c.contact.email if c.contact else None,
-            bank_account=c.bank_account.number if c.bank_account else None,
+            bank_account=c.bank_account.account_number if c.bank_account else None,
             role=role,
         )

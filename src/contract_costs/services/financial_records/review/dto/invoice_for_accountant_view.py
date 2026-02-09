@@ -1,0 +1,26 @@
+from datetime import date
+from decimal import Decimal
+from uuid import UUID
+
+from pydantic import BaseModel
+
+from contract_costs.services.financial_records.review.dto.document_view import DocumentView
+
+
+class InvoiceForAccountantView(BaseModel):
+    invoice_id: UUID
+    invoice_number: str
+    invoice_date: date | None
+
+    buyer_name: str
+    buyer_tax_number: str
+
+    seller_name: str
+    seller_tax_number: str
+
+    total_net: Decimal
+    total_vat: Decimal
+    total_gross: Decimal
+    total_not_evidenced: Decimal
+
+    documents: list[DocumentView]

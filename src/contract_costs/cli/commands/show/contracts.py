@@ -7,6 +7,8 @@ from contract_costs.cli.printers.table_printer.cmd_printer import CmdPrinter
 from contract_costs.cli.printers.table_printer.excel_printer import ExcelPrinter
 from contract_costs.cli.printers.table_printer.table_printer import TablePrinter
 from contract_costs.cli.registry import REGISTRY
+from contract_costs.cli.utils.context_helpers import require_organization_id
+from contract_costs.common.context.exceptions import ContextError
 
 # from contract_costs.infrastructure.excel.contracts.contract_cost_node_tree_excel_exporter import \
 #     ContractTreeExcelExporter
@@ -52,12 +54,18 @@ REGISTRY.register_group("show", build_show_contracts)
 
 def handle_show_contracts(args) -> None:
     services = get_services()
+
+    try:
+        organization_id = require_organization_id(services.context)
+    except ContextError:
+        return None
+
     query = services.contract_query_service
 
     if args.ref:
-        return _handle_show_single_contract(args, query,services.contract_repository)
+        return _handle_show_single_contract(args, query,services.contract_repository,organization_id)
 
-    items = query.list_contracts()
+    items = query.list_contracts(organization_id=organization_id)
 
     if args.active:
         items = [c for c in items if c.is_active]
@@ -74,19 +82,24 @@ def handle_show_contracts(args) -> None:
         }
 
     if args.excel:
-        fm = ContractsShowFileManager(contract_code="contract_list")
+        fm = ContractsShowFileManager(
+            organization_id=organization_id,
+            contract_code="contract_list")
         output_path = fm.create_output_file()
         printer: TablePrinter = ExcelPrinter(output_path=output_path)
         printer.print(
+            organization_id=organization_id,
             items=items,
             columns=columns,
             header=header,
         )
-        print(f"Invoice list exported to Excel: {output_path}")
+        print(f"Contracts list exported to Excel: {output_path}")
+
         return None
 
     printer = CmdPrinter()
     printer.print(
+        organization_id=organization_id,
         items=items,
         columns=columns,
         header=header,
@@ -95,9 +108,10 @@ def handle_show_contracts(args) -> None:
     return None
 
 
-def _handle_show_single_contract(args, query,repo) -> None:
+def _handle_show_single_contract(args, query,repo,organization_id) -> None:
     contract = query.get_contract_details(
-        contract_id=_resolve_contract_id(args.ref, repo),
+        organization_id=organization_id,
+        contract_id=_resolve_contract_id(args.ref, repo,organization_id),
         at_date=date.fromisoformat(args.at_date) if args.at_date else None,
     )
 
@@ -114,147 +128,38 @@ def _handle_show_single_contract(args, query,repo) -> None:
     columns = contract_node_tree_columns()
 
     if args.excel:
-        fm = ContractsShowFileManager(contract_code=contract.code)
+        fm = ContractsShowFileManager(
+            organization_id=organization_id,
+            contract_code=contract.code)
         output_path = fm.create_output_file()
         printer: TablePrinter = ExcelPrinter(output_path=output_path)
         printer.print(
+            organization_id=organization_id,
             items=contract.nodes,
             columns=columns,
             header=header,
         )
-        print(f"Invoice list exported to Excel: {output_path}")
+        print(f"Contract '{contract.code}' exported to Excel: {output_path}")
+
         return
 
     printer = CmdPrinter()
     printer.print(
+        organization_id=organization_id,
         items=contract.nodes,
         columns=columns,
         header=header,
     )
 
 
-def _resolve_contract_id(ref: str, repo) -> UUID:
+def _resolve_contract_id(ref: str, repo,organization_id) -> UUID:
     try:
         return UUID(ref)
     except ValueError:
-        contract = repo.get_by_code(ref)
+        contract = repo.get_by_code(
+            organization_id=organization_id,
+            contract_code=ref,
+        )
         if not contract:
             raise ValueError(f"No contract found for ref: {ref}")
         return contract.id
-# def handle_show_contracts(args) -> None:
-#     services = get_services()
-#     repo = services.contract_repository
-#     node_repo = services.contract_node_repository
-#
-#     # ---------- SINGLE CONTRACT ----------
-#     if args.ref:
-#         contract = _resolve_contract(args.ref, repo)
-#         if not contract:
-#             print(f"No contract found for ref: {args.ref}")
-#             return
-#
-#         if args.excel:
-#             exporter = ContractTreeExcelExporter()
-#
-#             fm = ContractsShowFileManager(contract_code=contract.code)
-#             output_path = fm.create_output_file()
-#
-#             exporter.export(
-#                 contract=contract,
-#                 cost_nodes=node_repo.list_by_contract(contract.id),
-#                 output_path=output_path,
-#             )
-#             print(f"Contract tree exported to Excel: {output_path}")
-#             return
-#
-#         print("Contract details:")
-#         print(f"ID:        {contract.id}")
-#         print(f"Code:      {contract.code}")
-#         print(f"Name:      {contract.name}")
-#         print(f"Active:    {contract.status.value}")
-#         print(f"Start:     {contract.start_date}")
-#         print(f"End:       {contract.end_date}")
-#
-#         nodes = node_repo.list_by_contract(contract.id)
-#         tree = ContractNodeTreeIndex(nodes)
-#
-#         print_contract_node_tree(
-#             tree=tree,
-#         )
-#
-#         print("- " * 23)
-#         return
-#
-#     # ---------- LIST CONTRACTS ----------
-#     contracts = repo.list()
-#
-#     if args.active:
-#         contracts = [c for c in contracts if c.is_active]
-#
-#     if not contracts:
-#         print("No contracts found.")
-#         return
-#
-#     print(f"{'CODE':<12} {'NAME':<30} {'STATUS'}")
-#     print("-" * 55)
-#
-#     for c in contracts:
-#         print(
-#             f"{c.code:<12} "
-#             f"{(c.name or ''):<30} "
-#             f"{ c.status.value}"
-#         )
-#
-# # ---------- utils ----------
-#
-# def _resolve_contract(ref: str, repo) -> Contract | None:
-#     try:
-#         contract = repo.get(UUID(ref))
-#         if contract:
-#             return contract
-#     except ValueError:
-#         pass
-#
-#     contract = repo.get_by_code(ref)
-#     # if contract:
-#     return contract
-#
-#
-# REGISTRY.register_group("show", build_show_contracts)
-#
-# def print_contract_node_tree(
-#     *,
-#     tree: ContractNodeTreeIndex,
-#     parent_id: UUID | None = None,
-#     prefix: str = "",
-# ) -> None:
-#     if parent_id is None:
-#         children = tree.roots()
-#     else:
-#         children = tree.children_of(parent_id)
-#     nodes_by_parent = tree.children_by_parent  # lokalny wyjątek
-#
-#     for index, node in enumerate(children):
-#         last = index == len(children) - 1
-#
-#         connector = "└── " if last else "├── "
-#         status = "" if node.is_active else " [INACTIVE]"
-#
-#         calc_budget = ContractNode.calculate_budget_from_leaves(
-#             node.id,
-#             nodes_by_parent,
-#         )
-#
-#         print(
-#             f"{prefix}{connector}{node.code} – {node.name}{status}  {calc_budget}"
-#         )
-#
-#         extension = "    " if last else "│   "
-#
-#         print_contract_node_tree(
-#             tree=tree,
-#             parent_id=node.id,
-#             prefix=prefix + extension,
-#         )
-#
-

@@ -52,13 +52,13 @@ COMPANY_FIELDS = [
         "name": "phone_number",
         "prompt": "Phone number",
         "type": str,
-        "required": True,
+        "required": False,
     },
     {
         "name": "email",
         "prompt": "E-mail",
         "type": str,
-        "required": True,
+        "required": False,
     },
 
     # -------- bank account (optional) --------

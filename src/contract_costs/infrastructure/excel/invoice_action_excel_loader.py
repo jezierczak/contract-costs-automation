@@ -3,20 +3,20 @@ from uuid import UUID
 
 from openpyxl import load_workbook
 
-from contract_costs.infrastructure.excel.invoice_excel_context import InvoiceExcelContext, EXCEL_SPECS
-from contract_costs.services.invoices.actions.dto.invoice_action_command import InvoiceActionCommand, InvoiceSelector, \
-     invoice_action_from_excel
+from contract_costs.infrastructure.excel.invoice_excel_context import FinancialRecordExcelContext, EXCEL_SPECS
+from contract_costs.services.financial_records.actions.dto.invoice_action_command import FinancialRecordActionCommand, FinancialRecordSelector, \
+     financial_record_action_from_excel
 
 
-class InvoiceActionExcelLoader:
+class FinancialRecordActionExcelLoader:
 
 
     @staticmethod
     def load(
             path: Path,
             *,
-            context: InvoiceExcelContext,
-    ) -> list[InvoiceActionCommand]:
+            context: FinancialRecordExcelContext,
+    ) -> list[FinancialRecordActionCommand]:
 
         spec = EXCEL_SPECS[context]
 
@@ -24,12 +24,12 @@ class InvoiceActionExcelLoader:
         ws = wb.active
         if ws is None:
             raise ValueError(f"No active worksheet in Excel file: {path}")
-        grouped: dict[str, list[InvoiceSelector]] = {}
+        grouped: dict[str, list[FinancialRecordSelector]] = {}
 
         for row in ws.iter_rows(min_row=2):
 
             raw_action = row[spec.action_column].value
-            invoice_id = row[spec.invoice_id_column].value
+            invoice_id = row[spec.record_id_column].value
 
             if not raw_action or not invoice_id:
                 continue
@@ -44,12 +44,12 @@ class InvoiceActionExcelLoader:
                 # )
 
             grouped.setdefault(raw_action, []).append(
-                InvoiceSelector(invoice_id=UUID(str(invoice_id)))
+                FinancialRecordSelector(record_id=UUID(str(invoice_id)))
             )
 
         return [
-            InvoiceActionCommand(
-                action=invoice_action_from_excel(
+            FinancialRecordActionCommand(
+                action=financial_record_action_from_excel(
                     context=context,
                     raw=raw_action,
                 ),

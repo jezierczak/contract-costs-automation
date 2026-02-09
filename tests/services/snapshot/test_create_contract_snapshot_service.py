@@ -5,7 +5,7 @@ from decimal import Decimal
 import pytest
 
 from contract_costs.model.amount import Amount, VatRate
-from contract_costs.model.invoice_line import InvoiceLine
+from contract_costs.model.financial_record_line import FinancialRecordLine
 from contract_costs.services.snapshots.create_contract_snapshot_service import CreateContractSnapshotService
 
 
@@ -87,7 +87,7 @@ def test_costs_aggregated(repos):
     vt_cost = uuid.uuid4()
 
     invoice_repo._add_with_created_at(
-        InvoiceLine(
+        FinancialRecordLine(
             id=uuid.uuid4(),
             invoice_id=None,
             contract_id=contract.id,
@@ -103,7 +103,7 @@ def test_costs_aggregated(repos):
     )
 
     invoice_repo._add_with_created_at(
-        InvoiceLine(
+        FinancialRecordLine(
             id=uuid.uuid4(),
             invoice_id=None,
             contract_id=contract.id,

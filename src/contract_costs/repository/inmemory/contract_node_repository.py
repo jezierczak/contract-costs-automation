@@ -1,8 +1,7 @@
-from datetime import date
-from decimal import Decimal
 from uuid import UUID
 
 from contract_costs.model.contract_node import ContractNode
+from contract_costs.model.contract_node_progress import ContractNodeProgress
 from contract_costs.repository.contract_node_repository import ContractNodeRepository
 
 
@@ -26,57 +25,101 @@ class InMemoryContractNodeRepository(ContractNodeRepository):
     # PROGRESS
     # =========================================================
 
-    def add_progress(
-        self,
-        node_id: UUID,
-        progress: Decimal,
-        progress_date: date,
-    ) -> None:
-        node = self._nodes.get(node_id)
+    def add_progress(self, progress: ContractNodeProgress) -> None:
+        node = self._nodes.get(progress.contract_node_id)
         if not node:
-            raise KeyError(f"ContractNode {node_id} not found")
+            raise KeyError(f"ContractNode {progress.contract_node_id} not found")
 
-        node.progress_history[progress_date] = progress
+        if node.organization_id != progress.organization_id:
+            raise PermissionError("Cross-organization progress write")
+
+        node.progress_history[progress.progress_date] = progress.progress
 
     # =========================================================
     # READ
     # =========================================================
 
-    def get(self, contract_node_id: UUID) -> ContractNode | None:
-        return self._nodes.get(contract_node_id)
+    def get(
+        self,
+        *,
+        organization_id: UUID,
+        contract_node_id: UUID,
+    ) -> ContractNode | None:
+        node = self._nodes.get(contract_node_id)
+        if not node or node.organization_id != organization_id:
+            return None
+        return node
 
-    def get_by_code(self, contract_node_code: str) -> ContractNode | None:
+    def get_by_code(
+        self,
+        organization_id: UUID,
+        contract_node_code: str,
+    ) -> ContractNode | None:
         for node in self._nodes.values():
-            if node.code == contract_node_code:
+            if (
+                node.organization_id == organization_id
+                and node.code == contract_node_code
+            ):
                 return node
         return None
 
-    def list_nodes(self) -> list[ContractNode]:
-        return list(self._nodes.values())
-
-    def list_by_parent(self, parent_id: UUID) -> list[ContractNode]:
+    def list_nodes(
+        self,
+        *,
+        organization_id: UUID,
+    ) -> list[ContractNode]:
         return [
-            node for node in self._nodes.values()
-            if node.parent_id == parent_id
+            node
+            for node in self._nodes.values()
+            if node.organization_id == organization_id
         ]
 
-    def list_by_contract(self, contract_id: UUID) -> list[ContractNode]:
+    def list_by_parent(
+        self,
+        *,
+        organization_id: UUID,
+        parent_id: UUID,
+    ) -> list[ContractNode]:
         return [
-            node for node in self._nodes.values()
-            if node.contract_id == contract_id
+            node
+            for node in self._nodes.values()
+            if node.organization_id == organization_id
+            and node.parent_id == parent_id
         ]
 
-    def list_leaf_nodes_for_active_contracts(self) -> list[ContractNode]:
-        # identyczna semantyka jak SQL:
-        # liść = nie występuje jako parent_id
+    def list_by_contract(
+        self,
+        *,
+        organization_id: UUID,
+        contract_id: UUID,
+    ) -> list[ContractNode]:
+        return [
+            node
+            for node in self._nodes.values()
+            if node.organization_id == organization_id
+            and node.contract_id == contract_id
+        ]
+
+    def list_leaf_nodes_for_active_contracts(
+        self,
+        *,
+        organization_id: UUID,
+    ) -> list[ContractNode]:
+        nodes = [
+            node
+            for node in self._nodes.values()
+            if node.organization_id == organization_id
+        ]
+
         parent_ids = {
             node.parent_id
-            for node in self._nodes.values()
+            for node in nodes
             if node.parent_id is not None
         }
 
         return [
-            node for node in self._nodes.values()
+            node
+            for node in nodes
             if node.id not in parent_ids
         ]
 
@@ -90,40 +133,68 @@ class InMemoryContractNodeRepository(ContractNodeRepository):
 
         self._nodes[contract_node.id] = contract_node
 
-    def update_many(self, contract_nodes: list[ContractNode]) -> None:
-        for node in contract_nodes:
+    def update_many(self, nodes: list[ContractNode]) -> None:
+        for node in nodes:
             self.update(node)
 
-    def delete_by_contract(self, contract_id: UUID) -> None:
+    def delete_by_contract(
+        self,
+        *,
+        organization_id: UUID,
+        contract_id: UUID,
+    ) -> None:
         to_delete = [
             node_id
             for node_id, node in self._nodes.items()
-            if node.contract_id == contract_id
+            if node.organization_id == organization_id
+            and node.contract_id == contract_id
         ]
 
         for node_id in to_delete:
             del self._nodes[node_id]
 
-    def delete_many(self, ids: list[UUID]) -> None:
+    def delete_many(
+        self,
+        *,
+        organization_id: UUID,
+        ids: list[UUID],
+    ) -> None:
         for node_id in ids:
-            self._nodes.pop(node_id, None)
+            node = self._nodes.get(node_id)
+            if node and node.organization_id == organization_id:
+                del self._nodes[node_id]
 
     # =========================================================
     # CHECKS
     # =========================================================
 
-    def exists(self, contract_node_id: UUID) -> bool:
-        return contract_node_id in self._nodes
+    def exists(
+        self,
+        *,
+        organization_id: UUID,
+        contract_node_id: UUID,
+    ) -> bool:
+        node = self._nodes.get(contract_node_id)
+        return bool(node and node.organization_id == organization_id)
 
-    def has_values(self, contract_id: UUID) -> bool:
-        # identyczna semantyka jak MySQL:
-        # czy kontrakt ma JAKIEKOLWIEK node'y
+    def has_values(
+        self,
+        *,
+        organization_id: UUID,
+        contract_id: UUID,
+    ) -> bool:
         return any(
-            node.contract_id == contract_id
+            node.organization_id == organization_id
+            and node.contract_id == contract_id
             for node in self._nodes.values()
         )
 
-    def node_has_values(self, contract_node_id: UUID) -> bool:
+    def node_has_values(
+        self,
+        *,
+        organization_id: UUID,
+        contract_node_id: UUID,
+    ) -> bool:
         raise NotImplementedError(
             "node_has_values requires InvoiceLineRepository (not available in-memory)"
         )

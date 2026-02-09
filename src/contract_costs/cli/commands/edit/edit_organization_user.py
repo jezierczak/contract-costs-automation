@@ -3,6 +3,7 @@ from contract_costs.cli.prompts.interactive import interactive_prompt
 from contract_costs.cli.registry import REGISTRY
 from contract_costs.cli.schemas.organization_user_role import ORG_USER_ROLE_FIELDS
 from contract_costs.cli.schemas.organization_user_select import ORG_USER_SELECT_FIELDS
+from contract_costs.cli.utils.context_helpers import require_organization_id, require_user_id
 from contract_costs.common.context.exceptions import ContextError
 from contract_costs.services.identity.change.dto.change_organization_user_role_command import \
     ChangeOrganizationUserRoleCommand
@@ -39,13 +40,11 @@ def handle_edit_organization_user(args):
 
 def _handle_change_role(args):
     services = get_services()
-    ctx = services.context
 
     try:
-        organization_id = ctx.current_organization_id()
-        actor_user_id = ctx.current_user_id()
-    except ContextError as e:
-        print(f"❌ {e}")
+        organization_id = require_organization_id(services.context)
+        actor_user_id = require_user_id(services.context)
+    except ContextError:
         return
 
     data = interactive_prompt(ORG_USER_ROLE_FIELDS)

@@ -1,15 +1,11 @@
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from uuid import UUID
 from enum import Enum
 
-# CompanyTag = Literal[
-#     "friendly",
-#     "important",
-#     "blacklisted",
-#     "vip"
-# ]
+from contract_costs.model.base_entity import BaseEntity
+
 
 logger = logging.getLogger(__name__)
 
@@ -51,11 +47,11 @@ class Contact:
 
 @dataclass(frozen=True)
 class BankAccount:
-    number: str | None
+    account_number: str | None
     country_code: str | None = None
 
     def __post_init__(self):
-        number = self.number.replace(" ", "")
+        number = self.account_number.replace(" ", "")
         object.__setattr__(self, "number", number)
 
         if self.country_code:
@@ -75,11 +71,11 @@ class BankAccount:
     def iban(self) -> str | None:
         if not self.country_code:
             return None
-        return f"{self.country_code}{self.number}"
+        return f"{self.country_code}{self.account_number}"
 
 
-@dataclass
-class Company:
+@dataclass(slots=True)
+class Company(BaseEntity):
     id: UUID
     name: str
     description: str | None
@@ -88,7 +84,7 @@ class Company:
     contact: Contact | None
     bank_account: BankAccount | None
     role: CompanyType
-    tags: set[str] | None
     is_active: bool
+    tags: set[str] = field(default_factory=set)
 
 

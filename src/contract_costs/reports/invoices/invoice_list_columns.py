@@ -1,8 +1,8 @@
 from contract_costs.infrastructure.excel.excel_column_v2.excel_column import ExcelColumn
 from contract_costs.infrastructure.excel.excel_column_v2.excel_column_type import ExcelColumnType
-from contract_costs.services.invoices.review.dto.invoice_review_item_view import InvoiceReviewItemView
+from contract_costs.services.financial_records.review.dto.invoice_review_item_view import FinancialRecordReviewItemView
 
-def invoice_list_columns() -> list[ExcelColumn[InvoiceReviewItemView]]:
+def financial_record_list_columns() -> list[ExcelColumn[FinancialRecordReviewItemView]]:
     return ExcelColumn.from_lists(
         headers=[
             "NUMER FAKTURY",
@@ -22,7 +22,7 @@ def invoice_list_columns() -> list[ExcelColumn[InvoiceReviewItemView]]:
 
         ],
         getters=[
-            lambda i: i.invoice_number,
+            lambda i: i.reference,
             lambda i: i.invoice_date,
             lambda i: i.buyer_tax_number,
             lambda i: i.seller_tax_number,
@@ -74,7 +74,7 @@ def invoice_list_columns() -> list[ExcelColumn[InvoiceReviewItemView]]:
         ],
     )
 
-def invoice_list_columns_excel() -> list[ExcelColumn[InvoiceReviewItemView]]:
+def financial_record_list_columns_excel() -> list[ExcelColumn[FinancialRecordReviewItemView]]:
     return ExcelColumn.from_lists(
         headers=[
             "NUMER FAKTURY",
@@ -95,7 +95,7 @@ def invoice_list_columns_excel() -> list[ExcelColumn[InvoiceReviewItemView]]:
             "FOLDER",
         ],
         getters=[
-            lambda i: i.invoice_number,
+            lambda i: i.reference,
             lambda i: i.invoice_date,
             lambda i: i.buyer_tax_number,
             lambda i: i.seller_tax_number,
@@ -109,21 +109,21 @@ def invoice_list_columns_excel() -> list[ExcelColumn[InvoiceReviewItemView]]:
             lambda i: i.status,
             lambda i: i.direction,
             lambda i: i.contract_codes,
-            lambda i: i.scan_filename,
-            lambda i: i.scan_filename,
+            lambda i: i.primary_document_path,
+            lambda i: i.primary_document_path,
         ],
         types=[
             ExcelColumnType.DISPLAY,   # invoice number
-            ExcelColumnType.DISPLAY,   # date
+            ExcelColumnType.DATE,   # date
             ExcelColumnType.DISPLAY,   # buyer
             ExcelColumnType.DISPLAY,   # seller
-            ExcelColumnType.DISPLAY,   # net
-            ExcelColumnType.DISPLAY,   # vat
-            ExcelColumnType.DISPLAY,   # gross
-            ExcelColumnType.DISPLAY,   # not evidenced
+            ExcelColumnType.NUMBER,   # net
+            ExcelColumnType.NUMBER,   # vat
+            ExcelColumnType.NUMBER,   # gross
+            ExcelColumnType.NUMBER,   # not evidenced
             ExcelColumnType.DISPLAY,   # payment method
             ExcelColumnType.DISPLAY,   # payment status
-            ExcelColumnType.DISPLAY,   # due date
+            ExcelColumnType.DATE,   # due date
             ExcelColumnType.DISPLAY,   # status
             ExcelColumnType.DISPLAY,   # direction
             ExcelColumnType.DISPLAY,   # contracts

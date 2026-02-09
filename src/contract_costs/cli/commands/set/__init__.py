@@ -1,2 +1,2 @@
 from contract_costs.cli.commands.set.set_contract_status import build_set_contract_status
-from contract_costs.cli.commands.set.set_invoice_action import build_set_invoice
+from contract_costs.cli.commands.set.set_financial_record_action import build_set_financial_record

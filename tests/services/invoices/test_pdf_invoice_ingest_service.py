@@ -1,17 +1,17 @@
 import pytest
 from uuid import UUID, uuid4
 
-from contract_costs.model.invoice import InvoiceStatus, PaymentMethod, PaymentStatus
-from contract_costs.repository.inmemory.invoice_repository import InMemoryInvoiceRepository
-from contract_costs.services.invoices.assigment.apply.commands.invoice_command import InvoiceCommand
-from contract_costs.services.invoices.assigment.ingest.pdf_invoice_ingest_service import (
-    PdfInvoiceIngestService,
+from contract_costs.model.financial_record import FinancialRecordStatus, PaymentMethod, PaymentStatus
+from contract_costs.repository.inmemory.financial_record_repository import InMemoryFinancialRecordRepository
+from contract_costs.services.financial_records.assigment.apply.commands.invoice_command import InvoiceCommand
+from contract_costs.services.financial_records.assigment.ingest.pdf_financial_record_ingest_service import (
+    PdfFinancialRecordIngestService,
 )
-from contract_costs.services.invoices.assigment.invoice_sources.dto.common import (
-    ResolvedInvoiceUpdate,
+from contract_costs.services.financial_records.assigment.invoice_sources.dto.common import (
+    ResolvedFinancialRecordUpdate,
 )
-from contract_costs.services.invoices.assigment.ingest.dto.invoice_ref_result import (
-    InvoiceApplyAction,
+from contract_costs.services.financial_records.assigment.ingest.dto.invoice_ref_result import (
+    RecordApplyAction,
 )
 
 
@@ -22,11 +22,11 @@ def test_pdf_ingest_creates_invoice(invoice_repo,pdf_ingest_service,owner_compan
     repo = invoice_repo
     service = pdf_ingest_service
 
-    update = ResolvedInvoiceUpdate(
+    update = ResolvedFinancialRecordUpdate(
         command=InvoiceCommand.APPLY,
-        invoice_number="FV/01/2024",
-        invoice_id=None,
-        old_invoice_number=None,
+        reference="FV/01/2024",
+        record_id=None,
+        old_record_reference=None,
         invoice_date=None,
         selling_date=None,
         buyer=owner_company,
@@ -35,7 +35,7 @@ def test_pdf_ingest_creates_invoice(invoice_repo,pdf_ingest_service,owner_compan
         due_date=None,
         paid_date=None,
         payment_status=PaymentStatus.UNKNOWN,
-        status=InvoiceStatus.NEW_COST,
+        status=FinancialRecordStatus.NEW_COST,
         scan_filename="raw/FV01.pdf",
         tags=None,
     )
@@ -51,19 +51,19 @@ def test_pdf_ingest_creates_invoice(invoice_repo,pdf_ingest_service,owner_compan
     assert "FV/01/2024" in ref_map
 
     ref = ref_map["FV/01/2024"]
-    assert ref.action == InvoiceApplyAction.APPLIED
-    assert isinstance(ref.invoice_id, UUID)
+    assert ref.action == RecordApplyAction.APPLIED
+    assert isinstance(ref.record_id, UUID)
 
-    invoice = repo.get(ref.invoice_id)
+    invoice = repo.get(ref.record_id)
     assert invoice is not None
 
-    assert invoice.invoice_number == "FV/01/2024"
+    assert invoice.reference == "FV/01/2024"
     assert invoice.buyer_id == owner_company.id
     assert invoice.seller_id == client_company.id
-    assert invoice.status == InvoiceStatus.NEW_COST
+    assert invoice.status == FinancialRecordStatus.NEW_COST
     assert invoice.payment_method == PaymentMethod.UNKNOWN
     assert invoice.payment_status == PaymentStatus.UNKNOWN
-    assert invoice.scan_filename == "raw/FV01.pdf"
+    assert invoice.primary_document_path == "raw/FV01.pdf"
 
 
 def test_pdf_ingest_creates_duplicate_on_ocr_collision(invoice_repo,pdf_ingest_service,owner_company,client_company) -> None:
@@ -73,11 +73,11 @@ def test_pdf_ingest_creates_duplicate_on_ocr_collision(invoice_repo,pdf_ingest_s
     repo = invoice_repo
     service = pdf_ingest_service
 
-    update = ResolvedInvoiceUpdate(
+    update = ResolvedFinancialRecordUpdate(
         command=InvoiceCommand.APPLY,
-        invoice_number="FV/01/2024",
-        invoice_id=None,
-        old_invoice_number=None,
+        reference="FV/01/2024",
+        record_id=None,
+        old_record_reference=None,
         invoice_date=None,
         selling_date=None,
         buyer=owner_company,
@@ -86,7 +86,7 @@ def test_pdf_ingest_creates_duplicate_on_ocr_collision(invoice_repo,pdf_ingest_s
         due_date=None,
         paid_date=None,
         payment_status=PaymentStatus.UNKNOWN,
-        status=InvoiceStatus.NEW_COST,
+        status=FinancialRecordStatus.NEW_COST,
         scan_filename="raw/FV01.pdf",
         tags=None,
     )
@@ -96,7 +96,7 @@ def test_pdf_ingest_creates_duplicate_on_ocr_collision(invoice_repo,pdf_ingest_s
     # -------------------------------------------------
     ref_map_1 = service.apply([update])
     ref_1 = ref_map_1["FV/01/2024"]
-    invoice_1 = repo.get(ref_1.invoice_id)
+    invoice_1 = repo.get(ref_1.record_id)
 
     # -------------------------------------------------
     # WHEN (second ingest – same PDF)
@@ -106,26 +106,26 @@ def test_pdf_ingest_creates_duplicate_on_ocr_collision(invoice_repo,pdf_ingest_s
     # -------------------------------------------------
     # THEN
     # -------------------------------------------------
-    assert len(repo.list_invoices()) == 2
+    assert len(repo.list_all()) == 2
 
-    invoice_numbers = {inv.invoice_number for inv in repo.list_invoices()}
+    invoice_numbers = {inv.reference for inv in repo.list_all()}
 
     assert "FV/01/2024" in invoice_numbers
     assert "FV/01/2024-duplicate" in invoice_numbers
 
     ref_2 = ref_map_2["FV/01/2024-duplicate"]
-    assert ref_2.action == InvoiceApplyAction.APPLIED
+    assert ref_2.action == RecordApplyAction.APPLIED
 
 def test_pdf_ingest_requires_invoice_number(invoice_repo, pdf_ingest_service,owner_company,client_company) -> None:
     # -------------------------------------------------
     # GIVEN
     # -------------------------------------------------
 
-    update = ResolvedInvoiceUpdate(
+    update = ResolvedFinancialRecordUpdate(
         command=InvoiceCommand.APPLY,
-        invoice_number="",  # ❌ brak numeru
-        invoice_id=None,
-        old_invoice_number=None,
+        reference="",  # ❌ brak numeru
+        record_id=None,
+        old_record_reference=None,
         invoice_date=None,
         selling_date=None,
         buyer=owner_company,
@@ -134,7 +134,7 @@ def test_pdf_ingest_requires_invoice_number(invoice_repo, pdf_ingest_service,own
         due_date=None,
         paid_date=None,
         payment_status=PaymentStatus.UNKNOWN,
-        status=InvoiceStatus.NEW_COST,
+        status=FinancialRecordStatus.NEW_COST,
         scan_filename="raw/no_number.pdf",
         tags=None,
     )

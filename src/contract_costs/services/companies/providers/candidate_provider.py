@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
-from contract_costs.services.invoices.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
+from uuid import UUID
+
+from contract_costs.services.financial_records.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
 from contract_costs.model.company import Company
 
 
@@ -16,7 +18,9 @@ class CompanyCandidateProvider(ABC):
     @abstractmethod
     def find_candidates(
         self,
-        input_: CompanyInput
+        *,
+        organization_id: UUID,
+        input_: CompanyInput,
     ) -> list[Company]:
         """
         Zwraca 0..N potencjalnych kandydatów.

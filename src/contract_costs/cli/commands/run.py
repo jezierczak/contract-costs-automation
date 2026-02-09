@@ -1,14 +1,20 @@
 from contract_costs.cli.context import get_services
+from contract_costs.cli.utils.context_helpers import require_organization_id, require_user_id
+from contract_costs.common.context.exceptions import ContextError
 from contract_costs.runner.watcher import run_watcher
 from contract_costs.cli.registry import REGISTRY
 
-# def build_run(subparsers):
-#     p = subparsers.add_parser("run", help="Run invoice watcher")
-#     p.set_defaults(handler=handle_run)
-
 
 def handle_run(args):
-    run_watcher(get_services())
+    services = get_services()
+
+    try:
+        organization_id=require_organization_id(services.context)
+        actor_user_id = require_user_id(services.context)
+    except ContextError:
+        return
+
+    run_watcher(organization_id=organization_id,actor_user_id=actor_user_id,services=services)
 
 
-REGISTRY.register_simple("run;Starts watching for invices in input folder.", handle_run)
+REGISTRY.register_simple("run;Starts watching for documents in input folder.", handle_run)

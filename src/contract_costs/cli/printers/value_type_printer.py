@@ -7,9 +7,10 @@ from contract_costs.services.value_types.query.dto.value_type_dto import ValueTy
 class ValueTypePrinter:
 
     @staticmethod
-    def print(items) -> None:
+    def print(items,organization_id) -> None:
         printer:TablePrinter[ValueTypeDTO] = CmdPrinter()
         printer.print(
+            organization_id=organization_id,
             items=items,
             columns=value_type_list_columns(),
             header={

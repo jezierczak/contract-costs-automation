@@ -15,6 +15,10 @@ from contract_costs.services.companies.apply.command import (
 from contract_costs.services.companies.create_company_service import (
     CreateCompanyService,
 )
+from contract_costs.services.companies.dto.activate_company_command import ActivateCompanyCommand
+from contract_costs.services.companies.dto.create_company_command import CreateCompanyCommand
+from contract_costs.services.companies.dto.deactivate_company_command import DeactivateCompanyCommand
+from contract_costs.services.companies.dto.update_company_command import UpdateCompanyCommand
 from contract_costs.services.companies.update_company_service import (
     UpdateCompanyService,
 )
@@ -61,10 +65,19 @@ class ApplyCompaniesFromExcelService:
     # =====================
     # PUBLIC API
     # =====================
-    def apply(self, commands: list[CompanyActionCommand]) -> None:
+    def apply(self,
+              *,
+              organization_id: UUID,
+              actor_user_id: UUID,
+              commands: list[CompanyActionCommand]
+              ) -> None:
         for idx, command in enumerate(commands, start=1):
             try:
-                self._apply_command(command)
+                self._apply_command(
+                    organization_id=organization_id,
+                    actor_user_id=actor_user_id,
+                    cmd=command,
+                )
             except Exception as exc:
                 raise RuntimeError(
                     f"Apply companies failed at command #{idx}: {command}"
@@ -73,7 +86,12 @@ class ApplyCompaniesFromExcelService:
     # =====================
     # COMMAND DISPATCH
     # =====================
-    def _apply_command(self, cmd: CompanyActionCommand) -> None:
+    def _apply_command(    self,
+                            *,
+                            organization_id: UUID,
+                            actor_user_id: UUID,
+                            cmd: CompanyActionCommand
+                           ) -> None:
         action = cmd.action
 
         if action == CompanyActionType.NONE:
@@ -81,19 +99,27 @@ class ApplyCompaniesFromExcelService:
             return
 
         if action == CompanyActionType.CREATE:
-            self._handle_create(cmd)
+            self._handle_create(organization_id=organization_id,
+                                actor_user_id=actor_user_id,
+                                cmd=cmd)
             return
 
         if action == CompanyActionType.UPDATE:
-            self._handle_update(cmd)
+            self._handle_update(organization_id=organization_id,
+                                actor_user_id=actor_user_id,
+                                cmd=cmd)
             return
 
         if action == CompanyActionType.ACTIVATE:
-            self._handle_activate(cmd)
+            self._handle_activate(organization_id=organization_id,
+                                actor_user_id=actor_user_id,
+                                cmd=cmd)
             return
 
         if action == CompanyActionType.DEACTIVATE:
-            self._handle_deactivate(cmd)
+            self._handle_deactivate(organization_id=organization_id,
+                                actor_user_id=actor_user_id,
+                                cmd=cmd)
             return
 
         raise ValueError(f"Unsupported company action: {action}")
@@ -101,13 +127,23 @@ class ApplyCompaniesFromExcelService:
     # =====================
     # HANDLERS
     # =====================
-    def _handle_create(self, cmd: CompanyActionCommand) -> None:
+    def _handle_create(
+            self,
+            *,
+            organization_id: UUID,
+            actor_user_id: UUID,
+            cmd: CompanyActionCommand,
+    ) -> None:
         tax_number = normalize_required_tax_number(cmd.tax_number)
 
-        self._create.execute(
+        create_cmd = CreateCompanyCommand(
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
+
             name=cmd.name,
             tax_number=tax_number,
             role=cmd.role,
+
             description=cmd.description,
             address=self._build_address(cmd),
             contact=self._build_contact(cmd),
@@ -115,35 +151,73 @@ class ApplyCompaniesFromExcelService:
             tags=cmd.tags,
         )
 
-    def _handle_update(self, cmd: CompanyActionCommand) -> None:
+        self._create.execute(create_cmd)
+
+    def _handle_update(
+            self,
+            *,
+            organization_id: UUID,
+            actor_user_id: UUID,
+            cmd: CompanyActionCommand,
+    ) -> None:
         if not cmd.company_id:
             raise ValueError("UPDATE requires company_id")
 
-        tax_number = normalize_required_tax_number(cmd.tax_number)
-
-        self._update.execute(
+        update_cmd = UpdateCompanyCommand(
+            organization_id=organization_id,
             company_id=cmd.company_id,
+            actor_user_id=actor_user_id,
+
             name=cmd.name,
-            tax_number=tax_number,
             role=cmd.role,
-            description=cmd.description,
             address=self._build_address(cmd),
             contact=self._build_contact(cmd),
+            description=cmd.description,
+            tax_number=(
+                normalize_required_tax_number(cmd.tax_number)
+                if cmd.tax_number
+                else None
+            ),
             bank_account=self._build_bank_account(cmd),
             tags=cmd.tags,
         )
 
-    def _handle_activate(self, cmd: CompanyActionCommand) -> None:
+        self._update.execute(update_cmd)
+
+    def _handle_activate(
+            self,
+            *,
+            organization_id: UUID,
+            actor_user_id: UUID,
+            cmd: CompanyActionCommand
+            ) -> None:
         if not cmd.company_id:
             raise ValueError("ACTIVATE requires company_id")
 
-        self._activate.execute(cmd.company_id)
+        activate_cmd = ActivateCompanyCommand(
+            organization_id=organization_id,
+            company_id=cmd.company_id,
+            actor_user_id=actor_user_id,
+        )
 
-    def _handle_deactivate(self, cmd: CompanyActionCommand) -> None:
+        self._activate.execute(activate_cmd)
+
+    def _handle_deactivate(  self,
+            *,
+            organization_id: UUID,
+            actor_user_id: UUID,
+            cmd: CompanyActionCommand
+            ) -> None:
         if not cmd.company_id:
             raise ValueError("DEACTIVATE requires company_id")
 
-        self._deactivate.execute(cmd.company_id)
+        deactivate_cmd = DeactivateCompanyCommand(
+            organization_id=organization_id,
+            company_id=cmd.company_id,
+            actor_user_id=actor_user_id,
+        )
+
+        self._deactivate.execute(deactivate_cmd)
 
     # =====================
     # BUILDERS
@@ -170,6 +244,6 @@ class ApplyCompaniesFromExcelService:
             return None
 
         return BankAccount(
-            number=cmd.bank_account_number,
+            account_number=cmd.bank_account_number,
             country_code=cmd.bank_account_country_code,
         )

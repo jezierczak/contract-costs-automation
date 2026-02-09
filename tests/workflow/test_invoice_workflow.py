@@ -6,15 +6,15 @@ from contract_costs.repository.inmemory.contract_repository import InMemoryContr
 from contract_costs.repository.inmemory.contract_node_repository import InMemoryContractNodeRepository
 from contract_costs.repository.inmemory.value_type_repository import InMemoryValueTypeRepository
 
-from contract_costs.repository.inmemory.invoice_repository import InMemoryInvoiceRepository
-from contract_costs.repository.inmemory.invoice_line_repository import InMemoryInvoiceLineRepository
+from contract_costs.repository.inmemory.financial_record_repository import InMemoryFinancialRecordRepository
+from contract_costs.repository.inmemory.financial_record_line_repository import InMemoryFinancialRecordLineRepository
 from contract_costs.repository.inmemory.company_repository import InMemoryCompanyRepository
 
 @pytest.fixture(scope="class")
 def workflow_context():
     return {
-        "invoice_repo": InMemoryInvoiceRepository(),
-        "invoice_line_repo": InMemoryInvoiceLineRepository(),
+        "invoice_repo": InMemoryFinancialRecordRepository(),
+        "invoice_line_repo": InMemoryFinancialRecordLineRepository(),
         "company_repo": InMemoryCompanyRepository(),
         "contract_repo": InMemoryContractRepository(),
         "cost_node_repo": InMemoryContractNodeRepository(),

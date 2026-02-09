@@ -1,7 +1,11 @@
+from openai import organization
+
 from contract_costs.cli.context import get_services
 from contract_costs.cli.printers.table_printer.cmd_printer import CmdPrinter
 from contract_costs.cli.printers.table_printer.table_printer import TablePrinter
 from contract_costs.cli.registry import REGISTRY
+from contract_costs.cli.utils.context_helpers import require_organization_id
+from contract_costs.common.context.exceptions import ContextError
 from contract_costs.model.company import CompanyType
 from contract_costs.reports.companies.company_list_columns import company_list_columns
 from contract_costs.services.companies.query.dto.company_dto import CompanyDTO
@@ -27,6 +31,11 @@ REGISTRY.register_group("show", build_show_companies)
 
 def handle_show_companies(args) -> None:
     services = get_services()
+    try:
+        organization_id = require_organization_id(services.context)
+    except ContextError:
+        return
+
     role = None
     if args.role:
         try:
@@ -36,6 +45,7 @@ def handle_show_companies(args) -> None:
             return
 
     query = CompanyQuery(
+        organization_id=organization_id,
         tax_number=args.nip,
         own_only=args.own,
         include_inactive=args.inactive,
@@ -58,6 +68,7 @@ def handle_show_companies(args) -> None:
 
     printer: TablePrinter[CompanyDTO] = CmdPrinter(style="pipe")
     printer.print(
+        organization_id=organization_id,
         items=items,
         columns=columns,
         header=header,

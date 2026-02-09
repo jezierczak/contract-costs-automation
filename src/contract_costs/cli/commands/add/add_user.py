@@ -3,6 +3,7 @@ from contract_costs.cli.context import get_services
 from contract_costs.cli.prompts.interactive import interactive_prompt
 from contract_costs.cli.registry import REGISTRY
 from contract_costs.cli.schemas.users import USER_FIELDS
+from contract_costs.cli.utils.context_helpers import require_user_id
 from contract_costs.common.context.exceptions import ContextError
 from contract_costs.services.identity.add.dto.create_user_command import CreateUserCommand
 from contract_costs.services.identity.exceptions import UserAlreadyExists
@@ -23,9 +24,8 @@ def handle_add_user(args):
     services = get_services()
 
     try:
-        created_by_user_id = services.context.current_user_id()
-    except ContextError as e:
-        print(f"❌ {e}")
+        current_user_id = require_user_id(services.context)
+    except ContextError:
         return
 
     data = interactive_prompt(USER_FIELDS)
@@ -46,7 +46,7 @@ def handle_add_user(args):
         login=data["login"],
         email=data.get("email"),
         full_name=data.get("full_name"),
-        created_by_user_id=created_by_user_id,
+        created_by_user_id=current_user_id,
     )
     try:
         user_id = services.create_user.execute(cmd)

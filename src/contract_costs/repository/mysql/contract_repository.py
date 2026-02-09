@@ -7,6 +7,7 @@ from contract_costs.infrastructure.db.mysql_connection import get_connection
 
 class MySQLContractRepository(ContractRepository):
 
+
     def add(self, contract: Contract) -> None:
         conn = get_connection()
         cur = conn.cursor()
@@ -14,15 +15,28 @@ class MySQLContractRepository(ContractRepository):
         cur.execute(
             """
             INSERT INTO contracts (
-                id, code, name, description,
-                owner_id, client_id,
-                start_date, end_date,
-                budget, path, status
+                id,
+                organization_id,
+                code,
+                name,
+                description,
+                owner_id,
+                client_id,
+                start_date,
+                end_date,
+                budget,
+                path,
+                status,
+                created_at,
+                created_by_user_id,
+                updated_at,
+                updated_by_user_id
             )
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """,
             (
                 str(contract.id),
+                str(contract.organization_id),
                 contract.code,
                 contract.name,
                 contract.description,
@@ -33,6 +47,14 @@ class MySQLContractRepository(ContractRepository):
                 contract.budget,
                 str(contract.path),
                 contract.status.value,
+                contract.created_at,
+                str(contract.created_by_user_id)
+                if contract.created_by_user_id
+                else None,
+                contract.updated_at,
+                str(contract.updated_by_user_id)
+                if contract.updated_by_user_id
+                else None,
             ),
         )
 
@@ -56,8 +78,11 @@ class MySQLContractRepository(ContractRepository):
                 end_date=%s,
                 budget=%s,
                 path=%s,
-                status=%s
+                status=%s,
+                updated_at=%s,
+                updated_by_user_id=%s
             WHERE id=%s
+              AND organization_id=%s
             """,
             (
                 contract.code,
@@ -70,7 +95,12 @@ class MySQLContractRepository(ContractRepository):
                 contract.budget,
                 str(contract.path),
                 contract.status.value,
+                contract.updated_at,
+                str(contract.updated_by_user_id)
+                if contract.updated_by_user_id
+                else None,
                 str(contract.id),
+                str(contract.organization_id),
             ),
         )
 
@@ -78,59 +108,86 @@ class MySQLContractRepository(ContractRepository):
         cur.close()
         conn.close()
 
-    def get(self, contract_id: UUID) -> Contract | None:
+    def get(
+        self,
+        organization_id: UUID,
+        contract_id: UUID,
+    ) -> Contract | None:
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
 
         cur.execute(
-            "SELECT * FROM contracts WHERE id = %s",
-            (str(contract_id),),
+            """
+            SELECT * FROM contracts
+            WHERE id = %s
+              AND organization_id = %s
+            """,
+            (str(contract_id), str(organization_id)),
         )
-        row = cur.fetchone()
 
+        row = cur.fetchone()
         cur.close()
         conn.close()
 
         return self._row_to_contract(row) if row else None
 
-    def list(self) -> list[Contract]:
+    def list(self, organization_id: UUID) -> list[Contract]:
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
 
-        cur.execute("SELECT * FROM contracts")
-        rows = cur.fetchall()
+        cur.execute(
+            """
+            SELECT * FROM contracts
+            WHERE organization_id = %s
+            """,
+            (str(organization_id),),
+        )
 
+        rows = cur.fetchall()
         cur.close()
         conn.close()
 
         return [self._row_to_contract(row) for row in rows]
 
-    def exists(self, contract_id: UUID) -> bool:
+    def exists(self, organization_id: UUID, contract_id: UUID) -> bool:
         conn = get_connection()
         cur = conn.cursor()
 
         cur.execute(
-            "SELECT 1 FROM contracts WHERE id = %s LIMIT 1",
-            (str(contract_id),),
+            """
+            SELECT 1 FROM contracts
+            WHERE id = %s
+              AND organization_id = %s
+            LIMIT 1
+            """,
+            (str(contract_id), str(organization_id)),
         )
 
         exists = cur.fetchone() is not None
-
         cur.close()
         conn.close()
 
         return exists
 
-    def get_by_code(self, contract_code: str) -> Contract | None:
+    def get_by_code(
+            self,
+            organization_id: UUID,
+            contract_code: str,
+    ) -> Contract | None:
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
 
         cur.execute(
-            "SELECT * FROM contracts WHERE code = %s",
-            (contract_code,),
+            """
+            SELECT *
+            FROM contracts
+            WHERE code = %s
+              AND organization_id = %s
+            """,
+            (contract_code, str(organization_id)),
         )
-        row = cur.fetchone()
 
+        row = cur.fetchone()
         cur.close()
         conn.close()
 
@@ -144,18 +201,42 @@ class MySQLContractRepository(ContractRepository):
         )
 
         company_repo = MySQLCompanyRepository()
+        organization_id = UUID(row["organization_id"])
 
-        owner = company_repo.get(UUID(row["owner_id"]))
-        if row["client_id"]:
-            client = company_repo.get(UUID(row["client_id"]))
-        else:
-            client = None
+        owner = company_repo.get(
+            organization_id=organization_id,
+            company_id=UUID(row["owner_id"]),
+        )
+
+        client = (
+            company_repo.get(
+                organization_id=organization_id,
+                company_id=UUID(row["client_id"]),
+            )
+            if row["client_id"]
+            else None
+        )
 
         if not owner:
-            raise RuntimeError("Owner not found in database for contract %s" % row["code"])
+            raise RuntimeError(
+                f"Owner not found in database for contract {row['code']}"
+            )
 
         return Contract(
             id=UUID(row["id"]),
+            organization_id=UUID(row["organization_id"]),
+            created_at=row["created_at"],
+            created_by_user_id=(
+                UUID(row["created_by_user_id"])
+                if row["created_by_user_id"]
+                else None
+            ),
+            updated_at=row["updated_at"],
+            updated_by_user_id=(
+                UUID(row["updated_by_user_id"])
+                if row["updated_by_user_id"]
+                else None
+            ),
             code=row["code"],
             name=row["name"],
             description=row["description"],

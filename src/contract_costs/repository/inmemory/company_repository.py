@@ -1,5 +1,4 @@
 from uuid import UUID
-from typing import Iterable
 
 from contract_costs.model.company import Company, CompanyType
 from contract_costs.repository.company_repository import CompanyRepository
@@ -16,83 +15,138 @@ class InMemoryCompanyRepository(CompanyRepository):
         self._companies[company.id] = company
 
     def update(self, company: Company) -> None:
+        if company.id not in self._companies:
+            raise KeyError("Company does not exist")
+
         self._companies[company.id] = company
 
-    def delete(self, company_id: UUID) -> None:
-        self._companies.pop(company_id, None)
+    def delete(self, company_id: UUID, organization_id: UUID) -> None:
+        company = self._companies.get(company_id)
+        if company and company.organization_id == organization_id:
+            self._companies.pop(company_id, None)
 
-    def get(self, company_id: UUID) -> Company | None:
-        return self._companies.get(company_id)
+    def get(self, company_id: UUID, organization_id: UUID) -> Company | None:
+        company = self._companies.get(company_id)
+        if company and company.organization_id == organization_id:
+            return company
+        return None
 
-    def list_all(self) -> list[Company]:
-        return list(self._companies.values())
+    def list_all(self, organization_id: UUID) -> list[Company]:
+        return [
+            c for c in self._companies.values()
+            if c.organization_id == organization_id
+        ]
 
-    def exists(self, company_id: UUID) -> bool:
-        return company_id in self._companies
+    def exists(self, company_id: UUID, organization_id: UUID) -> bool:
+        company = self._companies.get(company_id)
+        return bool(company and company.organization_id == organization_id)
 
     # ---------- identity ----------
 
-    def get_by_tax_number(self, tax_number: str) -> Company | None:
+    def get_by_tax_number(self, tax_number: str, organization_id: UUID) -> Company | None:
         for company in self._companies.values():
-            if company.tax_number == tax_number:
+            if (
+                company.organization_id == organization_id
+                and company.tax_number == tax_number
+            ):
                 return company
         return None
 
-    def get_owners(self) -> list[Company]:
+    def get_owners(self, organization_id: UUID) -> list[Company]:
         return [
             c for c in self._companies.values()
-            if c.role == CompanyType.OWN and c.is_active
+            if (
+                c.organization_id == organization_id
+                and c.role == CompanyType.OWN
+                and c.is_active
+            )
         ]
 
-    def exists_owner(self) -> bool:
+    def exists_owner(self, organization_id: UUID) -> bool:
         return any(
-            c.role == CompanyType.OWN and c.is_active
+            c.organization_id == organization_id
+            and c.role == CompanyType.OWN
+            and c.is_active
             for c in self._companies.values()
         )
 
     # ---------- candidate search ----------
 
-    def find_by_bank_account(self, bank_account: str) -> list[Company]:
+    def find_by_bank_account(
+        self,
+        organization_id: UUID,
+        bank_account_number: str,
+    ) -> list[Company]:
         return [
             c for c in self._companies.values()
-            if c.bank_account and c.bank_account == bank_account
+            if (
+                c.organization_id == organization_id
+                and c.bank_account
+                and c.bank_account.account_number == bank_account_number
+            )
         ]
 
-    def find_by_email(self, email: str) -> list[Company]:
+    def find_by_email(
+        self,
+        organization_id: UUID,
+        email: str,
+    ) -> list[Company]:
         return [
             c for c in self._companies.values()
-            if c.contact and c.contact.email == email
+            if (
+                c.organization_id == organization_id
+                and c.contact
+                and c.contact.email == email
+            )
         ]
 
-    def find_by_phone(self, phone_number: str) -> list[Company]:
+    def find_by_phone(
+        self,
+        organization_id: UUID,
+        phone_number: str,
+    ) -> list[Company]:
         return [
             c for c in self._companies.values()
-            if c.contact and c.contact.phone_number == phone_number
+            if (
+                c.organization_id == organization_id
+                and c.contact
+                and c.contact.phone_number == phone_number
+            )
         ]
 
-    def find_by_name_like(self, name: str) -> list[Company]:
+    def find_by_name_like(
+        self,
+        organization_id: UUID,
+        name: str,
+    ) -> list[Company]:
         name_lower = name.lower()
         return [
             c for c in self._companies.values()
-            if c.name and name_lower in c.name.lower()
+            if (
+                c.organization_id == organization_id
+                and c.name
+                and name_lower in c.name.lower()
+            )
         ]
 
-
-    def find_by_street_tokens(self, tokens: list[str]) -> list[Company]:
+    def find_by_street_tokens(
+        self,
+        organization_id: UUID,
+        tokens: list[str],
+    ) -> list[Company]:
         if not tokens:
             return []
 
         tokens_lower = [t.lower() for t in tokens]
-
         result: list[Company] = []
 
         for company in self._companies.values():
+            if company.organization_id != organization_id:
+                continue
             if not company.address or not company.address.street:
                 continue
 
             street = company.address.street.lower()
-
-            # 🔹 SQL-like: wszystkie tokeny muszą wystąpić
             if all(token in street for token in tokens_lower):
                 result.append(company)
 

@@ -1,6 +1,8 @@
 from contract_costs.cli.context import get_services
 from contract_costs.cli.printers.value_type_printer import ValueTypePrinter
 from contract_costs.cli.registry import REGISTRY
+from contract_costs.cli.utils.context_helpers import require_organization_id
+from contract_costs.common.context.exceptions import ContextError
 from contract_costs.services.value_types.query.dto.value_type_query import ValueTypeQuery
 
 
@@ -23,7 +25,13 @@ REGISTRY.register_group("show", build_show_value_types)
 def handle_show_value_types(args):
     services = get_services()
 
+    try:
+        organization_id = require_organization_id(services.context)
+    except ContextError:
+        return
+
     query = ValueTypeQuery(
+        organization_id=organization_id,
         code=args.code,
         include_inactive=args.inactive,
         search=args.search,
@@ -31,4 +39,4 @@ def handle_show_value_types(args):
 
     items = services.value_type_query_service.list(query)
 
-    ValueTypePrinter.print(items)
+    ValueTypePrinter.print(items,organization_id)

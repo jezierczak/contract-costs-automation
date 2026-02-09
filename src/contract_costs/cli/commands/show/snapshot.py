@@ -4,6 +4,8 @@ from contract_costs.cli.context import get_services
 from contract_costs.cli.printers.table_printer.cmd_printer import CmdPrinter
 from contract_costs.cli.printers.table_printer.excel_printer import ExcelPrinter
 from contract_costs.cli.registry import REGISTRY
+from contract_costs.cli.utils.context_helpers import require_organization_id
+from contract_costs.common.context.exceptions import ContextError
 from contract_costs.infrastructure.filesystem.show_file_manager import  SnapshotShowFileManager
 from contract_costs.reports.snapshots.snapshot_tree_columns import snapshot_tree_columns
 
@@ -39,9 +41,17 @@ def handle_show_snapshot(args):
     services = get_services()
     query = services.contract_snapshot_query_service
 
+    try:
+        organization_id = require_organization_id(services.context)
+    except ContextError:
+        return
+
     snapshot_ref = args.snapshot_id
 
-    dto = query.get_snapshot(snapshot_id=snapshot_ref)
+    dto = query.get_snapshot(
+        organization_id=organization_id,
+        snapshot_id=snapshot_ref,
+    )
 
     header = {
         "Snapshot ID": [str(dto.snapshot_id)],
@@ -54,6 +64,7 @@ def handle_show_snapshot(args):
     if args.excel:
 
         fm = SnapshotShowFileManager(
+            organization_id=organization_id,
             contract_code=dto.contract_code,
             contract_date=dto.snapshot_date,
         )

@@ -1,16 +1,32 @@
+from uuid import UUID
+
 from contract_costs.model.company import Company
 from contract_costs.repository.company_repository import CompanyRepository
 from contract_costs.services.companies.providers.candidate_provider import CompanyCandidateProvider
-from contract_costs.services.invoices.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
+from contract_costs.services.financial_records.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
 from contract_costs.services.companies.normalize.name import normalize_company_name
 
+
 class NameCandidateProvider(CompanyCandidateProvider):
+    """
+    Fuzzy provider po nazwie firmy.
+
+    ⚠️ Najsłabszy provider jakościowo:
+    - używany tylko jako fallback
+    - może zwracać wiele kandydatów
+    """
 
     def __init__(self, company_repository: CompanyRepository) -> None:
         self._repo = company_repository
 
-    def find_candidates(self, input_: CompanyInput) -> list[Company]:
-        if not input_.name or len(input_.name) < 2:
+    def find_candidates(
+        self,
+        *,
+        organization_id: UUID,
+        input_: CompanyInput,
+    ) -> list[Company]:
+
+        if not input_.name or len(input_.name.strip()) < 2:
             return []
 
         normalized_input = normalize_company_name(input_.name)
@@ -19,7 +35,11 @@ class NameCandidateProvider(CompanyCandidateProvider):
 
         candidates: list[Company] = []
 
-        for company in self._repo.list_all():
+        # ⚠️ TYLKO w obrębie organizacji
+        for company in self._repo.list_all(organization_id):
+            if not company.name:
+                continue
+
             normalized_company = normalize_company_name(company.name)
             if not normalized_company:
                 continue
@@ -29,7 +49,7 @@ class NameCandidateProvider(CompanyCandidateProvider):
                 candidates.append(company)
                 continue
 
-            # 🔹 luźniejszy match (opcjonalny, ale polecam)
+            # 🔹 miękki match (fallback)
             if (
                 normalized_input in normalized_company
                 or normalized_company in normalized_input

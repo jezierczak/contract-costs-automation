@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from uuid import UUID
 
 from contract_costs.model.company import CompanyType
 
@@ -10,6 +11,8 @@ from contract_costs.model.company import CompanyType
 
 @dataclass(frozen=True)
 class CompanyQuery:
+    organization_id: UUID
+
     # =====================
     # IDENTYFIKATORY (STRICT)
     # =====================

@@ -46,13 +46,14 @@ class ContractCostReportRunner:
     def run(
             self,
             *,
+            organization_id: UUID,
             contract_id: UUID,
             group_by: list[str],
             invoice_numbers: list[str] | None = None,
             invoice_statuses: list[str] | None = None,
     ):
 
-        rows = self._row_service.generate_rows(contract_id)
+        rows = self._row_service.generate_rows(organization_id=organization_id,contract_id=contract_id)
 
         df = pd.DataFrame(rows, )
         df["total"] =  df["non_tax_amount"] + df["net_amount"]

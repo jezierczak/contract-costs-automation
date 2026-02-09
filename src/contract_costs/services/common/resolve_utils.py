@@ -2,7 +2,7 @@ import re
 from uuid import UUID
 
 
-def resolve_or_none(getter, code: str | None, label: str) -> UUID | None:
+def resolve_or_none(getter,organization_id: UUID, code: str | None, label: str) -> UUID | None:
     """
     getter: repo.get_by_code
     code: np. 'TAUR'
@@ -12,7 +12,7 @@ def resolve_or_none(getter, code: str | None, label: str) -> UUID | None:
     if not code:
         return None
 
-    entity = getter(code)
+    entity = getter(str(organization_id),code)
     if entity is None:
         raise ValueError(f"{label} not found for code: {code}")
 
@@ -43,6 +43,11 @@ def normalize_tax_number(nip: str | int | None) -> str | None:
     return nip
 
 def normalize_required_tax_number(nip: str | int | None) -> str:
+    if isinstance(nip,str):
+        value = nip.strip()
+        if value.startswith(("TMP-", "AI-")):
+            return value  # 🔥 KLUCZ
+
     normalized = normalize_tax_number(nip)
     if normalized is None:
         raise ValueError("Tax number is required")

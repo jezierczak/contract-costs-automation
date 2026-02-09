@@ -7,16 +7,16 @@ from contract_costs.model.contract import Contract
 from contract_costs.model.contract_node import ContractNode
 from contract_costs.model.value_direction import ValueDirection
 from contract_costs.model.value_type import ValueType
-from contract_costs.model.invoice import Invoice, InvoiceStatus, PaymentMethod, PaymentStatus
-from contract_costs.model.invoice_line import InvoiceLine
+from contract_costs.model.financial_record import FinancialRecord, FinancialRecordStatus, PaymentMethod, PaymentStatus
+from contract_costs.model.financial_record_line import FinancialRecordLine
 from contract_costs.model.amount import Amount, VatRate
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 
 from contract_costs.repository.inmemory.contract_repository import InMemoryContractRepository
 from contract_costs.repository.inmemory.contract_node_repository import InMemoryContractNodeRepository
 from contract_costs.repository.inmemory.value_type_repository import InMemoryValueTypeRepository
-from contract_costs.repository.inmemory.invoice_repository import InMemoryInvoiceRepository
-from contract_costs.repository.inmemory.invoice_line_repository import InMemoryInvoiceLineRepository
+from contract_costs.repository.inmemory.financial_record_repository import InMemoryFinancialRecordRepository
+from contract_costs.repository.inmemory.financial_record_line_repository import InMemoryFinancialRecordLineRepository
 
 from contract_costs.services.reports.contract_cost_report_service import (
     ContractCostReportService,
@@ -83,9 +83,9 @@ def value_type():
 
 @pytest.fixture
 def invoice(contract):
-    return Invoice(
+    return FinancialRecord(
         id=uuid4(),
-        invoice_number="FV/1",
+        reference="FV/1",
         invoice_date=None,
         selling_date=None,
         buyer_id=uuid4(),
@@ -94,7 +94,7 @@ def invoice(contract):
         due_date=None,
         paid_date=None,
         payment_status=PaymentStatus.UNPAID,
-        status=InvoiceStatus.PROCESSED,
+        status=FinancialRecordStatus.PROCESSED,
         timestamp=datetime.now(),
         scan_filename=None,
         tags=set(),
@@ -105,7 +105,7 @@ def invoice(contract):
 def invoice_line(contract, invoice, cost_nodes, value_type):
     _, leaf = cost_nodes
 
-    return InvoiceLine(
+    return FinancialRecordLine(
         id=uuid4(),
         invoice_id=invoice.id,
         item_name="Cement",
@@ -124,8 +124,8 @@ def report_service(contract, cost_nodes, value_type, invoice, invoice_line):
     contract_repo = InMemoryContractRepository()
     cost_node_repo = InMemoryContractNodeRepository()
     cost_type_repo = InMemoryValueTypeRepository()
-    invoice_repo = InMemoryInvoiceRepository()
-    invoice_line_repo = InMemoryInvoiceLineRepository()
+    invoice_repo = InMemoryFinancialRecordRepository()
+    invoice_line_repo = InMemoryFinancialRecordLineRepository()
 
     contract_repo.add(contract)
     for n in cost_nodes:

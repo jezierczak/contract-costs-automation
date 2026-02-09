@@ -1,10 +1,10 @@
+import logging
 from pathlib import Path
 from uuid import UUID
 from decimal import Decimal
 from typing import Any
 
 import contract_costs.config as cfg
-from contract_costs.config import CONTRACT_EXCEL_NAME
 
 from contract_costs.infrastructure.excel.excel_loader import ExcelLoader
 from contract_costs.infrastructure.excel.contracts.contract_prepare_columns import (
@@ -15,20 +15,25 @@ from contract_costs.infrastructure.excel.contracts.cost_node_prepare_columns imp
 )
 
 from contract_costs.model.company import CompanyType
-from contract_costs.model.contract import ContractStarter, ContractStatus
+from contract_costs.model.contract import ContractStatus
 from contract_costs.model.contract_node import ContractNodeInput
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 
 from contract_costs.services.companies.company_evaluate_orchestrator import (
     CompanyEvaluateOrchestrator,
 )
+from contract_costs.services.contracts.apply.command.update_contract_structure_command import \
+    UpdateContractStructureCommand
+from contract_costs.services.contracts.apply.dto.contract_excel_data import ContractExcelData
 from contract_costs.services.contracts.create_contract_service import (
     CreateContractService,
 )
 from contract_costs.services.contracts.apply.update_contract_structure_service import (
     UpdateContractStructureService,
 )
+from contract_costs.services.contracts.dto.create_contract_command import CreateContractCommand
 
+logger = logging.getLogger(__name__)
 
 class ApplyContractStructureExcelService:
     """
@@ -57,20 +62,59 @@ class ApplyContractStructureExcelService:
     # PUBLIC API
     # =====================================================
 
-    def apply_new(self, excel_path: Path) -> None:
-        starter, contract_nodes = self._load_from_excel(excel_path)
+    def apply_new(self,
+                  *,
+                  excel_path: Path,
+                  organization_id: UUID,
+                  actor_user_id: UUID
+                  ) -> None:
 
-        self._create_contract.init(starter)
+        excel_data, contract_nodes = self._load_from_excel(excel_path,organization_id,actor_user_id)
+
+        command = CreateContractCommand(
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
+            code=excel_data.code,
+            name=excel_data.name,
+            description=excel_data.description,
+            owner=excel_data.owner,
+            client=excel_data.client,
+            start_date=excel_data.start_date,
+            end_date=excel_data.end_date,
+            budget=excel_data.budget,
+            path=excel_data.path,
+            status=excel_data.status,
+        )
+
+        self._create_contract.init(command=command)
         self._create_contract.add_contract_node_tree(contract_nodes)
         self._create_contract.execute()
 
-    def apply_update(self, *, excel_path: Path, contract_id: UUID) -> None:
-        starter, contract_nodes = self._load_from_excel(excel_path)
+    def apply_update(self,
+                     *,
+                     excel_path: Path,
+                     contract_id: UUID,
+                     organization_id: UUID,
+                     actor_user_id: UUID
+                     ) -> None:
+        excel_data, contract_nodes = self._load_from_excel(excel_path,organization_id,actor_user_id)
+
+        command = UpdateContractStructureCommand(
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
+            contract_id=contract_id,
+            name=excel_data.name,
+            description=excel_data.description,
+            start_date=excel_data.start_date,
+            end_date=excel_data.end_date,
+            budget=excel_data.budget,
+            status=excel_data.status,
+            path=excel_data.path,
+            contract_node_input=contract_nodes,
+        )
 
         self._update_contract.execute(
-            contract_id=contract_id,
-            contract_starter=starter,
-            contract_node_input=contract_nodes,
+            command
         )
 
     # =====================================================
@@ -78,16 +122,18 @@ class ApplyContractStructureExcelService:
     # =====================================================
 
     def _load_from_excel(
-        self,
-        path: Path,
-    ) -> tuple[ContractStarter, list[ContractNodeInput]]:
+            self,
+            path: Path,
+            organization_id: UUID,
+            actor_user_id: UUID,
+    ) -> tuple[ContractExcelData, list[ContractNodeInput]]:
 
         contract_rows = ExcelLoader.load(
             input_path=path,
             sheet_name=self.CONTRACT_SHEET,
             columns=CONTRACT_PREPARE_COLUMNS,
         )
-        print(contract_rows)
+        logger.debug("Loaded contract rows: %s", contract_rows)
         if len(contract_rows) != 1:
             raise ValueError(
                 "Contract sheet must contain exactly one row"
@@ -99,38 +145,49 @@ class ApplyContractStructureExcelService:
             columns=CONTRACT_NODE_PREPARE_COLUMNS,
         )
 
-        starter = self._build_contract_starter(contract_rows[0])
+        contract_excel_data = self._build_contract_excel_data(
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
+            row=contract_rows[0],
+        )
         contract_node_tree = self._build_contract_node_tree(contract_node_rows)
 
-        return starter, contract_node_tree
+        return contract_excel_data, contract_node_tree
 
     # =====================================================
     # BUILDERS
     # =====================================================
 
-    def _build_contract_starter(
-        self,
-        row: dict[str, Any],
-    ) -> ContractStarter:
+    def _build_contract_excel_data(
+            self,
+            *,
+            organization_id:UUID,
+            actor_user_id:UUID,
+            row: dict[str, Any],
+    ) -> ContractExcelData:
 
         owner = self._company_eval.evaluate_from_tax(
-            row["Owner NIP"],
-            CompanyType.BUYER,
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
+            input_tax_number=row["Owner NIP"],
+            role=CompanyType.BUYER,
         )
+
         client = None
         if row["Client NIP"]:
             client = self._company_eval.evaluate_from_tax(
-                row["Client NIP"],
-                CompanyType.SELLER,
+                organization_id=organization_id,
+                actor_user_id=actor_user_id,
+                input_tax_number=row["Client NIP"],
+                role=CompanyType.SELLER,
             )
 
-
-        return ContractStarter(
+        return ContractExcelData(
             name=row["Name"],
             code=row["Code"],
-            contract_owner=owner,
-            client=client,
             description=row.get("Description"),
+            owner=owner,
+            client=client,
             start_date=row.get("Start Date"),
             end_date=row.get("End Date"),
             budget=(
@@ -138,7 +195,7 @@ class ApplyContractStructureExcelService:
                 if row.get("Budget") is not None
                 else None
             ),
-            path=Path(row["Path"]) if row.get("Path") is not None else None,
+            path=Path(row["Path"]) if row.get("Path") else None,
             status=ContractStatus[row["Status"]],
         )
 

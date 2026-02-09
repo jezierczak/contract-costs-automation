@@ -1,8 +1,13 @@
-import pytest
+from datetime import datetime
 from uuid import uuid4
 
 from contract_costs.model.company import Company, Address, Contact, BankAccount, CompanyType
 from contract_costs.services.companies.normalize.normalize_service import CompanyNormalizeService
+
+
+NOW = datetime(2024, 1, 1)
+TEST_ORG_ID = uuid4()
+TEST_USER_ID = uuid4()
 
 
 def make_company(
@@ -11,19 +16,34 @@ def make_company(
     phone=None,
     email=None,
     bank_account=None,
+    repo=None,  # 🔥 kluczowe
 ):
-    return Company(
+    company = Company(
         id=uuid4(),
+        organization_id=TEST_ORG_ID,
+
         name="Test Company",
         description=None,
         tax_number=tax_number,
+
         address=Address("", "", "", ""),
         contact=Contact(phone, email) if phone or email else None,
         bank_account=BankAccount(bank_account) if bank_account else None,
+
         role=CompanyType.SELLER,
         tags=set(),
         is_active=True,
+
+        created_at=NOW,
+        created_by_user_id=TEST_USER_ID,
+        updated_at=None,
+        updated_by_user_id=None,
     )
+
+    if repo:
+        repo.add(company)
+
+    return company
 
 def test_normalize_tax_number():
     service = CompanyNormalizeService()
@@ -89,7 +109,7 @@ def test_normalize_bank_account():
     company = make_company(bank_account="PL 10-1050 1302 1000 0008 0782 0911")
     normalized = service.normalize(company)
 
-    assert normalized.bank_account.number == "10105013021000000807820911"
+    assert normalized.bank_account.account_number == "10105013021000000807820911"
 
 def test_no_bank_account_if_invalid():
     service = CompanyNormalizeService()

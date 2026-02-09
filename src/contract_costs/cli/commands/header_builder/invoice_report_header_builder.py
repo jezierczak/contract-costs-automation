@@ -1,10 +1,10 @@
 from datetime import datetime
 
 from contract_costs.cli.commands.header_builder.report_header_builder import ReportHeaderBuilder
-from contract_costs.model.invoice import PaymentStatus
+from contract_costs.model.financial_record import PaymentStatus
 
 
-class InvoiceReportHeaderBuilder(ReportHeaderBuilder):
+class FinancialRecordReportHeaderBuilder(ReportHeaderBuilder):
 
     @classmethod
     def from_args(cls, args) -> dict[str, list[str]]:

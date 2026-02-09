@@ -6,16 +6,16 @@ import pytest
 from contract_costs.model.amount import Amount, VatRate
 from contract_costs.model.value_direction import ValueDirection
 from contract_costs.model.value_type import ValueType
-from contract_costs.model.invoice import Invoice, InvoiceStatus, PaymentMethod, PaymentStatus
-from contract_costs.model.invoice_line import InvoiceLine
+from contract_costs.model.financial_record import FinancialRecord, FinancialRecordStatus, PaymentMethod, PaymentStatus
+from contract_costs.model.financial_record_line import FinancialRecordLine
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 
 
 @pytest.fixture
 def invoice_new(contract_owner, contract_company):
-    return Invoice(
+    return FinancialRecord(
         id=uuid4(),
-        invoice_number="FV/1",
+        reference="FV/1",
         invoice_date=date.today(),
         selling_date=date.today(),
         buyer_id=contract_owner.id,
@@ -24,7 +24,7 @@ def invoice_new(contract_owner, contract_company):
         payment_method=PaymentMethod.CASH,
         due_date=date.today(),
         payment_status=PaymentStatus.UNPAID,
-        status=InvoiceStatus.NEW_COST,
+        status=FinancialRecordStatus.NEW_COST,
         paid_date=None,
         timestamp=datetime.now(),
         scan_filename=None,
@@ -34,9 +34,9 @@ def invoice_new(contract_owner, contract_company):
 
 @pytest.fixture
 def invoice_in_progress(contract_owner, contract_company):
-    return Invoice(
+    return FinancialRecord(
         id=uuid4(),
-        invoice_number="FV/2",
+        reference="FV/2",
         invoice_date=date.today(),
         selling_date=date.today(),
         buyer_id=contract_owner.id,
@@ -46,7 +46,7 @@ def invoice_in_progress(contract_owner, contract_company):
         due_date=date.today(),
         paid_date=None,
         payment_status=PaymentStatus.UNPAID,
-        status=InvoiceStatus.IN_PROGRESS,
+        status=FinancialRecordStatus.IN_PROGRESS,
         timestamp=datetime.now(),
         scan_filename=None,
         tags=set()
@@ -55,9 +55,9 @@ def invoice_in_progress(contract_owner, contract_company):
 
 @pytest.fixture
 def invoice_processed(contract_owner, contract_company):
-    return Invoice(
+    return FinancialRecord(
         id=uuid4(),
-        invoice_number="FV/3",
+        reference="FV/3",
         invoice_date=date.today(),
         selling_date=date.today(),
         buyer_id=contract_owner.id,
@@ -67,7 +67,7 @@ def invoice_processed(contract_owner, contract_company):
         due_date=date.today(),
         paid_date=None,
         payment_status=PaymentStatus.PAID,
-        status=InvoiceStatus.PROCESSED,
+        status=FinancialRecordStatus.PROCESSED,
         timestamp=datetime.now(),
         scan_filename=None,
         tags=set()
@@ -85,7 +85,7 @@ def contract_id_2():
 
 @pytest.fixture
 def invoice_line_complete(contract_id_1):
-    return InvoiceLine(
+    return FinancialRecordLine(
         id=uuid4(),
         invoice_id=uuid4(),
         quantity=Decimal("1"),
@@ -101,7 +101,7 @@ def invoice_line_complete(contract_id_1):
 
 @pytest.fixture
 def invoice_line_missing_cost_node(contract_id_1):
-    return InvoiceLine(
+    return FinancialRecordLine(
         id=uuid4(),
         invoice_id=uuid4(),
         quantity=Decimal("1"),
@@ -117,7 +117,7 @@ def invoice_line_missing_cost_node(contract_id_1):
 
 @pytest.fixture
 def invoice_line_missing_cost_type(contract_id_2):
-    return InvoiceLine(
+    return FinancialRecordLine(
         id=uuid4(),
         invoice_id=uuid4(),
         quantity=Decimal("2"),

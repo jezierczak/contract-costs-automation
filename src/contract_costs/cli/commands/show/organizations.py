@@ -1,5 +1,6 @@
 from contract_costs.cli.context import get_services
 from contract_costs.cli.registry import REGISTRY
+from contract_costs.cli.utils.context_helpers import require_user_id
 from contract_costs.common.context.exceptions import ContextError
 
 
@@ -14,11 +15,8 @@ def handle_show_organizations(args=None):
     services = get_services()
 
     # 🔴 tymczasowo – do czasu auth
-    try:
-        user_id = services.context.current_user_id()
-    except ContextError as e:
-        print(f"❌ {e}")
-        return
+
+    user_id = require_user_id(services.context)
 
     items = services.show_organizations.list_for_user(user_id=user_id)
 

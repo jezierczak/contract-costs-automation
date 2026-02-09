@@ -1,10 +1,14 @@
 from unittest.mock import MagicMock
+from uuid import uuid4
 
 from contract_costs.cli.adapters.company_adapter import create_company_from_cli
 from contract_costs.model.company import Address
 from contract_costs.model.company import BankAccount
 from contract_costs.model.company import CompanyType
+from contract_costs.services.companies.dto.create_company_command import CreateCompanyCommand
 
+org_id = uuid4()
+user_id = uuid4()
 
 def test_create_company_from_cli_with_bank_account():
     # --- given ---
@@ -21,13 +25,14 @@ def test_create_company_from_cli_with_bank_account():
         "bank_account_number": "12345678901234567890123456",
         "bank_account_country_code": "PL",
         "role": CompanyType.OWN,
-
     }
 
     create_company_service = MagicMock()
 
     # --- when ---
     create_company_from_cli(
+        organization_id=org_id,
+        actor_user_id=user_id,
         data=data,
         create_company_service=create_company_service,
     )
@@ -35,27 +40,32 @@ def test_create_company_from_cli_with_bank_account():
     # --- then ---
     create_company_service.execute.assert_called_once()
 
-    kwargs = create_company_service.execute.call_args.kwargs
+    cmd = create_company_service.execute.call_args.args[0]
+    assert isinstance(cmd, CreateCompanyCommand)
 
-    assert kwargs["name"] == "Company A"
-    assert kwargs["tax_number"] == "1234567890"
-    assert kwargs["description"] == "Test company"
-    assert kwargs["role"] == CompanyType.OWN
+    # --- core fields ---
+    assert cmd.organization_id == org_id
+    assert cmd.actor_user_id == user_id
+    assert cmd.name == "Company A"
+    assert cmd.tax_number == "1234567890"
+    assert cmd.description == "Test company"
+    assert cmd.role == CompanyType.OWN
 
+    # --- address ---
+    assert isinstance(cmd.address, Address)
+    assert cmd.address.street == "Main Street 1"
+    assert cmd.address.city == "Krakow"
+    assert cmd.address.zip_code == "30-001"
+    assert cmd.address.country == "PL"
 
-
-    assert isinstance(kwargs["address"], Address)
-    assert kwargs["address"].street == "Main Street 1"
-    assert kwargs["address"].city == "Krakow"
-    assert kwargs["address"].zip_code == "30-001"
-    assert kwargs["address"].country == "PL"
-
-    assert isinstance(kwargs["bank_account"], BankAccount)
-    assert kwargs["bank_account"].number == "12345678901234567890123456"
-    assert kwargs["bank_account"].country_code == "PL"
+    # --- bank account ---
+    assert isinstance(cmd.bank_account, BankAccount)
+    assert cmd.bank_account.account_number == "12345678901234567890123456"
+    assert cmd.bank_account.country_code == "PL"
 
 def test_create_company_from_cli_without_bank_account():
     # --- given ---
+
     data = {
         "name": "Company B",
         "tax_number": "0987654321",
@@ -75,12 +85,19 @@ def test_create_company_from_cli_without_bank_account():
 
     # --- when ---
     create_company_from_cli(
+        organization_id=org_id,
+        actor_user_id=user_id,
         data=data,
         create_company_service=create_company_service,
     )
 
     # --- then ---
-    kwargs = create_company_service.execute.call_args.kwargs
+    create_company_service.execute.assert_called_once()
 
-    assert kwargs["bank_account"] is None
+    cmd = create_company_service.execute.call_args.args[0]
+    assert isinstance(cmd, CreateCompanyCommand)
+
+    assert cmd.organization_id == org_id
+    assert cmd.actor_user_id == user_id
+    assert cmd.bank_account is None   # 🔥 TO JEST KLUCZOWE
 

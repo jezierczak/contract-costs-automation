@@ -5,32 +5,38 @@ from pathlib import Path
 from typing import Literal
 
 from contract_costs.model.company import Company
-import contract_costs.config as cfg
 
 logger = logging.getLogger(__name__)
 
 
-class InvoiceFileOrganizer:
+class RecordFileOrganizer:
+
+    # =====================================================
+    # OWNER (cost / revenue)
+    # =====================================================
 
     @staticmethod
     def move_to_owner(
+        *,
+        root: Path,
         file_path: Path,
         owner: Company,
         kind: Literal["cost", "revenue"],
         issue_date: date | None,
         client_name: str,
-        invoice_number: str,
+        record_ref_number: str,
     ) -> Path:
 
         client_name = client_name or "UNKNOWN"
-        invoice_number = invoice_number or "NO_NUMBER"
-        if not issue_date:
-            issue_date = date.today()
+        record_ref_number = record_ref_number or "NO_NUMBER"
+        issue_date = issue_date or date.today()
 
-        safe_owner = InvoiceFileOrganizer._sanitize_filename(owner.name)
+        safe_owner = RecordFileOrganizer._sanitize_filename(owner.name)
         doc_type = "costs" if kind == "cost" else "revenues"
+
         target_dir = (
-            cfg.OWNERS_DIR
+            root
+            / "owners"
             / safe_owner
             / doc_type
             / "invoices"
@@ -39,16 +45,16 @@ class InvoiceFileOrganizer:
         )
         target_dir.mkdir(parents=True, exist_ok=True)
 
-        new_name = InvoiceFileOrganizer._build_invoice_filename(
+        new_name = RecordFileOrganizer._build_invoice_filename(
             client_name=client_name,
-            invoice_number=invoice_number,
+            invoice_number=record_ref_number,
             original=file_path,
         )
 
         target_path = target_dir / new_name
 
         logger.info(
-            "Moving invoice file to owner directory",
+            "Moving record file to owner directory",
             extra={
                 "source": str(file_path),
                 "target": str(target_path),
@@ -57,17 +63,26 @@ class InvoiceFileOrganizer:
         )
 
         file_path.replace(target_path)
-        return target_path.relative_to(cfg.WORK_DIR)
+        return target_path.relative_to(root)
+
+    # =====================================================
+    # DRAFT
+    # =====================================================
 
     @staticmethod
-    def move_to_draft(file_path: Path) -> Path:
-        target_dir = cfg.INVOICE_DRAFT_DIR
+    def move_to_draft(
+        *,
+        root: Path,
+        file_path: Path,
+    ) -> Path:
+
+        target_dir = root / "draft"
         target_dir.mkdir(parents=True, exist_ok=True)
 
         target_path = target_dir / file_path.name
 
         logger.info(
-            "Moving invoice file to draft directory",
+            "Moving record file to draft directory",
             extra={
                 "source": str(file_path),
                 "target": str(target_path),
@@ -75,18 +90,26 @@ class InvoiceFileOrganizer:
         )
 
         file_path.replace(target_path)
+        return target_path.relative_to(root)
 
-        return target_path.relative_to(cfg.WORK_DIR)
+    # =====================================================
+    # RAW
+    # =====================================================
 
     @staticmethod
-    def move_to_raw(file_path: Path) -> Path:
-        target_dir = cfg.INVOICE_RAW_DIR
+    def move_to_raw(
+        *,
+        root: Path,
+        file_path: Path,
+    ) -> Path:
+
+        target_dir = root / "raw"
         target_dir.mkdir(parents=True, exist_ok=True)
 
         target_path = target_dir / file_path.name
 
         logger.info(
-            "Moving invoice file to raw directory",
+            "Moving record file to raw directory",
             extra={
                 "source": str(file_path),
                 "target": str(target_path),
@@ -94,18 +117,26 @@ class InvoiceFileOrganizer:
         )
 
         file_path.replace(target_path)
-        return target_path.relative_to(cfg.WORK_DIR)
+        return target_path.relative_to(root)
 
+    # =====================================================
+    # TRASH
+    # =====================================================
 
     @staticmethod
-    def move_to_trash(file_path: Path) -> Path:
-        target_dir = cfg.INVOICE_TRASH_DIR
+    def move_to_trash(
+        *,
+        root: Path,
+        file_path: Path,
+    ) -> Path:
+
+        target_dir = root / "trash"
         target_dir.mkdir(parents=True, exist_ok=True)
 
         target_path = target_dir / file_path.name
 
         logger.info(
-            "Moving invoice file to trash directory",
+            "Moving record file to trash directory",
             extra={
                 "source": str(file_path),
                 "target": str(target_path),
@@ -113,21 +144,27 @@ class InvoiceFileOrganizer:
         )
 
         file_path.replace(target_path)
-        return target_path.relative_to(cfg.WORK_DIR)
+        return target_path.relative_to(root)
 
+    # =====================================================
+    # FAILED
+    # =====================================================
 
     @staticmethod
     def move_to_failed(
-            file_path: Path,
-            reason: str,
+        *,
+        root: Path,
+        file_path: Path,
+        reason: str,
     ) -> Path:
-        target_dir = cfg.INVOICE_FAILED_DIR / reason.lower()
+
+        target_dir = root / "failed" / reason.lower()
         target_dir.mkdir(parents=True, exist_ok=True)
 
         target_path = target_dir / file_path.name
 
         logger.warning(
-            "Moving invoice file to failed directory",
+            "Moving record file to failed directory",
             extra={
                 "source": str(file_path),
                 "target": str(target_path),
@@ -136,16 +173,21 @@ class InvoiceFileOrganizer:
         )
 
         file_path.replace(target_path)
-        return target_path.relative_to(cfg.WORK_DIR)
+        return target_path.relative_to(root)
+
+    # =====================================================
+    # HELPERS
+    # =====================================================
 
     @staticmethod
     def _build_invoice_filename(
+        *,
         client_name: str,
         invoice_number: str,
         original: Path,
     ) -> str:
-        s_name = InvoiceFileOrganizer._sanitize_filename(client_name)[:5]
-        i_number = InvoiceFileOrganizer._sanitize_filename(invoice_number)
+        s_name = RecordFileOrganizer._sanitize_filename(client_name)[:5]
+        i_number = RecordFileOrganizer._sanitize_filename(invoice_number)
         return f"{s_name}_{i_number}{original.suffix}"
 
     @staticmethod

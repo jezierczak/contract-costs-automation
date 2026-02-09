@@ -1,14 +1,12 @@
 from collections import defaultdict
 from datetime import date
 from decimal import Decimal
-from typing import Any
 from uuid import UUID
 
-from contract_costs.model.contract import ContractStatus
 from contract_costs.model.value_direction import ValueDirection
 from contract_costs.repository.contract_node_repository import ContractNodeRepository
 from contract_costs.repository.contract_repository import ContractRepository
-from contract_costs.repository.invoice_line_repository import InvoiceLineRepository
+from contract_costs.repository.financial_record_line_repository import FinancialRecordLineRepository
 from contract_costs.repository.value_type_repository import ValueTypeRepository
 from contract_costs.services.contracts.prepare.contract_node_tree_index import ContractNodeTreeIndex
 from contract_costs.services.contracts.query.dto.contract_details_dto import ContractDetailsDTO
@@ -23,17 +21,21 @@ class ContractQueryService:
         *,
         contract_repo: ContractRepository,
         contract_node_repo: ContractNodeRepository,
-        invoice_line_repo: InvoiceLineRepository,
+        record_line_repo: FinancialRecordLineRepository,
         value_type_repo: ValueTypeRepository,
     ) -> None:
         self._contract_repo = contract_repo
         self._node_repo = contract_node_repo
-        self._invoice_line_repo = invoice_line_repo
+        self._record_line_repo = record_line_repo
         self._value_type_repo = value_type_repo
 
-    def list_contracts(self) -> list[ContractListDTO]:
-        contracts = self._contract_repo.list()
-        value_types = self._value_type_repo.list()
+    def list_contracts(
+            self,
+            *,
+            organization_id: UUID
+            )-> list[ContractListDTO]:
+        contracts = self._contract_repo.list(organization_id=organization_id)
+        value_types = self._value_type_repo.list_all(organization_id=organization_id)
 
         vt_direction = {
             vt.id: vt.direction
@@ -43,7 +45,10 @@ class ContractQueryService:
         result: list[ContractListDTO] = []
 
         for contract in contracts:
-            nodes = self._node_repo.list_by_contract(contract.id)
+            nodes = self._node_repo.list_by_contract(
+                contract_id=contract.id,
+                organization_id=organization_id
+            )
             if not nodes:
                 continue
 
@@ -58,7 +63,10 @@ class ContractQueryService:
             progress = self._calculate_root_progress(tree)
 
             # ---------- FINANCIALS ----------
-            invoice_lines = self._invoice_line_repo.list_by_contract(contract.id)
+            invoice_lines = self._record_line_repo.list_by_contract(
+                                                    contract_id=contract.id,
+                                                    organization_id=organization_id
+                                                )
 
             net_cost = Decimal("0")
             revenue = Decimal("0")
@@ -104,31 +112,41 @@ class ContractQueryService:
     def get_contract_details(
             self,
             *,
+            organization_id: UUID,
             contract_id: UUID,
             at_date: date | None = None,
     ) -> ContractDetailsDTO:
 
-        contract = self._contract_repo.get(contract_id)
+        contract = self._contract_repo.get(
+            organization_id=organization_id,
+            contract_id=contract_id,
+        )
         if not contract:
             raise ValueError("Contract not found")
 
         planned_budget: dict[UUID, Decimal] = {}
         progress_map: dict[UUID, Decimal | None] = {}
 
-        nodes = self._node_repo.list_by_contract(contract_id)
+        nodes = self._node_repo.list_by_contract(
+            organization_id=organization_id,
+            contract_id=contract_id,
+        )
         tree = ContractNodeTreeIndex(nodes)
 
         for node in tree.leaves():
             planned_budget[node.id] = node.budget or Decimal("0")
             progress_map[node.id] = node.progress_at(at_date) if at_date else node.progress
 
-        value_types = self._value_type_repo.list()
+        value_types = self._value_type_repo.list_all(organization_id=organization_id)
         vt_direction = {vt.id: vt.direction for vt in value_types}
 
-        invoice_lines = self._invoice_line_repo.list_by_contract(contract_id)
+        record_lines = self._record_line_repo.list_by_contract(
+            organization_id=organization_id,
+            contract_id=contract_id,
+        )
 
         # ---------- AGG STRUCTURES ----------
-        values: dict[Any,dict[str,Decimal]] = defaultdict(lambda: {
+        values: dict[UUID,dict[str,Decimal]] = defaultdict(lambda: {
             "net": Decimal("0"),
             "gross": Decimal("0"),
             "non_deductible": Decimal("0"),
@@ -136,7 +154,7 @@ class ContractQueryService:
             "revenue_non_deductible": Decimal("0")
         })
 
-        for line in invoice_lines:
+        for line in record_lines:
             if (
                     line.contract_node_id is None
                     or line.value_type_id is None
@@ -187,11 +205,11 @@ class ContractQueryService:
         node_dtos: list[ContractNodeDetailsDTO] = []
 
         for node in tree.all_nodes():
-            progress = (
-                node.progress_at(at_date)
-                if at_date
-                else node.progress
-            )
+            # progress = (
+            #     node.progress_at(at_date)
+            #     if at_date
+            #     else node.progress
+            # )
 
             node_dtos.append(
                 ContractNodeDetailsDTO(

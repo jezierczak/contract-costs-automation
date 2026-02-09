@@ -1,16 +1,17 @@
 from contract_costs.cli.context import get_services
 from contract_costs.cli.registry import REGISTRY
+from contract_costs.cli.utils.context_helpers import require_user_id, require_organization_id
 from contract_costs.common.context.exceptions import ContextError
 
 
 def handle_whoami(args):
     services = get_services()
     try:
-        user_id = services.context.current_user_id()
-        organization_id = services.context.current_organization_id()
-    except ContextError as e:
-        print(f"❌ {e}")
+        user_id = require_user_id(services.context)
+        organization_id = require_organization_id(services.context)
+    except ContextError:
         return
+
     user = services.user_repository.get(user_id)
     organization = services.organization_repository.get(organization_id)
 

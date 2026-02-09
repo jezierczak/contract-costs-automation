@@ -1,6 +1,7 @@
 import shutil
 from decimal import Decimal
 from typing import Any
+from uuid import UUID
 
 from contract_costs.cli.printers.table_printer.table_printer import TablePrinter
 from contract_costs.infrastructure.excel.excel_column_v2.excel_column import ExcelColumn
@@ -18,6 +19,7 @@ class CmdPrinter[T](TablePrinter[T]):
     def print(
         self,
         *,
+        organization_id: UUID,
         items: list[T],
         columns: list[ExcelColumn[T]],
         header: dict[str, list[str]] | None = None,

@@ -2,27 +2,53 @@ import time
 import logging
 import threading
 import sys
+from uuid import UUID
+from pathlib import Path
 
-from contract_costs.config import INVOICE_INPUT_DIR
-from contract_costs.services.queue.invoice_queue import invoice_queue
+import contract_costs.config as cfg
+from contract_costs.services.documents.upload.dto.upload_document_command import UploadDocumentCommand
+from contract_costs.services.queue.document_queue import document_queue
 from contract_costs.services.scanner.unprocessed_scanner import scan_unprocessed
+from contract_costs.services.watcher.document_watcher import DocumentWatcherService
 
 
-def run_watcher(services) -> None:
+def run_watcher(*, services, organization_id: UUID, actor_user_id: UUID) -> None:
+    invoice_input_dir: Path = (
+        cfg.WORK_DIR
+        / str(organization_id)
+        / cfg.INVOICE_INPUT_DIR
+    )
+
     logging.info("Starting invoice processing pipeline")
-    logging.info("Watching directory: %s", INVOICE_INPUT_DIR)
+    logging.info("Organization: %s", organization_id)
+    logging.info("Watching directory: %s", invoice_input_dir)
     logging.info("Press Ctrl+C to stop")
 
-    watcher = services.invoice_watcher_service
-    worker = services.invoice_ai_worker
+    watcher = DocumentWatcherService(
+        action_bus=services.action_bus,
+        organization_id=organization_id,
+        actor_user_id=actor_user_id,
+        watch_dir=invoice_input_dir,
+    )
 
-    # scan przy starcie
-    for file in scan_unprocessed(INVOICE_INPUT_DIR):
-        invoice_queue.put(file)
+    worker = services.document_parse_worker
+
+    # 🔁 scan przy starcie
+    action_bus = services.action_bus
+
+    for file in scan_unprocessed(invoice_input_dir):
+        action_bus.execute(
+            UploadDocumentCommand(
+                organization_id=organization_id,
+                actor_user_id=actor_user_id,
+                file_path=file,
+            )
+        )
 
     worker_thread = threading.Thread(
         target=worker.run,
-        name="invoice-ai-worker",
+        name=f"invoice-ai-worker-{organization_id}",
+        # daemon=True,
     )
     worker_thread.start()
 

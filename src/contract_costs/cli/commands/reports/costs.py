@@ -1,4 +1,6 @@
 from contract_costs.cli.context import get_services
+from contract_costs.cli.utils.context_helpers import require_organization_id
+from contract_costs.common.context.exceptions import ContextError
 from contract_costs.config import REPORTS_DIR
 from contract_costs.services.reports.contract_cost_report_runner import (
     ContractCostReportRunner,
@@ -14,25 +16,34 @@ def build_report_costs(subparsers):
     p.add_argument("contract_ref", help="Contract UUID or code",)
     p.add_argument("--group-by", nargs="+", choices=["cost_node", "cost_type", "invoice"], default=["cost_node"],help="Grouping fields (default: cost_node)")
     p.add_argument("--output", choices=["stdout", "excel"], default="stdout",help="Output format")
-    p.add_argument("--invoice", nargs="+", help="Filter by invoice numbers")
+    p.add_argument("--record", nargs="+", help="Filter by invoice numbers")
     p.add_argument("--status", nargs="+",choices=["NEW", "IN_PROGRESS","PROCESSED", "PAID","NOT_PAID", "DELETED"],
         help="Filter by invoice status")
 
     p.set_defaults(handler=handle_report_costs)
 
 
-def resolve_contract_ref(repo, ref: str):
+def resolve_contract_ref(repo,organization_id: UUID, ref: str):
+
+
+
     try:
-        return repo.get(UUID(ref))
+        return repo.get(organization_id=organization_id,contract_id=UUID(ref))
     except (ValueError, TypeError):
-        return repo.get_by_code(ref)
+        return repo.get_by_code(organization_id=organization_id,contract_code=ref)
 
 
 def handle_report_costs(args):
     services = get_services()
 
+    try:
+        organization_id = require_organization_id(services.context)
+    except ContextError:
+        return None
+
     contract = resolve_contract_ref(
         services.contract_repository,
+        organization_id,
         args.contract_ref,
     )
 
@@ -44,9 +55,10 @@ def handle_report_costs(args):
     )
 
     df = runner.run(
+        organization_id=organization_id,
         contract_id=contract.id,
         group_by=args.group_by,
-        invoice_numbers=args.invoice,
+        invoice_numbers=args.record,
         invoice_statuses=args.status,
     )
 

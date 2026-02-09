@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from uuid import UUID
 
+from contract_costs.model.base_entity import BaseEntity
 from contract_costs.model.value_direction import ValueDirection
 
 
@@ -15,7 +16,7 @@ from contract_costs.model.value_direction import ValueDirection
 
 
 @dataclass
-class ValueType:
+class ValueType(BaseEntity):
     id: UUID
     code: str            # unikalny, np. MATERIAL, SALARY
     name: str            # czytelna nazwa

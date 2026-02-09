@@ -12,27 +12,42 @@ class InMemoryContractSnapshotRepository(ContractSnapshotRepository):
     def __init__(self) -> None:
         self._snapshots: dict[UUID, ContractSnapshot] = {}
 
+    # =========================
+    # CREATE
+    # =========================
+
     def add(self, snapshot: ContractSnapshot) -> None:
         if snapshot.id in self._snapshots:
             raise ValueError(f"Snapshot {snapshot.id} already exists")
 
         self._snapshots[snapshot.id] = snapshot
 
-    def get(self, snapshot_id: UUID) -> ContractSnapshot | None:
-        return self._snapshots.get(snapshot_id)
+    # =========================
+    # READ
+    # =========================
 
-    # def find_by_id_prefix(self, prefix: str) -> list[ContractSnapshot]:
-    #     return [snap for snap in self.list_all() if str(snap.id).startswith(prefix)]
+    def get(
+        self,
+        *,
+        organization_id: UUID,
+        snapshot_id: UUID,
+    ) -> ContractSnapshot | None:
+        snapshot = self._snapshots.get(snapshot_id)
+        if snapshot and snapshot.organization_id == organization_id:
+            return snapshot
+        return None
 
     def get_by_contract_and_date(
         self,
         *,
+        organization_id: UUID,
         contract_id: UUID,
         snapshot_date: date,
     ) -> ContractSnapshot | None:
         for snapshot in self._snapshots.values():
             if (
-                snapshot.contract_id == contract_id
+                snapshot.organization_id == organization_id
+                and snapshot.contract_id == contract_id
                 and snapshot.snapshot_date == snapshot_date
             ):
                 return snapshot
@@ -40,19 +55,32 @@ class InMemoryContractSnapshotRepository(ContractSnapshotRepository):
 
     def list_by_contract(
         self,
+        *,
+        organization_id: UUID,
         contract_id: UUID,
     ) -> list[ContractSnapshot]:
         return sorted(
             (
                 s for s in self._snapshots.values()
-                if s.contract_id == contract_id
+                if s.organization_id == organization_id
+                and s.contract_id == contract_id
             ),
             key=lambda s: s.snapshot_date,
         )
 
-    def list_all(self) -> list[ContractSnapshot]:
+    # =========================
+    # TECHNICAL
+    # =========================
+
+    def list_all(
+        self,
+        *,
+        organization_id: UUID,
+    ) -> list[ContractSnapshot]:
         return sorted(
-            self._snapshots.values(),
+            (
+                s for s in self._snapshots.values()
+                if s.organization_id == organization_id
+            ),
             key=lambda s: s.snapshot_date,
         )
-

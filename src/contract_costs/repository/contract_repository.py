@@ -12,13 +12,13 @@ class ContractRepository(ABC):
         ...
 
     @abstractmethod
-    def get(self, contract_id: UUID) -> Contract | None:
-        """Get contract by id"""
+    def get(self, organization_id: UUID, contract_id: UUID) -> Contract | None:
+        """Get contract by id (org scoped)"""
         ...
 
     @abstractmethod
-    def list(self) -> list[Contract]:
-        """List all contracts"""
+    def list(self, organization_id: UUID) -> list[Contract]:
+        """List all contracts for organization"""
         ...
 
     @abstractmethod
@@ -27,9 +27,15 @@ class ContractRepository(ABC):
         ...
 
     @abstractmethod
-    def exists(self, contract_id: UUID) -> bool:
-        """Check if contract exists"""
+    def exists(self, organization_id: UUID, contract_id: UUID) -> bool:
+        """Check if contract exists in organization"""
         ...
+
     @abstractmethod
-    def get_by_code(self, contract_code: str) -> Contract | None:
+    def get_by_code(
+        self,
+        organization_id: UUID,
+        contract_code: str,
+    ) -> Contract | None:
+        """Get contract by code (org scoped)"""
         ...

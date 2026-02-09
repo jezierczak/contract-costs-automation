@@ -3,8 +3,8 @@ from decimal import Decimal
 from contract_costs.repository.inmemory.contract_repository import InMemoryContractRepository
 from contract_costs.repository.inmemory.contract_node_repository import InMemoryContractNodeRepository
 from contract_costs.repository.inmemory.value_type_repository import InMemoryValueTypeRepository
-from contract_costs.repository.inmemory.invoice_line_repository import InMemoryInvoiceLineRepository
-from contract_costs.repository.inmemory.invoice_repository import InMemoryInvoiceRepository
+from contract_costs.repository.inmemory.financial_record_line_repository import InMemoryFinancialRecordLineRepository
+from contract_costs.repository.inmemory.financial_record_repository import InMemoryFinancialRecordRepository
 from contract_costs.services.reports.contract_cost_report_service import ContractCostReportService
 
 
@@ -29,7 +29,7 @@ def test_contract_cost_report_empty_when_no_invoice_lines(contract):
 
     service = ContractCostReportService(
         contract_repo,
-        InMemoryInvoiceLineRepository(),
+        InMemoryFinancialRecordLineRepository(),
         InMemoryContractNodeRepository(),
         InMemoryValueTypeRepository(),
     )

@@ -25,10 +25,15 @@ class CompanyQueryService:
     def _load_companies(self, query: CompanyQuery) -> list[Company]:
         # --- STRICT: tax_number ---
         if query.tax_number:
-            company = self._companies.get_by_tax_number(query.tax_number)
+            company = self._companies.get_by_tax_number(
+                tax_number=query.tax_number,
+                organization_id=query.organization_id,
+            )
             return [company] if company else []
 
-        companies = self._companies.list_all()
+        companies = self._companies.list_all(
+            organization_id=query.organization_id
+        )
 
         # --- own_only ---
         if query.own_only:
@@ -101,7 +106,7 @@ class CompanyQueryService:
             phone_number=company.contact.phone_number if company.contact else None,
             email=company.contact.email if company.contact else None,
 
-            bank_account_number=company.bank_account.number if company.bank_account else None,
+            bank_account_number=company.bank_account.account_number if company.bank_account else None,
             bank_account_country_code=company.bank_account.country_code if company.bank_account else None,
             iban=company.bank_account.iban if company.bank_account else None,
 

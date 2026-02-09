@@ -1,4 +1,8 @@
 from contract_costs.cli.registry import REGISTRY
+from contract_costs.cli.utils.context_helpers import require_organization_id, require_user_id
+from contract_costs.cli.utils.contract_resolver import resolve_contract
+from contract_costs.common.context.exceptions import ContextError
+
 
 def build_set_contract_status(subparsers):
     p = subparsers.add_parser(
@@ -20,7 +24,6 @@ def build_set_contract_status(subparsers):
 
 REGISTRY.register_group("set", build_set_contract_status)
 
-from uuid import UUID
 
 from contract_costs.cli.context import get_services
 from contract_costs.model.contract import ContractStatus
@@ -32,7 +35,13 @@ def handle_set_contract_status(args) -> None:
     services = get_services()
     repo = services.contract_repository
 
-    contract = _resolve_contract(args.ref, repo)
+    try:
+        organization_id = require_organization_id(services.context)
+        actor_user_id = require_user_id(services.context)
+    except ContextError:
+        return
+
+    contract = resolve_contract(args.ref, organization_id, repo)
     if not contract:
         print(f"Contract not found: {args.ref}")
         return
@@ -45,6 +54,8 @@ def handle_set_contract_status(args) -> None:
         return
 
     cmd = SetContractStatusCommand(
+        organization_id=organization_id,
+        actor_user_id=actor_user_id,
         contract_id=contract.id,
         new_status=new_status,
     )
@@ -55,10 +66,3 @@ def handle_set_contract_status(args) -> None:
         f"Contract '{contract.code}' status changed "
         f"{contract.status.value} → {new_status.value}"
     )
-
-
-def _resolve_contract(ref: str, repo):
-    try:
-        return repo.get(UUID(ref))
-    except ValueError:
-        return repo.get_by_code(ref)

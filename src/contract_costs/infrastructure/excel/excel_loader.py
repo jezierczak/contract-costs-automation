@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, TypeVar, Generic
+from typing import Any
 from openpyxl import load_workbook
 
 from contract_costs.infrastructure.excel.excel_column import (

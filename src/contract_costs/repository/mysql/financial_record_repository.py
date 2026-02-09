@@ -1,0 +1,674 @@
+import json
+import logging
+from uuid import UUID
+
+from contract_costs.model.document import Document
+from contract_costs.model.financial_record import (
+    FinancialRecord,
+    FinancialRecordStatus,
+    PaymentMethod,
+    PaymentStatus,
+)
+from contract_costs.repository.financial_record_repository import FinancialRecordRepository
+from contract_costs.infrastructure.db.mysql_connection import get_connection
+from contract_costs.repository.mysql.document_mapper import map_row_to_document
+from contract_costs.services.financial_records.review.dto.financial_record_review_query import FinancialRecordReviewQuery, CompanyReviewQuery
+
+logger = logging.getLogger(__name__)
+
+class MySQLFinancialRecordRepository(FinancialRecordRepository):
+
+    # ============================================================
+    # CREATE
+    # ============================================================
+
+    def add(self, record: FinancialRecord) -> None:
+        sql = """
+              INSERT INTO financial_records (id, 
+                                    organization_id, 
+                                    reference, 
+                                    invoice_date, 
+                                    selling_date, 
+                                    buyer_id, 
+                                    seller_id, 
+                                    payment_method, 
+                                    due_date, 
+                                    paid_date, 
+                                    payment_status, 
+                                    status, 
+                                    timestamp, 
+                                  
+                                    tags, 
+                                    created_at, 
+                                    created_by_user_id, 
+                                    updated_at, 
+                                    updated_by_user_id)
+              VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) 
+              """
+
+        conn = get_connection()
+        with conn.cursor() as cur:
+            cur.execute(
+                sql,
+                (
+                    str(record.id),
+                    str(record.organization_id),
+                    record.reference,
+                    record.invoice_date,
+                    record.selling_date,
+                    str(record.buyer_id) if record.buyer_id else None,
+                    str(record.seller_id) if record.seller_id else None,
+                    record.payment_method.value if record.payment_method else None,
+                    record.due_date,
+                    record.paid_date,
+                    record.payment_status.value if record.payment_status else None,
+                    record.status.value,
+                    record.timestamp,
+                    # record.scan_filename,
+                    json.dumps(sorted(record.tags)) if record.tags else None,
+                    record.created_at,
+                    str(record.created_by_user_id) if record.created_by_user_id else None,
+                    record.updated_at,
+                    str(record.updated_by_user_id) if record.updated_by_user_id else None,
+                ),
+            )
+        conn.commit()
+
+    # def add_document(self, document: Document) -> None:
+    #     sql = """
+    #           INSERT INTO documents (id,
+    #                                  organization_id,
+    #                                  financial_record_id,
+    #                                  document_source,
+    #                                  document_type,
+    #                                  document_number,
+    #                                  seller_nip,
+    #                                  parsed_payload,
+    #                                  file_hash,
+    #                                  file_path,
+    #                                  filename,
+    #                                  mime_type,
+    #                                  size,
+    #                                  created_at,
+    #                                  created_by_user_id,
+    #                                  updated_at,
+    #                                  updated_by_user_id)
+    #           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) \
+    #           """
+    #
+    #     conn = get_connection()
+    #     with conn.cursor() as cur:
+    #         cur.execute(
+    #             sql,
+    #             (
+    #                 str(document.id),
+    #                 str(document.organization_id),
+    #                 str(document.financial_record_id) if document.financial_record_id else None,
+    #                 document.document_source.value,
+    #                 document.document_type.value if document.document_type else None,
+    #                 document.document_number,
+    #                 document.seller_nip,
+    #                 json.dumps(document.parsed_payload) if document.parsed_payload else None,
+    #                 document.file_hash,
+    #                 document.file_path,
+    #                 document.filename,
+    #                 document.mime_type,
+    #                 document.size,
+    #                 document.created_at,
+    #                 str(document.created_by_user_id) if document.created_by_user_id else None,
+    #                 document.updated_at,
+    #                 str(document.updated_by_user_id) if document.updated_by_user_id else None,
+    #             ),
+    #         )
+    #     conn.commit()
+    #
+    # def remove_document(
+    #         self,
+    #         *,
+    #         organization_id: UUID,
+    #         document_id: UUID,
+    # ) -> None:
+    #     sql = """
+    #           DELETE
+    #           FROM documents
+    #           WHERE id = %s
+    #             AND organization_id = %s
+    #           """
+    #
+    #     conn = get_connection()
+    #     with conn.cursor() as cur:
+    #         cur.execute(sql, (str(document_id), str(organization_id)))
+    #     conn.commit()
+
+    def has_documents(
+            self,
+            *,
+            organization_id: UUID,
+            record_id: UUID,
+    ) -> bool:
+        sql = """
+              SELECT 1
+              FROM documents
+              WHERE organization_id = %s
+                AND financial_record_id = %s
+              LIMIT 1 \
+              """
+
+        conn = get_connection()
+        with conn.cursor() as cur:
+            cur.execute(
+                sql,
+                (str(organization_id), str(record_id)),
+            )
+            return cur.fetchone() is not None
+
+        # ============================================================
+        # READ – single
+        # ============================================================
+
+    def get(
+            self,
+            *,
+            organization_id: UUID,
+            record_id: UUID,
+    ) -> FinancialRecord | None:
+        sql = """
+              SELECT *
+              FROM financial_records
+              WHERE id = %s 
+                AND organization_id = %s 
+              """
+
+        conn = get_connection()
+        with conn.cursor(dictionary=True) as cur:
+            cur.execute(sql, (str(record_id), str(organization_id)))
+            row = cur.fetchone()
+
+        record = self._map_row(row) if row else None
+        if not record: return None
+        self._attach_documents(
+            organization_id=organization_id,
+            records=[record],
+        )
+        return record
+
+    def exists(
+            self,
+            *,
+            organization_id: UUID,
+            record_id: UUID,
+    ) -> bool:
+        sql = """
+              SELECT 1
+              FROM financial_records
+              WHERE id = %s 
+                AND organization_id = %s
+              LIMIT 1 
+              """
+
+        conn = get_connection()
+        with conn.cursor() as cur:
+            cur.execute(sql, (str(record_id), str(organization_id)))
+            return cur.fetchone() is not None
+
+        # ============================================================
+        # LOOKUP
+        # ============================================================
+
+    def get_by_reference(
+            self,
+            *,
+            organization_id: UUID,
+            reference: str,
+    ) -> list[FinancialRecord]:
+        sql = """
+              SELECT *
+              FROM financial_records
+              WHERE organization_id = %s
+                AND reference = %s
+                AND status != %s 
+              """
+
+        conn = get_connection()
+        with conn.cursor(dictionary=True) as cur:
+            cur.execute(
+                sql,
+                (
+                    str(organization_id),
+                    reference,
+                    FinancialRecordStatus.DELETED.value,
+                ),
+            )
+            rows = cur.fetchall()
+
+        records = [self._map_row(r) for r in rows]
+        self._attach_documents(
+            organization_id=organization_id,
+            records=records,
+        )
+        return records
+
+    def get_unique_record(
+        self,
+        *,
+        organization_id: UUID,
+        reference: str,
+        seller_id: UUID,
+    ) -> FinancialRecord | None:
+        sql = """
+        SELECT *
+        FROM financial_records
+        WHERE organization_id = %s
+          AND reference = %s
+          AND seller_id = %s
+          AND status != %s
+        LIMIT 1
+        """
+
+        conn = get_connection()
+        with conn.cursor(dictionary=True) as cur:
+            cur.execute(
+                sql,
+                (
+                    str(organization_id),
+                    reference,
+                    str(seller_id),
+                    FinancialRecordStatus.DELETED.value,
+                ),
+            )
+            row = cur.fetchone()
+
+        record = self._map_row(row) if row else None
+        if not record:
+            return None
+
+        self._attach_documents(
+            organization_id=organization_id,
+            records=[record],
+        )
+        return record
+
+        # ============================================================
+        # LISTS
+        # ============================================================
+
+    def list_all(
+            self,
+            *,
+            organization_id: UUID,
+    ) -> list[FinancialRecord]:
+        sql = """
+              SELECT *
+              FROM financial_records
+              WHERE organization_id = %s
+              ORDER BY invoice_date DESC, timestamp DESC 
+              """
+
+        conn = get_connection()
+        with conn.cursor(dictionary=True) as cur:
+            cur.execute(sql, (str(organization_id),))
+            rows = cur.fetchall()
+
+        records = [self._map_row(r) for r in rows]
+        self._attach_documents(
+            organization_id=organization_id,
+            records=records,
+        )
+        return records
+
+    def list_by_seller_id(
+            self,
+            *,
+            organization_id: UUID,
+            seller_id: UUID,
+    ) -> list[FinancialRecord]:
+        sql = """
+              SELECT *
+              FROM financial_records
+              WHERE organization_id = %s
+                AND seller_id = %s 
+              """
+
+        conn = get_connection()
+        with conn.cursor(dictionary=True) as cur:
+            cur.execute(sql, (str(organization_id), str(seller_id)))
+            rows = cur.fetchall()
+
+        records = [self._map_row(r) for r in rows]
+        self._attach_documents(
+            organization_id=organization_id,
+            records=records,
+        )
+        return records
+
+    def get_for_assignment(
+            self,
+            *,
+            organization_id: UUID,
+            status: FinancialRecordStatus | list[FinancialRecordStatus],
+    ) -> list[FinancialRecord]:
+        statuses = [status] if isinstance(status, FinancialRecordStatus) else list(status)
+        if not statuses:
+            return []
+
+        placeholders = ", ".join(["%s"] * len(statuses))
+        sql = f"""
+          SELECT *
+          FROM financial_records
+          WHERE organization_id = %s
+            AND status IN ({placeholders})
+          ORDER BY invoice_date
+          """
+
+        params = [str(organization_id)] + [s.value for s in statuses]
+
+        conn = get_connection()
+        with conn.cursor(dictionary=True) as cur:
+            cur.execute(sql, params)
+            rows = cur.fetchall()
+
+        records= [self._map_row(r) for r in rows]
+        self._attach_documents(
+            organization_id=organization_id,
+            records=records,
+        )
+        return records
+
+        # ============================================================
+        # UPDATE
+        # ============================================================
+
+    def update(self, record: FinancialRecord) -> None:
+        sql = """
+              UPDATE financial_records
+              SET reference          = %s,
+                  invoice_date       = %s,
+                  selling_date       = %s,
+                  buyer_id           = %s,
+                  seller_id          = %s,
+                  payment_method     = %s,
+                  due_date           = %s,
+                  paid_date          = %s,
+                  payment_status     = %s,
+                  status             = %s,
+                  tags               = %s,
+                  timestamp          = %s,
+                  updated_at         = %s,
+                  updated_by_user_id = %s
+              WHERE id = %s
+                AND organization_id = %s 
+              """
+
+        conn = get_connection()
+        with conn.cursor() as cur:
+            cur.execute(
+                sql,
+                (
+                    record.reference,
+                    record.invoice_date,
+                    record.selling_date,
+                    str(record.buyer_id) if record.buyer_id else None,
+                    str(record.seller_id) if record.seller_id else None,
+                    record.payment_method.value if record.payment_method else None,
+                    record.due_date,
+                    record.paid_date,
+                    record.payment_status.value if record.payment_status else None,
+                    record.status.value,
+                    # record.scan_filename,
+                    json.dumps(sorted(record.tags)) if record.tags else None,
+                    record.timestamp,
+                    record.updated_at,
+                    str(record.updated_by_user_id) if record.updated_by_user_id else None,
+                    str(record.id),
+                    str(record.organization_id),
+                ),
+            )
+        conn.commit()
+
+        # ============================================================
+        # REVIEW / QUERY
+        # ============================================================
+
+    def list_for_review(self,*,organization_id: UUID, query: FinancialRecordReviewQuery) -> list[FinancialRecord]:
+        conditions = ["financial_records.organization_id = %s"]
+        params: list[object] = [str(organization_id)]
+
+        needs_contract_join = bool(query.contract_codes)
+
+        if query.buyer_query:
+            self._apply_company_query(
+                alias="buyer",
+                query=query.buyer_query,
+                conditions=conditions,
+                params=params,
+            )
+
+        if query.seller_query:
+            self._apply_company_query(
+                alias="seller",
+                query=query.seller_query,
+                conditions=conditions,
+                params=params,
+            )
+
+        if query.only_ready_for_accountant:
+            conditions.append("financial_records.status = %s")
+            params.append(FinancialRecordStatus.PROCESSED.value)
+
+        elif query.statuses:
+            placeholders = ", ".join(["%s"] * len(query.statuses))
+            conditions.append(f"financial_records.status IN ({placeholders})")
+            params.extend(s.value for s in query.statuses)
+
+        else:
+            conditions.append("financial_records.status != %s")
+            params.append(FinancialRecordStatus.DELETED.value)
+
+        if query.contract_codes:
+            placeholders = ", ".join(["%s"] * len(query.contract_codes))
+            conditions.append(f"contracts.code IN ({placeholders})")
+            params.extend(query.contract_codes)
+
+        if query.payment_statuses:
+            placeholders = ", ".join(["%s"] * len(query.payment_statuses))
+            conditions.append(f"financial_records.payment_status IN ({placeholders})")
+            params.extend(p.value for p in query.payment_statuses)
+
+        if query.from_date:
+            conditions.append("financial_records.invoice_date >= %s")
+            params.append(query.from_date)
+
+        if query.to_date:
+            conditions.append("financial_records.invoice_date <= %s")
+            params.append(query.to_date)
+
+        if query.direction:
+            conditions.append(
+                """
+                CASE
+                    WHEN buyer.role = 'Own' AND seller.role != 'Own' THEN 'COST'
+                    WHEN buyer.role != 'Own' AND seller.role = 'Own' THEN 'REVENUE'
+                    WHEN buyer.role = 'Own' AND seller.role = 'Own' THEN 'INTERNAL'
+                END = %s
+                """
+            )
+            params.append(query.direction.value)
+
+        sql = """
+              SELECT DISTINCT financial_records.*
+              FROM financial_records 
+              """
+
+        if query.seller_query or query.buyer_query or query.direction:
+            sql += """
+                JOIN companies buyer ON buyer.id = financial_records.buyer_id
+                JOIN companies seller ON seller.id = financial_records.seller_id
+            """
+
+        if needs_contract_join:
+            sql += """
+                JOIN invoice_lines il ON il.invoice_id = financial_records.id
+                JOIN contracts ON contracts.id = il.contract_id
+            """
+
+        if conditions:
+            sql += " WHERE " + " AND ".join(conditions)
+
+        if not query.payment_statuses:
+            sql += " ORDER BY financial_records.invoice_date DESC, financial_records.timestamp DESC"
+        else:
+            sql += " ORDER BY financial_records.due_date, financial_records.timestamp"
+
+        conn = get_connection()
+        with conn.cursor(dictionary=True) as cur:
+            logger.info(sql)
+            logger.info(params)
+            cur.execute(sql, params)
+            rows = cur.fetchall()
+
+        records = [self._map_row(r) for r in rows]
+        self._attach_documents(
+            organization_id=organization_id,
+            records=records,
+        )
+        return records
+
+    # ============================================================
+    # MAPPING
+    # ============================================================
+
+    @staticmethod
+    def _map_row(row: dict) -> FinancialRecord:
+        return FinancialRecord(
+            id=UUID(row["id"]),
+            organization_id=UUID(row["organization_id"]),
+            reference=row["reference"],
+            invoice_date=row["invoice_date"],
+            selling_date=row["selling_date"],
+            buyer_id=UUID(row["buyer_id"]),
+            seller_id=UUID(row["seller_id"]),
+            payment_method=PaymentMethod(row["payment_method"]),
+            due_date=row["due_date"],
+            paid_date=row["paid_date"],
+            payment_status=PaymentStatus(row["payment_status"]),
+            status=FinancialRecordStatus(row["status"]),
+            timestamp=row["timestamp"],
+            #scan_filename=row["scan_filename"],
+            tags=set(json.loads(row["tags"])) if row["tags"] else set(),
+            created_at=row["created_at"],
+            created_by_user_id=UUID(row["created_by_user_id"]) if row["created_by_user_id"] else None,
+            updated_at=row["updated_at"],
+            updated_by_user_id=UUID(row["updated_by_user_id"]) if row["updated_by_user_id"] else None,
+            documents=[]
+        )
+    # ============================================================
+    # COMPANY QUERY HELPER
+    # ============================================================
+
+    @staticmethod
+    def _apply_company_query(
+            *,
+            alias: str,
+            query: CompanyReviewQuery,
+            conditions: list[str],
+            params: list[object],
+    ) -> None:
+        column_map = {
+            "name": f"{alias}.name",
+            "tax_numbers": f"{alias}.tax_number",
+            "role": f"{alias}.role",
+        }
+
+        ANY_SEARCH_COLUMNS = (
+            "name",
+            "tax_number",
+            "description",
+            "email",
+            "street",
+            "city",
+        )
+
+        for key, value in query.items():
+
+            if key == "any":
+                or_conditions = [
+                    f"{alias}.{col} LIKE %s"
+                    for col in ANY_SEARCH_COLUMNS
+                ]
+                conditions.append("(" + " OR ".join(or_conditions) + ")")
+                like = f"%{value}%"
+                params.extend([like] * len(or_conditions))
+                continue
+
+            values = value if isinstance(value, list) else [value]
+            column = column_map.get(key)
+            if not column:
+                continue
+
+            if key == "name":
+                or_conditions = [f"{column} LIKE %s" for _ in values]
+                conditions.append("(" + " OR ".join(or_conditions) + ")")
+                for v in values:
+                    params.append(
+                        f"%{v.value}%" if hasattr(v, "value") else f"%{v}%"
+                    )
+                continue
+
+            placeholders = ", ".join(["%s"] * len(values))
+            conditions.append(f"{column} IN ({placeholders})")
+            for v in values:
+                params.append(v.value if hasattr(v, "value") else v)
+
+    def _attach_documents(
+            self,
+            *,
+            organization_id: UUID,
+            records: list[FinancialRecord],
+    ) -> None:
+        if not records:
+            return
+
+        record_ids = [r.id for r in records]
+        docs = self._load_documents(organization_id, record_ids)
+
+        for r in records:
+            r.documents = docs.get(r.id, [])
+
+
+    def _load_documents(
+            self,
+            organization_id: UUID,
+            record_ids: list[UUID],
+    ) -> dict[UUID, list[Document]]:
+
+        if not record_ids:
+            return {}
+
+        placeholders = ",".join(["%s"] * len(record_ids))
+        sql = f"""
+            SELECT *
+            FROM documents
+            WHERE organization_id = %s
+              AND financial_record_id IN ({placeholders})
+        """
+
+        conn = get_connection()
+        with conn.cursor(dictionary=True) as cur:
+            cur.execute(
+                sql,
+                (str(organization_id), *[str(i) for i in record_ids]),
+            )
+            rows = cur.fetchall()
+
+        result: dict[UUID, list[Document]] = {}
+
+        for r in rows:
+            doc = self._map_row_to_document(r)
+            if doc.financial_record_id:
+                result.setdefault(doc.financial_record_id, []).append(doc)
+
+        return result
+
+    @staticmethod
+    def _map_row_to_document(row: dict) -> Document:
+        return map_row_to_document(row)

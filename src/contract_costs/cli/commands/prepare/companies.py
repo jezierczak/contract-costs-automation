@@ -1,7 +1,7 @@
-from pathlib import Path
-
 from contract_costs.cli.context import get_services
 from contract_costs.cli.registry import REGISTRY
+from contract_costs.cli.utils.context_helpers import require_organization_id
+from contract_costs.common.context.exceptions import ContextError
 from contract_costs.infrastructure.excel.base_excel_exporter import BaseExcelExporter
 from contract_costs.infrastructure.filesystem.excel_domain_file_manager import InputsCompaniesAssignmentFileManager
 from contract_costs.model.company import CompanyType
@@ -9,8 +9,6 @@ from contract_costs.services.companies.query.company_query_service import Compan
 from contract_costs.services.companies.prepare.company_prepare_columns import (
     COMPANY_PREPARE_COLUMNS,
 )
-import contract_costs.config as cfg
-
 
 # =====================
 # CLI REGISTRATION
@@ -20,11 +18,6 @@ def build_prepare_companies(subparsers) -> None:
         "companies",
         help="Prepare companies Excel for editing",
     )
-
-    # p.add_argument(
-    #     "--output",
-    #     help="Output Excel file path",
-    # )
 
     p.add_argument(
         "--nip",
@@ -37,17 +30,19 @@ def build_prepare_companies(subparsers) -> None:
 
     p.set_defaults(handler=handle_prepare_companies)
 
-
 REGISTRY.register_group("prepare", build_prepare_companies)
 
 
 def handle_prepare_companies(args) -> None:
     services = get_services()
-    fm = InputsCompaniesAssignmentFileManager()
 
-    # if args.output:
-    #     output_path = Path(args.output)
-    # else:
+    try:
+        organization_id = require_organization_id(services.context)
+    except ContextError:
+        return
+
+    fm = InputsCompaniesAssignmentFileManager(organization_id=organization_id)
+
     output_path = fm.prepare_target()
 
     role = None
@@ -61,6 +56,7 @@ def handle_prepare_companies(args) -> None:
     # QUERY (READ ONLY)
     # =====================
     query = CompanyQuery(
+        organization_id=organization_id,
         tax_number=args.nip,
         own_only=args.own,
         include_inactive=args.inactive,
@@ -78,6 +74,7 @@ def handle_prepare_companies(args) -> None:
     # EXPORT TO EXCEL
     # =====================
     BaseExcelExporter.export(
+        organization_id=organization_id,
         items=companies,
         columns=COMPANY_PREPARE_COLUMNS,
         output_path=output_path,

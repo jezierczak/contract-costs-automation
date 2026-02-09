@@ -1,7 +1,7 @@
 from pathlib import Path
 from decimal import Decimal
-from datetime import date
-from uuid import uuid4
+from datetime import date, datetime
+from uuid import uuid4, UUID
 
 import pytest
 
@@ -34,28 +34,71 @@ from contract_costs.repository.inmemory.contract_node_repository import (
 from contract_costs.repository.inmemory.value_type_repository import (
     InMemoryValueTypeRepository,
 )
-from contract_costs.repository.inmemory.invoice_line_repository import (
-    InMemoryInvoiceLineRepository,
+from contract_costs.repository.inmemory.financial_record_line_repository import (
+    InMemoryFinancialRecordLineRepository,
 )
-from contract_costs.repository.inmemory.invoice_repository import InMemoryInvoiceRepository
-from contract_costs.services.catalogues.invoice_file_organizer import InvoiceFileOrganizer
+from contract_costs.repository.inmemory.financial_record_repository import InMemoryFinancialRecordRepository
+from contract_costs.services.catalogues.invoice_file_organizer import RecordFileOrganizer
 from contract_costs.services.catalogues.invoice_file_workflow_service import InvoiceFileWorkflowService
-from contract_costs.services.invoices.assigment.ingest.completion_validator.invoice_completion_validator import \
-    InvoiceCompletionValidator
-from contract_costs.services.invoices.assigment.ingest.excel_invoice_ingest_service import ExcelInvoiceIngestService
-from contract_costs.services.invoices.assigment.ingest.invoice_ingest_orchestrator import InvoiceIngestOrchestrator
+from contract_costs.services.financial_records.assigment.ingest.completion_validator.invoice_completion_validator import \
+    RecordCompletionValidator
+from contract_costs.services.financial_records.assigment.ingest.excel_financial_record_ingest_service import ExcelFinancialRecordIngestService
+from contract_costs.services.financial_records.assigment.ingest.financial_record_ingest_orchestrator import FinancialRecordIngestOrchestrator
 
 # ============================================================
 # SERWISY
 # ============================================================
 
-from contract_costs.services.invoices.assigment.ingest.invoice_line_update_service import (
-    InvoiceLineUpdateService,
+from contract_costs.services.financial_records.assigment.ingest.financial_record_line_update_service import (
+    FinancialRecordLineUpdateService,
 )
 # from contract_costs.services.invoices.assigment.ingest.invoice_update_service import InvoiceUpdateService
 # from contract_costs.services.invoices.assigment.ingest.invoice_ingest_orchestrator import InvoiceIngestOrchestrator
-from contract_costs.services.invoices.assigment.ingest.pdf_invoice_ingest_service import PdfInvoiceIngestService
+from contract_costs.services.financial_records.assigment.ingest.pdf_financial_record_ingest_service import PdfFinancialRecordIngestService
 
+
+NOW = datetime(2024, 1, 1, 12, 0, 0)
+
+@pytest.fixture
+def test_org_id() -> UUID:
+    return uuid4()
+
+@pytest.fixture
+def test_user_id() -> UUID:
+    return uuid4()
+
+
+def make_company(
+    *,
+    organization_id: UUID,
+    created_by_user_id: UUID,
+    name: str = "Test Company",
+    tax_number: str = "1234567890",
+    role: CompanyType = CompanyType.CLIENT,
+    description: str | None = None,
+    is_active: bool = True,
+) -> Company:
+    return Company(
+        id=uuid4(),
+        organization_id=organization_id,
+
+        name=name,
+        tax_number=tax_number,
+        description=description,
+
+        address=None,
+        contact=None,
+        bank_account=None,
+
+        role=role,
+        tags=set(),
+        is_active=is_active,
+
+        created_at=NOW,
+        created_by_user_id=created_by_user_id,
+        updated_at=None,
+        updated_by_user_id=None,
+    )
 
 # ============================================================
 # REPO FIXTURES
@@ -63,54 +106,46 @@ from contract_costs.services.invoices.assigment.ingest.pdf_invoice_ingest_servic
 
 @pytest.fixture
 def invoice_line_repo():
-    return InMemoryInvoiceLineRepository()
+    return InMemoryFinancialRecordLineRepository()
 
 @pytest.fixture
 def invoice_repo():
-    return InMemoryInvoiceRepository()
+    return InMemoryFinancialRecordRepository()
 
 
 @pytest.fixture
-def pdf_ingest_service(invoice_repo) -> PdfInvoiceIngestService:
-    return PdfInvoiceIngestService(invoice_repo)
+def pdf_ingest_service(invoice_repo) -> PdfFinancialRecordIngestService:
+    return PdfFinancialRecordIngestService(invoice_repo)
 
 @pytest.fixture
-def excel_ingest_service(invoice_repo) -> ExcelInvoiceIngestService:
-    return ExcelInvoiceIngestService(invoice_repo)
+def excel_ingest_service(invoice_repo) -> ExcelFinancialRecordIngestService:
+    return ExcelFinancialRecordIngestService(invoice_repo)
 
 # ============================================================
 # COMPANY FIXTURES
 # ============================================================
 
 @pytest.fixture
-def owner_company() -> Company:
-    return Company(
-        id=uuid4(),
+def owner_company(test_org_id, test_user_id) -> Company:
+    return make_company(
+        organization_id=test_org_id,
+        created_by_user_id=test_user_id,
         name="Owner Sp. z o.o.",
         tax_number="1111111111",
         description="Owner contract description",
-        address=None,
-        contact=None,
-        bank_account=None,
         role=CompanyType.OWN,
-        tags=set(),
-        is_active=True,
     )
 
 
 @pytest.fixture
-def client_company() -> Company:
-    return Company(
-        id=uuid4(),
+def client_company(test_org_id, test_user_id) -> Company:
+    return make_company(
+        organization_id=test_org_id,
+        created_by_user_id=test_user_id,
         name="Client Sp. z o.o.",
         tax_number="2222222222",
         description="Client contract description",
-        address=None,
-        contact=None,
-        bank_account=None,
-        role=CompanyType.CLIENT,  # 👈 ważne rozróżnienie domenowe
-        tags=set(),
-        is_active=True,
+        role=CompanyType.CLIENT,
     )
 
 
@@ -307,11 +342,11 @@ def invoice_line_update_service(
     cost_node_repo,
         value_type_repo,
 ):
-    return InvoiceLineUpdateService(
-        invoice_line_repository=invoice_line_repo,
+    return FinancialRecordLineUpdateService(
+        record_line_repository=invoice_line_repo,
         contract_repository=contract_repo,
-        cost_node_repository=cost_node_repo,
-        cost_type_repository=value_type_repo,
+        contract_node_repository=cost_node_repo,
+        value_type_repository=value_type_repo,
     )
 
 
@@ -337,17 +372,17 @@ def invoice_line_update_service(
 
 @pytest.fixture
 def orchestrator( invoice_repo,invoice_line_update_service,pdf_ingest_service,excel_ingest_service):
-    return InvoiceIngestOrchestrator(
-        invoice_ingest_service_pdf=pdf_ingest_service,
-        invoice_ingest_service_excel=excel_ingest_service,
-        invoice_line_service=invoice_line_update_service,
-        invoice_repository=invoice_repo,
+    return FinancialRecordIngestOrchestrator(
+        record_ingest_service_document=pdf_ingest_service,
+        record_ingest_service_excel=excel_ingest_service,
+        record_line_service=invoice_line_update_service,
+        record_repository=invoice_repo,
         file_workflow=InvoiceFileWorkflowService(
             invoice_repo,
             InMemoryCompanyRepository(),
-            InvoiceFileOrganizer()
+            RecordFileOrganizer()
         ),
-        invoice_completion_validator=InvoiceCompletionValidator()
+        record_completion_validator=RecordCompletionValidator()
     )
 
 

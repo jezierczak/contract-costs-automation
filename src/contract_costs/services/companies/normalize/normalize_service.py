@@ -17,10 +17,10 @@ class CompanyNormalizeService:
 
         bank_account = None
         if company.bank_account:
-            number = self.normalize_bank_account(company.bank_account.number)
+            number = self.normalize_bank_account(company.bank_account.account_number)
             if number:
                 bank_account = BankAccount(
-                    number=number,
+                    account_number=number,
                     country_code=company.bank_account.country_code,
                 )
         # 🔥 KLUCZOWE: normalizujemy tax_number TYLKO jeśli istnieje

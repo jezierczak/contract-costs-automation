@@ -63,9 +63,16 @@ class MySqlOrganizationRepository(OrganizationRepository):
                 # --- organization_user ---
                 cur.execute(
                     """
-                    INSERT INTO organization_users (id, organization_id, user_id,
-                                                    role, is_active, created_at, created_by_user_id)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO organization_users (id,
+                                                    organization_id,
+                                                    user_id,
+                                                    role,
+                                                    is_active,
+                                                    invited_at,
+                                                    accepted_at,
+                                                    created_at,
+                                                    created_by_user_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
                         str(membership.id),
@@ -73,6 +80,8 @@ class MySqlOrganizationRepository(OrganizationRepository):
                         str(membership.user_id),
                         membership.role.value,
                         membership.is_active,
+                        membership.invited_at,
+                        membership.accepted_at,
                         membership.created_at,
                         str(membership.created_by_user_id)
                         if membership.created_by_user_id else None,

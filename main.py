@@ -3,7 +3,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from contract_costs.services.invoices.assigment.invoice_sources.pdf.parsers.ocr_pdf_invoice_parser import OCRAIAgentInvoiceParser
+from contract_costs.services.financial_records.assigment.invoice_sources.pdf.parsers.ocr_pdf_document_parser import OCRAIAgentDocumentParser
 
 import os
 

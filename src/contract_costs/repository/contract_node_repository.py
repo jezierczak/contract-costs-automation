@@ -1,9 +1,8 @@
-from datetime import date
-from decimal import Decimal
 from uuid import UUID
 from abc import ABC, abstractmethod
 
 from contract_costs.model.contract_node import ContractNode
+from contract_costs.model.contract_node_progress import ContractNodeProgress
 
 
 class ContractNodeRepository(ABC):
@@ -21,30 +20,43 @@ class ContractNodeRepository(ABC):
 
 
     @abstractmethod
-    def get(self, contract_node_id: UUID) -> ContractNode | None:
+    def get(self,
+            *,
+            organization_id: UUID,
+            contract_node_id: UUID,
+    ) -> ContractNode | None:
         """Get contract node by id"""
         ...
 
     @abstractmethod
-    def get_by_code(self, contract_node_code: str) -> ContractNode | None:
+    def get_by_code(self,
+
+                    organization_id: UUID,
+                    contract_node_code: str) -> ContractNode | None:
         """Get contract node by code"""
         ...
 
     @abstractmethod
-    def list_nodes(self) -> list[ContractNode]:
+    def list_nodes(self,*,organization_id: UUID) -> list[ContractNode]:
         """List all contract nodes"""
         ...
     @abstractmethod
-    def list_leaf_nodes_for_active_contracts(self) -> list[ContractNode]:
+    def list_leaf_nodes_for_active_contracts(self,*,organization_id: UUID) -> list[ContractNode]:
         ...
 
     @abstractmethod
-    def list_by_parent(self, parent_id: UUID) -> list[ContractNode]:
+    def list_by_parent(self,
+                       *,
+                       organization_id: UUID,
+                       parent_id: UUID) -> list[ContractNode]:
         """List all contract nodes with parent id"""
         ...
 
     @abstractmethod
-    def list_by_contract(self, contract_id: UUID) -> list[ContractNode]:
+    def list_by_contract(self,
+                         *,
+                         organization_id: UUID,
+                         contract_id: UUID) -> list[ContractNode]:
         """List all contract nodes with contract id"""
         ...
 
@@ -57,34 +69,45 @@ class ContractNodeRepository(ABC):
         ...
 
     @abstractmethod
-    def delete_by_contract(self, contract_id: UUID) -> None:
+    def delete_by_contract(self,
+                           *,
+                           organization_id: UUID,
+                           contract_id: UUID) -> None:
         ...
 
     @abstractmethod
-    def delete_many(self, ids: list[UUID]) -> None:
+    def delete_many(self,
+                    *,
+                    organization_id: UUID,
+                    ids: list[UUID]) -> None:
         ...
 
     @abstractmethod
-    def exists(self, contract_node_id: UUID) -> bool:
+    def exists(self,
+               *,
+               organization_id: UUID,
+               contract_node_id: UUID) -> bool:
         """Check if contract node exists"""
         ...
 
     @abstractmethod
-    def has_values(self, contract_id: UUID) -> bool:
+    def has_values(self,
+                   *,
+                   organization_id: UUID,
+                   contract_id: UUID) -> bool:
         """Check if contract has any nodes"""
         ...
 
     @abstractmethod
-    def node_has_values(self, contract_node_id: UUID) -> bool:
+    def node_has_values(self,
+                        *,
+                        organization_id: UUID,
+                        contract_node_id: UUID) -> bool:
         """Check if any values are assigned to this node"""
         ...
 
 
     @abstractmethod
-    def add_progress(
-        self,
-        node_id: UUID,
-        progress: Decimal,
-        progress_date: date,
-    ) -> None:
+    def add_progress(self, progress: ContractNodeProgress) -> None:
+        """Add or update progress for contract node"""
         ...

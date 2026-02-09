@@ -4,6 +4,7 @@ from decimal import Decimal
 from typing import TypedDict
 from uuid import UUID
 
+from contract_costs.model.base_entity import BaseEntity
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 
 
@@ -17,8 +18,8 @@ class ContractNodeInput(TypedDict):
     is_active: bool
 
 
-@dataclass
-class ContractNode:
+@dataclass(slots=True)
+class ContractNode(BaseEntity):
     id: UUID
     contract_id: UUID
     code: str

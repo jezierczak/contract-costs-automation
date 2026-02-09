@@ -1,7 +1,7 @@
 from decimal import Decimal
 from uuid import uuid4
 
-from contract_costs.model.invoice_line import InvoiceLine
+from contract_costs.model.financial_record_line import FinancialRecordLine
 from contract_costs.model.amount import Amount, VatRate
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 
@@ -9,7 +9,7 @@ from contract_costs.model.unit_of_measure import UnitOfMeasure
 class TestInvoiceLine:
 
     def test_invoice_line_amount(self,) -> None:
-        line = InvoiceLine(
+        line = FinancialRecordLine(
             id=uuid4(),
             invoice_id=uuid4(),
             quantity= Decimal("2"),
@@ -30,7 +30,7 @@ class TestInvoiceLine:
         assert line.amount.gross == Decimal("123")
 
     def test_invoice_line_quantity_and_unit(self) -> None:
-        line = InvoiceLine(
+        line = FinancialRecordLine(
             id=uuid4(),
             invoice_id=uuid4(),
             quantity=Decimal("3"),

@@ -4,11 +4,16 @@ from uuid import uuid4
 
 import pytest
 
+from contract_costs.common.time import utc_now
 from contract_costs.model.company import CompanyType, Company, Address, Contact
 from contract_costs.model.contract import ContractStatus, Contract
 from contract_costs.repository.inmemory.contract_repository import InMemoryContractRepository
 from contract_costs.services.contracts.apply.command.set_contract_status_command import SetContractStatusCommand
 from contract_costs.services.contracts.apply.set_contract_status_service import SetContractStatusService
+
+
+TEST_ORG_ID = uuid4()
+TEST_USER_ID = uuid4()
 
 
 def make_company(
@@ -19,6 +24,8 @@ def make_company(
 ) -> Company:
     return Company(
         id=uuid4(),
+        organization_id=TEST_ORG_ID,
+
         name=name,
         description=None,
         tax_number=tax_number,
@@ -36,6 +43,11 @@ def make_company(
         role=role,
         tags=set(),
         is_active=True,
+
+        created_at=utc_now(),
+        created_by_user_id=TEST_USER_ID,
+        updated_at=None,
+        updated_by_user_id=None,
     )
 
 def make_contract(

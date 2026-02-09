@@ -11,7 +11,7 @@ class ValueTypeQueryService:
         self._repository = repository
 
     def list(self, query: ValueTypeQuery) -> list[ValueTypeDTO]:
-        items = self._repository.list()
+        items = self._repository.list_all(organization_id=query.organization_id)
 
         if not query.include_inactive:
             items = [v for v in items if v.is_active]

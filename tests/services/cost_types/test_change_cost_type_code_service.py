@@ -3,7 +3,7 @@ import pytest
 
 from contract_costs.model.value_direction import ValueDirection
 from contract_costs.model.value_type import ValueType
-from contract_costs.services.value_types.apply.change_value_type_code_service import ChangeCostTypeCodeService
+from contract_costs.services.value_types.apply.change_value_type_code_service import ChangeValueTypeCodeService
 from contract_costs.services.value_types.apply.commands.change_value_type_code_command import ChangeValueTypeCodeCommand
 
 
@@ -18,7 +18,7 @@ def test_change_value_type_code(repo):
     )
     repo.add(ct)
 
-    service = ChangeCostTypeCodeService(repo)
+    service = ChangeValueTypeCodeService(repo)
     cmd = ChangeValueTypeCodeCommand(
         value_type_id=ct.id,
         new_code="NEW",
@@ -52,7 +52,7 @@ def test_change_value_type_code_duplicate_raises(repo):
     repo.add(ct1)
     repo.add(ct2)
 
-    service = ChangeCostTypeCodeService(repo)
+    service = ChangeValueTypeCodeService(repo)
     cmd = ChangeValueTypeCodeCommand(
         value_type_id=ct2.id,
         new_code="A",
@@ -73,7 +73,7 @@ def test_change_value_type_code_idempotent(repo):
     )
     repo.add(ct)
 
-    service = ChangeCostTypeCodeService(repo)
+    service = ChangeValueTypeCodeService(repo)
     cmd = ChangeValueTypeCodeCommand(
         value_type_id=ct.id,
         new_code="SAME",
@@ -86,7 +86,7 @@ def test_change_value_type_code_idempotent(repo):
 
 
 def test_change_cost_type_code_non_existing_raises(repo):
-    service = ChangeCostTypeCodeService(repo)
+    service = ChangeValueTypeCodeService(repo)
     cmd = ChangeValueTypeCodeCommand(
         value_type_id=uuid4(),
         new_code="X",

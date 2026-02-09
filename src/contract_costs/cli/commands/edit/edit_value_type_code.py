@@ -1,5 +1,7 @@
 from contract_costs.cli.context import get_services
 from contract_costs.cli.registry import REGISTRY
+from contract_costs.cli.utils.context_helpers import require_organization_id, require_user_id
+from contract_costs.common.context.exceptions import ContextError
 from contract_costs.services.value_types.apply.commands.change_value_type_code_command import ChangeValueTypeCodeCommand
 
 
@@ -15,6 +17,13 @@ REGISTRY.register_group("edit", build_change_value_type_code)
 
 def handle_change_value_type_code(args=None) -> None:
     services = get_services()
+
+    try:
+        organization_id = require_organization_id(services.context)
+        actor_user_id = require_user_id(services.context)
+    except ContextError:
+        return
+
     repo = services.value_type_repository
 
     code = input("Current cost type code:\n-> ").strip()
@@ -41,6 +50,8 @@ def handle_change_value_type_code(args=None) -> None:
 
     cmd = ChangeValueTypeCodeCommand(
         value_type_id=value_type.id,
+        organization_id=organization_id,
+        actor_user_id=actor_user_id,
         new_code=new_code,
     )
 

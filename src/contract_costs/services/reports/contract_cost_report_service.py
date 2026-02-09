@@ -3,7 +3,7 @@ from typing import Iterable
 from uuid import UUID
 
 from contract_costs.repository.contract_repository import ContractRepository
-from contract_costs.repository.invoice_line_repository import InvoiceLineRepository
+from contract_costs.repository.financial_record_line_repository import FinancialRecordLineRepository
 from contract_costs.repository.contract_node_repository import ContractNodeRepository
 from contract_costs.repository.value_type_repository import ValueTypeRepository
 
@@ -13,7 +13,7 @@ class ContractCostReportService:
     def __init__(
         self,
         contract_repository: ContractRepository,
-        invoice_line_repository: InvoiceLineRepository,
+        invoice_line_repository: FinancialRecordLineRepository,
         cost_node_repository: ContractNodeRepository,
         cost_type_repository: ValueTypeRepository,
     ):
@@ -22,24 +22,27 @@ class ContractCostReportService:
         self._cost_nodes = cost_node_repository
         self._cost_types = cost_type_repository
 
-    def generate_rows(self, contract_id: UUID) -> list[dict]:
-        contract = self._contracts.get(contract_id)
+    def generate_rows(self,
+                      *,
+                      organization_id: UUID,
+                      contract_id: UUID) -> list[dict]:
+        contract = self._contracts.get(organization_id=organization_id,contract_id=contract_id)
         if contract is None:
             raise ValueError("Contract does not exist")
 
         # --- cost nodes ---
-        cost_nodes = self._cost_nodes.list_by_contract(contract_id)
+        cost_nodes = self._cost_nodes.list_by_contract(organization_id=organization_id,contract_id=contract_id)
         leaf_nodes = self._leaf_nodes(cost_nodes)
         leaf_by_id = {n.id: n for n in leaf_nodes}
 
         # --- invoice lines ---
         lines = [
             line
-            for line in self._invoice_lines.list_lines()
+            for line in self._invoice_lines.list_all(organization_id=organization_id)
             if line.contract_id == contract_id
         ]
 
-        cost_types = {ct.id: ct for ct in self._cost_types.list()}
+        cost_types = {ct.id: ct for ct in self._cost_types.list_all(organization_id=organization_id)}
 
         rows: list[dict] = []
 

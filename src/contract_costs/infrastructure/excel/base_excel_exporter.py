@@ -1,4 +1,5 @@
 from pathlib import Path
+from uuid import UUID
 
 from openpyxl import Workbook
 from openpyxl.styles import Protection, Alignment
@@ -42,6 +43,7 @@ class BaseExcelExporter[T]:
     def add_sheet(
         self,
         *,
+        organization_id: UUID,
         items: list[T],
         columns: list[ExcelColumn[T]],
         sheet_name: str,
@@ -93,14 +95,14 @@ class BaseExcelExporter[T]:
 
                     case ExcelColumnType.LINK:
                         if value:
-                            abs_path = (cfg.WORK_DIR / Path(value)).resolve().as_posix()
+                            abs_path = (cfg.WORK_DIR /str(organization_id) / Path(value)).resolve().as_posix()
                             value = f'=HYPERLINK("file:///{abs_path}", "📄 Otwórz")'
                         else:
                             value = None
 
                     case ExcelColumnType.FOLDER:
                         if value:
-                            folder = (cfg.WORK_DIR / Path(value).parent).resolve().as_posix()
+                            folder = (cfg.WORK_DIR /str(organization_id)/ Path(value).parent).resolve().as_posix()
                             value = f'=HYPERLINK("file:///{folder}", "📂 Folder")'
                         else:
                             value = None
@@ -217,6 +219,7 @@ class BaseExcelExporter[T]:
     @staticmethod
     def export(
         *,
+        organization_id: UUID,
         items: list[T],
         columns: list[ExcelColumn[T]],
         output_path: Path,
@@ -227,6 +230,7 @@ class BaseExcelExporter[T]:
         """
         exporter = BaseExcelExporter[T]()
         exporter.add_sheet(
+            organization_id=organization_id,
             items=items,
             columns=columns,
             sheet_name=sheet_name,
@@ -240,6 +244,7 @@ class BaseExcelExporter[T]:
     def export_many(
         self,
         *,
+        organization_id: UUID,
         sheets: list[tuple[str, list[T], list[ExcelColumn[T]]]],
         output_path: Path,
     ) -> None:
@@ -248,6 +253,7 @@ class BaseExcelExporter[T]:
         """
         for sheet_name, items, columns in sheets:
             self.add_sheet(
+                organization_id=organization_id,
                 sheet_name=sheet_name,
                 items=items,
                 columns=columns,

@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Any
+from uuid import UUID
 
 from contract_costs.infrastructure.excel.base_excel_exporter import BaseExcelExporter
 from contract_costs.infrastructure.excel.contracts.contract_node_progress_prepare_columns import \
@@ -31,6 +32,7 @@ class ContractPrepareProgressExcelExporter:
     def export_existing(
         self,
         *,
+        organization_id: UUID,
         contract: Contract,
         cost_nodes: list[ContractNode],
         output_path: Path,
@@ -46,6 +48,7 @@ class ContractPrepareProgressExcelExporter:
         )
 
         exporter.add_sheet(
+            organization_id=organization_id,
             sheet_name=self.COST_NODES_SHEET,
             items=cost_node_dtos,
             columns=CONTRACT_NODE_PROGRESS_PREPARE_COLUMNS,

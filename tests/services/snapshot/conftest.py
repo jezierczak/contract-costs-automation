@@ -7,7 +7,7 @@ from contract_costs.model.contract import Contract
 from contract_costs.model.contract_node import ContractNode
 from contract_costs.repository.inmemory.contract_node_repository import InMemoryContractNodeRepository
 from contract_costs.repository.inmemory.contract_repository import InMemoryContractRepository
-from contract_costs.repository.inmemory.invoice_line_repository import InMemoryInvoiceLineRepository
+from contract_costs.repository.inmemory.financial_record_line_repository import InMemoryFinancialRecordLineRepository
 from contract_costs.repository.inmemory.snapshot.contract_node_snapshot_repository import \
     InMemoryContractNodeSnapshotRepository
 from contract_costs.repository.inmemory.snapshot.contract_node_value_snapshot_repository import \
@@ -96,7 +96,7 @@ def repos(contract_and_nodes):
     node_repo = InMemoryContractNodeRepository()
     node_repo.add_all(nodes)
 
-    invoice_repo = InMemoryInvoiceLineRepository()
+    invoice_repo = InMemoryFinancialRecordLineRepository()
 
     snapshot_repo = InMemoryContractSnapshotRepository()
     node_snapshot_repo = InMemoryContractNodeSnapshotRepository()

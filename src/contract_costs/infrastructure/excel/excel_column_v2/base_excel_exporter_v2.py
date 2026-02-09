@@ -1,14 +1,14 @@
-from decimal import Decimal
 from pathlib import Path
-from typing import cast
+from typing import Union
+from uuid import UUID
 
 from openpyxl import Workbook
+from openpyxl.cell import Cell, MergedCell
 from openpyxl.styles import Protection, Alignment, Font
 from openpyxl.utils import get_column_letter
 from openpyxl.workbook.defined_name import DefinedName
 from openpyxl.worksheet.worksheet import Worksheet
 
-from openpyxl.cell.cell import Cell, MergedCell
 
 from contract_costs.infrastructure.excel.checkbox_options import CheckBoxOptions
 from contract_costs.infrastructure.excel.excel_column_v2.excel_column import ExcelColumn
@@ -24,6 +24,8 @@ FONT_ROOT = Font(bold=True, color="1F4E79")
 FONT_GROUP = Font(bold=True)
 FONT_LEAF = Font(bold=False)
 FONT_INACTIVE = Font(color="9E9E9E", italic=True)
+
+ExcelCell = Union[Cell, MergedCell]
 
 class BaseExcelExporterV2[T]:
     """
@@ -54,6 +56,7 @@ class BaseExcelExporterV2[T]:
     def add_sheet(
         self,
         *,
+        organization_id:UUID,
         items: list[T],
         columns: list[ExcelColumn[T]],
         sheet_name: str,
@@ -114,7 +117,7 @@ class BaseExcelExporterV2[T]:
         for col_idx, col in enumerate(columns, start=1):
             ws.cell(row=table_header_row, column=col_idx, value=col.header)
 
-        tree_col_idx: int | None = None
+        #tree_col_idx: int | None = None
         tree_options = None
 
         tree_columns = [
@@ -138,6 +141,7 @@ class BaseExcelExporterV2[T]:
         # ======================
         if tree_col_idx is None:
             self._write_flat_rows(
+                organization_id=organization_id,
                 ws=ws,
                 items=items,
                 columns=columns,
@@ -169,36 +173,26 @@ class BaseExcelExporterV2[T]:
             if col.column_type == ExcelColumnType.HIDDEN:
                 ws.column_dimensions[col_letter].hidden = True
 
-            if col.column_type == ExcelColumnType.DISPLAY:
-                for (cell,) in ws.iter_rows( # type: ignore[attr-defined]
-                        min_col=idx,
-                        max_col=idx,
-                        min_row=data_start_row,
-                        max_row=ws.max_row,
-                ):
-                    if isinstance(cell.value, (int, float, Decimal)):
-                        cell.number_format = '#,##0.00'
+            for (cell,) in ws.iter_rows(
+                    min_col=idx,
+                    max_col=idx,
+                    min_row=data_start_row,
+                    max_row=ws.max_row,
+            ):
 
-            if col.column_type == ExcelColumnType.PERCENT:
-                for (cell,) in ws.iter_rows( # type: ignore[attr-defined]
-                        min_col=idx,
-                        max_col=idx,
-                        min_row=data_start_row,
-                        max_row=ws.max_row,
-                ):
+                if col.column_type == ExcelColumnType.NUMBER:
+                    cell.number_format = '#,##0.00'
 
+                elif col.column_type == ExcelColumnType.DISPLAY:
+                    cell.number_format = '@'
+
+                elif col.column_type == ExcelColumnType.DATE:
+                    cell.number_format = 'YYYY-MM-DD'
+
+                elif col.column_type == ExcelColumnType.PERCENT:
                     cell.number_format = "0.0%"
 
-            # --- PROTECTION ---
-            for (cell,) in ws.iter_rows( # type: ignore[attr-defined]
-                min_col=idx,
-                max_col=idx,
-                min_row=data_start_row,
-                max_row=ws.max_row,
-            ):
-                cell.protection = Protection(
-                    locked=not col.editable
-                )
+                cell.protection = Protection(locked=not col.editable)
 
         # ======================
         # STYLE
@@ -211,10 +205,10 @@ class BaseExcelExporterV2[T]:
 
         # align first column (common UX)
         for idx, col in enumerate(columns, start=1):
-            col_letter = get_column_letter(idx)
+            # col_letter = get_column_letter(idx)
 
             if col.column_type == ExcelColumnType.TREE:
-                for (cell,) in ws.iter_rows( # type: ignore[attr-defined]
+                for (cell,) in ws.iter_rows( # type: ignore[assignment]
                         min_col=idx,
                         max_col=idx,
                         min_row=data_start_row,
@@ -230,6 +224,8 @@ class BaseExcelExporterV2[T]:
         # ======================
         named_ranges_by_dict: dict[str, dict[str, str]] = {}
 
+
+
         for col in dropdown_columns:
             if not col.dropdown:
                 raise ValueError("Dropdown column requires DropdownOptions")
@@ -242,6 +238,7 @@ class BaseExcelExporterV2[T]:
                     self._create_named_ranges_from_dictionary(
                         ws=dict_ws,
                         value_column=col.dropdown.value_column,
+                        dropdown=col.dropdown
                     )
                 )
         # ======================
@@ -254,6 +251,7 @@ class BaseExcelExporterV2[T]:
             dropdown = col.dropdown
             if not dropdown:
                 continue
+
             col_letter = get_column_letter(idx)
 
             from_row = data_start_row
@@ -293,7 +291,12 @@ class BaseExcelExporterV2[T]:
                     column=col_letter,
                     from_row=from_row,
                     to_row=to_row,
-                    formula=f"=INDIRECT(${src_letter}{from_row})",
+                    # formula=f"=INDIRECT( \"_\"& ${src_letter}{from_row})",
+                    formula=(
+                        f'=INDIRECT("_{dropdown.dictionary}_" & '
+                        f'${src_letter}{from_row})'
+                    )
+                    # formula=f"=INDIRECT(\"_\" & ${src_letter}ROW())"
                 )
 
         # --- ENABLE SHEET PROTECTION ---
@@ -313,6 +316,7 @@ class BaseExcelExporterV2[T]:
     @staticmethod
     def export(
         *,
+        organization_id: UUID,
         items: list[T],
         columns: list[ExcelColumn[T]],
         output_path: Path,
@@ -323,6 +327,7 @@ class BaseExcelExporterV2[T]:
         """
         exporter = BaseExcelExporterV2[T]()
         exporter.add_sheet(
+            organization_id=organization_id,
             items=items,
             columns=columns,
             sheet_name=sheet_name,
@@ -336,6 +341,7 @@ class BaseExcelExporterV2[T]:
     def export_many(
         self,
         *,
+        organization_id: UUID,
         sheets: list[tuple[str, list[T], list[ExcelColumn[T]]]],
         output_path: Path,
     ) -> None:
@@ -344,6 +350,7 @@ class BaseExcelExporterV2[T]:
         """
         for sheet_name, items, columns in sheets:
             self.add_sheet(
+                organization_id=organization_id,
                 sheet_name=sheet_name,
                 items=items,
                 columns=columns,
@@ -380,6 +387,7 @@ class BaseExcelExporterV2[T]:
             self,
             *,
             ws: Worksheet,
+            dropdown,
             key_column: str = "KEY",
             value_column: str = "VALUE",
     ) -> dict[str, str]:
@@ -411,7 +419,8 @@ class BaseExcelExporterV2[T]:
             col_letter = get_column_letter(val_col)
             range_ref = f"{ws.title}!${col_letter}${start}:${col_letter}${end}"
 
-            safe_name = ExcelCommonMethods.safe_named_range(f"{ws.title}_{key}")
+            # safe_name = ExcelCommonMethods.safe_named_range(f"{ws.title}_{key}")
+            safe_name = ExcelCommonMethods.safe_named_range(f"_{dropdown.dictionary}_{key}")
             defined_name = DefinedName(
                 name=safe_name,
                 attr_text=range_ref,
@@ -425,6 +434,7 @@ class BaseExcelExporterV2[T]:
     def _write_flat_rows(
             self,
             *,
+            organization_id: UUID,
             ws,
             items: list[T],
             columns: list[ExcelColumn[T]],
@@ -442,13 +452,21 @@ class BaseExcelExporterV2[T]:
                         value = CheckBoxOptions.YES.value if value else CheckBoxOptions.NO.value
                     case ExcelColumnType.LINK:
                         if value:
-                            abs_path = (cfg.WORK_DIR / Path(value)).resolve().as_posix()
+                            abs_path = (
+                                    cfg.WORK_DIR
+                                    / str(organization_id)
+                                    / Path(value)
+                            ).resolve().as_posix()
                             value = f'=HYPERLINK("file:///{abs_path}", "📄 Otwórz")'
                         else:
                             value = None
                     case ExcelColumnType.FOLDER:
                         if value:
-                            folder = (cfg.WORK_DIR / Path(value).parent).resolve().as_posix()
+                            folder = (
+                                    cfg.WORK_DIR
+                                    / str(organization_id)
+                                    / Path(value)
+                            ).resolve().as_posix()
                             value = f'=HYPERLINK("file:///{folder}", "📂 Folder")'
                         else:
                             value = None

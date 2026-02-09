@@ -1,8 +1,12 @@
 import logging
 from dataclasses import replace
+from datetime import datetime
 from enum import Enum
-from uuid import uuid4
+from typing import Callable
+from uuid import uuid4, UUID
 
+from contract_costs.common.ids import new_uuid
+from contract_costs.common.time import utc_now
 from contract_costs.infrastructure.openai_invoice_client import OpenAIInvoiceClient
 from contract_costs.model.company import Company, CompanyType, BankAccount, Contact, Address
 from contract_costs.repository.company_repository import CompanyRepository
@@ -12,7 +16,7 @@ from contract_costs.services.companies.confidence.quality_default import Default
 from contract_costs.services.companies.normalize.normalize_service import CompanyNormalizeService
 
 from contract_costs.services.companies.providers.candidate_provider import CompanyCandidateProvider
-from contract_costs.services.invoices.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
+from contract_costs.services.financial_records.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
 
 logger = logging.getLogger(__name__)
 
@@ -29,20 +33,30 @@ class CompanyEvaluateOrchestrator:
         self,
         company_repo: CompanyRepository,
         candidate_provider: CompanyCandidateProvider,
-        llm_company_resolver: OpenAIInvoiceClient
+        llm_company_resolver: OpenAIInvoiceClient,
+        clock: Callable[[], datetime] = utc_now,
 
     ) -> None:
         self._llm_company_resolver = llm_company_resolver
         self._company_repo = company_repo
         self._candidate_provider = candidate_provider
         self._normalizator = CompanyNormalizeService()
+        self._clock = clock
 
-    def evaluate_from_tax(self, input_tax_number: str | None, role: CompanyType,mode: EvaluateMode = EvaluateMode.NORMAL) -> Company:
+    def evaluate_from_tax(   self,
+                    *,
+                    organization_id: UUID,
+                    actor_user_id: UUID,
+                    input_tax_number: str | None,
+                    role: CompanyType,mode: EvaluateMode = EvaluateMode.NORMAL
+                ) -> Company:
 
         if not input_tax_number:
             raise ValueError("No tax number provided, unable to evaluate company")
         return self.evaluate(
-            CompanyInput(
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
+            input_= CompanyInput(
                 name=None,
                 tax_number=str(input_tax_number),
                 state=None,
@@ -54,10 +68,18 @@ class CompanyEvaluateOrchestrator:
                 country=None,
                 bank_account=None,
                 role=role.value,
-            ),mode
+            ),
+            mode=mode
         )
 
-    def evaluate(self, input_: CompanyInput,mode: EvaluateMode = EvaluateMode.NORMAL) -> Company:
+    def evaluate(
+            self,
+            *,
+            organization_id: UUID,
+            actor_user_id: UUID,
+            input_: CompanyInput,
+            mode: EvaluateMode = EvaluateMode.NORMAL,
+    ) -> Company:
         """
         Main entry point for company resolution.
 
@@ -68,7 +90,7 @@ class CompanyEvaluateOrchestrator:
         4. Update best candidate with better incoming data
         """
 
-        candidates = self._candidate_provider.find_candidates(input_)
+        candidates = self._candidate_provider.find_candidates(organization_id=organization_id, input_=input_)
         logger.info(f"Evaluating company {input_.name}")
 
         for candidate in candidates:
@@ -78,7 +100,10 @@ class CompanyEvaluateOrchestrator:
             if mode == EvaluateMode.NO_CREATE:
                 raise RuntimeError(f"({mode.value} mode) No candidates found for NIP: {input_.tax_number}")
             logger.info("No candidates found → creating new company")
-            return self._create_company(input_)
+            return self._create_company(
+                organization_id=organization_id,
+                actor_user_id=actor_user_id,
+                input_=input_)
 
         # 🔹 2️⃣ Preferuj OWN (jeśli są)
         own_candidates = [
@@ -93,11 +118,22 @@ class CompanyEvaluateOrchestrator:
             key=lambda c: DefaultCompanyQuality.from_company(c).get_overall_score()
         )
 
-        return self._maybe_update(best, input_,mode)
+        return self._maybe_update(
+            organization_id= organization_id,
+            actor_user_id= actor_user_id,
+            company=best,
+            input_=input_,
+            mode=mode)
 
     # ---- hooks / extension points ----
 
-    def _create_company(self, input_: CompanyInput) -> Company:
+    def _create_company( self,
+                        *,
+                        organization_id: UUID,
+                        actor_user_id: UUID,
+                        input_: CompanyInput,
+                        id_generator: Callable[[], UUID] = new_uuid
+                        ) -> Company:
         normalized_tax = self._normalizator.normalize_tax_number(input_.tax_number)
         tax_number = (
             normalized_tax
@@ -106,7 +142,9 @@ class CompanyEvaluateOrchestrator:
         )
 
         company = Company(
-            id=uuid4(),
+            id=id_generator(),
+            organization_id=organization_id,
+
             name=input_.name or "UNKNOWN SELLER",
             description=None,
             tax_number=tax_number,
@@ -127,6 +165,12 @@ class CompanyEvaluateOrchestrator:
             role=CompanyType(input_.role),
             tags=set(),
             is_active=True,
+
+            created_at=self._clock(),
+            created_by_user_id=actor_user_id,
+
+            updated_at=None,
+            updated_by_user_id=None,
         )
 
         self._company_repo.add(company)
@@ -141,6 +185,7 @@ class CompanyEvaluateOrchestrator:
 
     def _update_company_field(
             self,
+            *,
             company: Company,
             field: CompanyField,
             value: str | None,
@@ -197,7 +242,13 @@ class CompanyEvaluateOrchestrator:
 
         return company
 
-    def _maybe_update(self, company: Company, input_: CompanyInput, mode: EvaluateMode) -> Company:
+    def _maybe_update(self,
+                            *,
+                            organization_id: UUID,
+                            actor_user_id: UUID,
+                            company: Company,
+                            input_: CompanyInput,
+                            mode: EvaluateMode) -> Company:
         """
         Updates company data based on input quality.
 
@@ -252,9 +303,12 @@ class CompanyEvaluateOrchestrator:
 
             # 🔥 aktualizacja
             updated_company = self._update_company_field(
-                updated_company,
-                field,
-                input_value,
+                # organization_id=organization_id,
+                # actor_user_id=actor_user_id,
+                company=updated_company,
+                field=field,
+                value=input_value
+
             )
             changed = True
 
@@ -267,9 +321,13 @@ class CompanyEvaluateOrchestrator:
             )
 
         if changed:
+            updated_company = replace(
+                updated_company,
+                updated_at=self._clock(),
+                updated_by_user_id=actor_user_id,
+            )
             self._company_repo.update(updated_company)
             return updated_company
-
         return company
 
 
