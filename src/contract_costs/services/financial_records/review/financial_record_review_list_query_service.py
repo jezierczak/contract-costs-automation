@@ -1,6 +1,7 @@
 from decimal import Decimal
 from uuid import UUID
 
+from contract_costs.model.contract import ContractType
 from contract_costs.model.document import DocumentType, Document
 from contract_costs.repository.company_repository import CompanyRepository
 from contract_costs.repository.contract_repository import ContractRepository
@@ -41,7 +42,10 @@ class FinancialRecordReviewListQueryService:
 
         result = []
 
-        contracts: dict[UUID, str] = {item.id:item.code for item in self._contract_repo.list(organization_id=organization_id)}
+        contracts: dict[UUID, str] = {item.id:item.code for item in self._contract_repo.list_contracts(
+            organization_id=organization_id,
+            contract_type = ContractType.PROJECT,
+        )}
 
         filter_contract_codes = (
             set(review_query.contract_codes)

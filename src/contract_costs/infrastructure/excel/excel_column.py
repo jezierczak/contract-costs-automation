@@ -2,17 +2,12 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Callable, Any
 
-class ExcelColumnType(Enum):
-    PERCENT = "percent"
-    DISPLAY = "display"
-    CHECKBOX = "checkbox"
-    HIDDEN = "hidden"
-    DROPDOWN= "dropdown"
-    LINK = "link"
-    FOLDER = "folder"
+from contract_costs.infrastructure.excel.base_excel_column import BaseExcelColumn
+from contract_costs.infrastructure.excel.excel_column_type import ExcelColumnType
+
 
 @dataclass(frozen=True)
-class ExcelColumn[T]:
+class ExcelColumn[T](BaseExcelColumn):
     header: str
     getter: Callable[[T], Any]
     column_type: ExcelColumnType = ExcelColumnType.DISPLAY

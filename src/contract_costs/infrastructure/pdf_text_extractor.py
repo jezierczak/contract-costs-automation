@@ -11,6 +11,8 @@ from PIL import Image
 from multiprocessing import Process, Queue
 import pdfplumber
 
+from contract_costs.services.financial_records.assigment.invoice_sources.pdf.parsers.exceptions import \
+    OCREngineUnavailable, OCRProcessingError
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +40,10 @@ class PdfImageTextExtractor:
             with Image.open(image_path) as img:
                 img = img.convert("RGB")  # ważne!
                 return self._extract_with_ocr(img)
-        except Exception:
-            logger.exception("Failed to open image: %s", image_path)
-            return ""
+        except FileNotFoundError as e:
+            raise OCREngineUnavailable("Tesseract not found") from e
+        except Exception as e:
+            raise OCRProcessingError("Image OCR failed") from e
 
     def extract_from_pdf_path(self, pdf_path: Path) -> str:
 
@@ -145,9 +148,11 @@ class PdfImageTextExtractor:
 
             return re.sub(r"\n+", "\n", text)
 
-        except Exception:
-            logger.exception("OCR failed completely")
-            return ""
+
+        except pytesseract.TesseractNotFoundError as e:
+            raise OCREngineUnavailable("Tesseract not installed") from e
+        except Exception as e:
+            raise OCRProcessingError("OCR processing failed") from e
 
     @staticmethod
     def _split_companies_by_nip(text: str) -> str:

@@ -4,7 +4,8 @@ from contract_costs.cli.registry import REGISTRY
 from contract_costs.cli.utils.context_helpers import require_organization_id
 from contract_costs.common.context.exceptions import ContextError
 from contract_costs.infrastructure.excel.excel_column_v2.excel_column import ExcelColumn
-from contract_costs.infrastructure.excel.excel_column_v2.excel_column_type import ExcelColumnType
+# from contract_costs.infrastructure.excel.excel_column_v2.excel_column_type import ExcelColumnType
+from contract_costs.infrastructure.excel.excel_column import ExcelColumnType
 
 def build_show_organization_users(subparsers):
     p = subparsers.add_parser("organization", help="Show organizations")

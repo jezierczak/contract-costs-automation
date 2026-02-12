@@ -47,7 +47,7 @@ class MySQLContractNodeRepository(ContractNodeRepository):
                 n.unit.value if n.unit else None,
                 n.is_active,
                 n.created_at,
-                n.created_by_user_id,
+                str(n.created_by_user_id),
             )
             for n in contract_nodes
         ]
@@ -354,7 +354,7 @@ class MySQLContractNodeRepository(ContractNodeRepository):
     ) -> bool:
         sql = """
               SELECT 1
-              FROM invoice_lines
+              FROM financial_record_lines
               WHERE contract_id = %s
                 AND organization_id = %s
               LIMIT 1 
@@ -373,8 +373,8 @@ class MySQLContractNodeRepository(ContractNodeRepository):
     ) -> bool:
         sql = """
         SELECT 1
-        FROM invoice_lines
-        WHERE cost_node_id = %s
+        FROM financial_record_lines
+        WHERE contract_node_id = %s
           AND organization_id = %s
         LIMIT 1
         """

@@ -8,6 +8,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from contract_costs.infrastructure.excel.excel_common_methods import ExcelCommonMethods
 from contract_costs.model.amount import AmountInputType
+from contract_costs.model.contract import ContractType
 from contract_costs.repository.contract_repository import ContractRepository
 from contract_costs.repository.contract_node_repository import ContractNodeRepository
 from contract_costs.repository.value_type_repository import ValueTypeRepository
@@ -180,9 +181,21 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
         ]
         ws.append(headers)
 
+        projects = self._contract_repository.list_contracts(
+            organization_id=organization_id,
+            contract_type=ContractType.PROJECT,
+        )
+
+        systems = self._contract_repository.list_contracts(
+            organization_id=organization_id,
+            contract_type=ContractType.SYSTEM,
+        )
+
+        all_contracts = projects + systems
+
         contracts = {
             c.id: c.code
-            for c in self._contract_repository.list(organization_id=organization_id)
+            for c in all_contracts
         }
 
         cost_nodes = {

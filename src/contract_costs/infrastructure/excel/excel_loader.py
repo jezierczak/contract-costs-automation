@@ -1,9 +1,10 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 from openpyxl import load_workbook
 
+from contract_costs.infrastructure.excel.base_excel_column import BaseExcelColumn
 from contract_costs.infrastructure.excel.excel_column import (
-    ExcelColumn,
+    # ExcelColumn,
     ExcelColumnType,
 )
 
@@ -14,7 +15,7 @@ class ExcelLoader[T]:
     def load(
         *,
         input_path: Path,
-        columns: list[ExcelColumn[T]],
+        columns: Sequence[BaseExcelColumn[T]],
         sheet_name: str | None = None,
         start_row: int = 2,
     ) -> list[dict[str, Any]]:
@@ -27,7 +28,7 @@ class ExcelLoader[T]:
                 f"No active worksheet found in Excel file: {input_path}"
             )
 
-        column_map: dict[int, ExcelColumn[T]] = {
+        column_map: dict[int, BaseExcelColumn[T]] = {
             idx + 1: col
             for idx, col in enumerate(columns)
         }

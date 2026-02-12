@@ -64,7 +64,7 @@ def handle_prepare_companies(args) -> None:
         role=role,
     )
 
-    companies = services.company_query_service.list_companies(query)
+    companies = services.company_query_service.execute(query)
 
     if not companies:
         print("No companies found to prepare.")

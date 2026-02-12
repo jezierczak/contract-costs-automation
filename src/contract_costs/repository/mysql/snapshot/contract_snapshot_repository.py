@@ -12,15 +12,14 @@ class MySQLContractSnapshotRepository(ContractSnapshotRepository):
 
     def add(self, snapshot: ContractSnapshot) -> None:
         sql = """
-              INSERT INTO contract_snapshots (id, \
-                                              organization_id, \
-                                              contract_id, \
-                                              snapshot_date, \
-                                              created_at, \
-                                              created_by_user_id, \
-                                              updated_at, \
-                                              updated_by_user_id)
-              VALUES (%s, %s, %s, %s, %s, %s, %s, %s) \
+              INSERT INTO contract_snapshots (id, 
+                                              organization_id, 
+                                              contract_id, 
+                                              snapshot_date, 
+                                              created_at, 
+                                              created_by_user_id
+                                              )
+              VALUES (%s, %s, %s, %s, %s, %s) 
               """
 
         conn = get_connection()
@@ -34,8 +33,8 @@ class MySQLContractSnapshotRepository(ContractSnapshotRepository):
                     snapshot.snapshot_date,
                     snapshot.created_at,
                     snapshot.created_by_user_id,
-                    snapshot.updated_at,
-                    snapshot.updated_by_user_id,
+                    # snapshot.updated_at,
+                    # snapshot.updated_by_user_id,
                 ),
             )
         conn.commit()
@@ -138,9 +137,9 @@ class MySQLContractSnapshotRepository(ContractSnapshotRepository):
             created_by_user_id=UUID(row["created_by_user_id"])
             if row["created_by_user_id"]
             else None,
-            updated_at=row["updated_at"],
-            updated_by_user_id=UUID(row["updated_by_user_id"])
-            if row["updated_by_user_id"]
-            else None,
+            # updated_at=row["updated_at"],
+            # updated_by_user_id=UUID(row["updated_by_user_id"])
+            # if row["updated_by_user_id"]
+            # else None,
         )
 

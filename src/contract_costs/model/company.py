@@ -18,7 +18,7 @@ class CompanyType(Enum):
     BUYER = "Buyer"
     SELLER = "Seller"
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Address:
     street: str | None
     city: str | None
@@ -39,20 +39,20 @@ class Address:
             logger.warning(f"Invalid zip code: {zip_code}")
             # raise ValueError("Invalid zip code")
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Contact:
     phone_number: str | None
     email: str | None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class BankAccount:
     account_number: str | None
     country_code: str | None = None
 
     def __post_init__(self):
         number = self.account_number.replace(" ", "")
-        object.__setattr__(self, "number", number)
+        object.__setattr__(self, "account_number", number)
 
         if self.country_code:
             country_code = self.country_code.strip().upper()

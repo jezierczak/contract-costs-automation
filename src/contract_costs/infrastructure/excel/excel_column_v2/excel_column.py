@@ -1,21 +1,25 @@
 from dataclasses import dataclass
 from typing import Callable, Any, TypeVar
 
+from contract_costs.infrastructure.excel.base_excel_column import BaseExcelColumn
 from contract_costs.infrastructure.excel.excel_column_v2.dropdown_options import DropdownOptions
-from contract_costs.infrastructure.excel.excel_column_v2.excel_column_type import ExcelColumnType
+# from contract_costs.infrastructure.excel.excel_column_v2.excel_column_type import ExcelColumnType
 from contract_costs.infrastructure.excel.excel_column_v2.tree_options import TreeOptions
+from contract_costs.infrastructure.excel.excel_column import ExcelColumnType
 
 U = TypeVar("U")
 
 
 @dataclass(frozen=True)
-class ExcelColumn[T]:
-    name: str
+class ExcelColumn[T](BaseExcelColumn):
+    name: str =""
     header: str
     getter: Callable[[T], Any]
 
     column_type: ExcelColumnType = ExcelColumnType.DISPLAY
     editable: bool = False
+
+
     agg: bool = False
 
     dropdown: DropdownOptions | None = None

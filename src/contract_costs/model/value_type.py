@@ -15,7 +15,7 @@ from contract_costs.model.value_direction import ValueDirection
 #     OTHER = "other"
 
 
-@dataclass
+@dataclass(slots=True)
 class ValueType(BaseEntity):
     id: UUID
     code: str            # unikalny, np. MATERIAL, SALARY

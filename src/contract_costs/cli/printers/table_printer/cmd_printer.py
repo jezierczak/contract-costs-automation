@@ -5,7 +5,8 @@ from uuid import UUID
 
 from contract_costs.cli.printers.table_printer.table_printer import TablePrinter
 from contract_costs.infrastructure.excel.excel_column_v2.excel_column import ExcelColumn
-from contract_costs.infrastructure.excel.excel_column_v2.excel_column_type import ExcelColumnType
+# from contract_costs.infrastructure.excel.excel_column_v2.excel_column_type import ExcelColumnType
+from contract_costs.infrastructure.excel.excel_column import ExcelColumnType
 from contract_costs.infrastructure.excel.excel_column_v2.tree_options import TreeOptions
 
 

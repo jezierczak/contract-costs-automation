@@ -12,8 +12,8 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from contract_costs.infrastructure.excel.checkbox_options import CheckBoxOptions
 from contract_costs.infrastructure.excel.excel_column_v2.excel_column import ExcelColumn
-from contract_costs.infrastructure.excel.excel_column_v2.excel_column_type import   ExcelColumnType
-
+# from contract_costs.infrastructure.excel.excel_column_v2.excel_column_type import   ExcelColumnType
+from contract_costs.infrastructure.excel.excel_column import ExcelColumnType
 from contract_costs.infrastructure.excel.excel_common_methods import (
     ExcelCommonMethods,
 )
@@ -173,7 +173,7 @@ class BaseExcelExporterV2[T]:
             if col.column_type == ExcelColumnType.HIDDEN:
                 ws.column_dimensions[col_letter].hidden = True
 
-            for (cell,) in ws.iter_rows(
+            for (cell,) in ws.iter_rows(   #type:ignore[assignment]
                     min_col=idx,
                     max_col=idx,
                     min_row=data_start_row,

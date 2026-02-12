@@ -38,7 +38,7 @@ class ContractPrepareExcelExporter:
     # =====================================================
 
     def export_new(self, *, output_path: Path, organization_id: UUID) -> None:
-        exporter = BaseExcelExporter[Any]()
+        exporter: BaseExcelExporter = BaseExcelExporter()
 
         exporter.add_sheet(
             organization_id=organization_id,
@@ -64,7 +64,7 @@ class ContractPrepareExcelExporter:
         cost_nodes: list[ContractNode],
         output_path: Path,
     ) -> None:
-        exporter = BaseExcelExporter[Any]()
+        exporter: BaseExcelExporter = BaseExcelExporter()
 
         contract_dtos = [
             ContractPrepareMapper.map(contract)

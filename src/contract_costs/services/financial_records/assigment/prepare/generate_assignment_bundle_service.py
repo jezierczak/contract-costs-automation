@@ -6,6 +6,7 @@ from uuid import UUID
 
 from contract_costs.common.time import utc_now
 from contract_costs.model.company import CompanyType
+from contract_costs.model.contract import ContractType
 from contract_costs.model.financial_record import FinancialRecordStatus, FinancialRecord
 from contract_costs.repository.financial_record_repository import FinancialRecordRepository
 from contract_costs.repository.financial_record_line_repository import FinancialRecordLineRepository
@@ -127,13 +128,25 @@ class GenerateFinancialRecordAssignmentBundleService:
         ]
 
         #  Contracts
+        projects = self._contract_repo.list_contracts(
+            organization_id=organization_id,
+            contract_type=ContractType.PROJECT,
+        )
+
+        systems = self._contract_repo.list_contracts(
+            organization_id=organization_id,
+            contract_type=ContractType.SYSTEM,
+        )
+
+        all_contracts = projects + systems
+
         contracts = [
             ContractExport(
                 id=c.id,
                 name=c.name,
                 code=c.code,
             )
-            for c in self._contract_repo.list(organization_id=organization_id)
+            for c in all_contracts
         ]
 
         #  Cost nodes

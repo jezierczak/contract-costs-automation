@@ -4,6 +4,7 @@ from typing import TypedDict, cast, Any
 from pydantic import BaseModel
 
 from contract_costs.model.company import CompanyType
+from contract_costs.model.contract import ContractType
 from contract_costs.model.financial_record import FinancialRecordStatus, PaymentStatus
 from contract_costs.model.value_direction import ValueDirection
 

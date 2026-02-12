@@ -1,8 +1,11 @@
 import logging
 import pytesseract
 
+from contract_costs.services.documents.exeptions import DocumentRetryableError, DocumentFatalError
 from contract_costs.services.financial_records.assigment.invoice_sources.pdf.parsers.dto.parse import \
     DocumentParseResult
+from contract_costs.services.financial_records.assigment.invoice_sources.pdf.parsers.exceptions import \
+     OCRInfrastructureError
 
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
@@ -20,6 +23,7 @@ from contract_costs.services.financial_records.assigment.invoice_sources.pdf.par
 
 logger = logging.getLogger(__name__)
 
+
 class OCRAIAgentDocumentParser(DocumentParser):
 
     def __init__(self):
@@ -29,12 +33,22 @@ class OCRAIAgentDocumentParser(DocumentParser):
 
     def parse(self, file_path: Path) -> DocumentParseResult:
         logger.info("Extracting %s with OCR", file_path)
-
-        text = self._text_extractor.extract(file_path)
+        try:
+            text = self._text_extractor.extract(file_path)
+        except OCRInfrastructureError as e:
+            raise DocumentRetryableError("OCR infrastructure problem") from e
         logger.debug("OCR text length=%s", len(text))
 
         logger.info("Parsing %s with AI", file_path)
-        ai_data = self._ai_client.extract(text)
+        try:
+            ai_data = self._ai_client.extract(text)
+        except TimeoutError as e:
+            raise DocumentRetryableError("AI timeout") from e
+        except Exception as e:
+            raise DocumentRetryableError("AI API error") from e
+
+        if not isinstance(ai_data, dict):
+            raise DocumentFatalError("AI returned invalid response structure")
         logger.debug(
             "AI raw response keys=%s",
             list(ai_data.keys()) if isinstance(ai_data, dict) else type(ai_data),

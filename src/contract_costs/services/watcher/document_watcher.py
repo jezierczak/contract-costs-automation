@@ -13,12 +13,12 @@ class DocumentWatcherService:
     def __init__(
         self,
         *,
-        action_bus,
+        services,
         organization_id: UUID,
         actor_user_id: UUID,
         watch_dir: Path,
     ) -> None:
-        self._action_bus = action_bus
+        self._services = services
         self._organization_id = organization_id
         self._actor_user_id = actor_user_id
         self._watch_dir = watch_dir
@@ -46,12 +46,13 @@ class DocumentWatcherService:
             file_path,
             self._organization_id,
         )
-        self._action_bus.execute(
-            UploadDocumentCommand(
+        self._services.action_bus.execute(
+            action = UploadDocumentCommand(
                 organization_id=self._organization_id,
                 actor_user_id=self._actor_user_id,
                 file_path=file_path,
-            )
+            ),
+            handler= self._services.upload_document_service
         )
 
     @staticmethod

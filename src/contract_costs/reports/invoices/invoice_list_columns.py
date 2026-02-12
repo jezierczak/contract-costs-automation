@@ -1,5 +1,6 @@
 from contract_costs.infrastructure.excel.excel_column_v2.excel_column import ExcelColumn
-from contract_costs.infrastructure.excel.excel_column_v2.excel_column_type import ExcelColumnType
+# from contract_costs.infrastructure.excel.excel_column_v2.excel_column_type import ExcelColumnType
+from contract_costs.infrastructure.excel.excel_column import ExcelColumnType
 from contract_costs.services.financial_records.review.dto.invoice_review_item_view import FinancialRecordReviewItemView
 
 def financial_record_list_columns() -> list[ExcelColumn[FinancialRecordReviewItemView]]:

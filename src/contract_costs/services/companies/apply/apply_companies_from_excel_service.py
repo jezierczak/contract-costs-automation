@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.model.company import (
     Address,
     BankAccount,
@@ -9,8 +10,9 @@ from contract_costs.services.common.resolve_utils import (
     normalize_required_tax_number,
 )
 from contract_costs.services.companies.apply.command import (
-    CompanyActionCommand,
+    ApplyCompanyCommand,
     CompanyActionType,
+    ApplyCompaniesCommand
 )
 from contract_costs.services.companies.create_company_service import (
     CreateCompanyService,
@@ -30,7 +32,8 @@ from contract_costs.services.companies.deactivate_company_service import (
 )
 
 
-class ApplyCompaniesFromExcelService:
+class ApplyCompaniesFromExcelService(ActionHandler[ApplyCompaniesCommand, None]
+):
     """
     Orchestrator command service.
 
@@ -65,22 +68,17 @@ class ApplyCompaniesFromExcelService:
     # =====================
     # PUBLIC API
     # =====================
-    def apply(self,
-              *,
-              organization_id: UUID,
-              actor_user_id: UUID,
-              commands: list[CompanyActionCommand]
-              ) -> None:
-        for idx, command in enumerate(commands, start=1):
+    def execute(self, command: ApplyCompaniesCommand) -> None:
+        for idx, cmd in enumerate(command.commands, start=1):
             try:
                 self._apply_command(
-                    organization_id=organization_id,
-                    actor_user_id=actor_user_id,
-                    cmd=command,
+                    organization_id=command.organization_id,
+                    actor_user_id=command.actor_user_id,
+                    cmd=cmd,
                 )
             except Exception as exc:
                 raise RuntimeError(
-                    f"Apply companies failed at command #{idx}: {command}"
+                    f"Apply companies failed at command #{idx}: {cmd}"
                 ) from exc
 
     # =====================
@@ -90,9 +88,9 @@ class ApplyCompaniesFromExcelService:
                             *,
                             organization_id: UUID,
                             actor_user_id: UUID,
-                            cmd: CompanyActionCommand
+                            cmd: ApplyCompanyCommand
                            ) -> None:
-        action = cmd.action
+        action = cmd.apply_action_type
 
         if action == CompanyActionType.NONE:
             # explicit no-op
@@ -132,7 +130,7 @@ class ApplyCompaniesFromExcelService:
             *,
             organization_id: UUID,
             actor_user_id: UUID,
-            cmd: CompanyActionCommand,
+            cmd: ApplyCompanyCommand,
     ) -> None:
         tax_number = normalize_required_tax_number(cmd.tax_number)
 
@@ -158,7 +156,7 @@ class ApplyCompaniesFromExcelService:
             *,
             organization_id: UUID,
             actor_user_id: UUID,
-            cmd: CompanyActionCommand,
+            cmd: ApplyCompanyCommand,
     ) -> None:
         if not cmd.company_id:
             raise ValueError("UPDATE requires company_id")
@@ -189,7 +187,7 @@ class ApplyCompaniesFromExcelService:
             *,
             organization_id: UUID,
             actor_user_id: UUID,
-            cmd: CompanyActionCommand
+            cmd: ApplyCompanyCommand
             ) -> None:
         if not cmd.company_id:
             raise ValueError("ACTIVATE requires company_id")
@@ -206,7 +204,7 @@ class ApplyCompaniesFromExcelService:
             *,
             organization_id: UUID,
             actor_user_id: UUID,
-            cmd: CompanyActionCommand
+            cmd: ApplyCompanyCommand
             ) -> None:
         if not cmd.company_id:
             raise ValueError("DEACTIVATE requires company_id")
@@ -223,7 +221,7 @@ class ApplyCompaniesFromExcelService:
     # BUILDERS
     # =====================
     @staticmethod
-    def _build_address(cmd: CompanyActionCommand) -> Address:
+    def _build_address(cmd: ApplyCompanyCommand) -> Address:
         return Address(
             street=cmd.address_street,
             city=cmd.address_city,
@@ -232,14 +230,14 @@ class ApplyCompaniesFromExcelService:
         )
 
     @staticmethod
-    def _build_contact(cmd: CompanyActionCommand) -> Contact:
+    def _build_contact(cmd: ApplyCompanyCommand) -> Contact:
         return Contact(
             phone_number=cmd.phone_number,
             email=cmd.email,
         )
 
     @staticmethod
-    def _build_bank_account(cmd: CompanyActionCommand) -> BankAccount | None:
+    def _build_bank_account(cmd: ApplyCompanyCommand) -> BankAccount | None:
         if not cmd.bank_account_number:
             return None
 

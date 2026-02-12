@@ -72,6 +72,7 @@ def handle_show_snapshot(args):
 
         printer = ExcelPrinter(output_path)
         printer.print(
+            organization_id=organization_id,
             items=dto.nodes,
             columns=snapshot_tree_columns(),
             header=header,
@@ -81,6 +82,7 @@ def handle_show_snapshot(args):
 
     printer = CmdPrinter()
     printer.print(
+        organization_id=organization_id,
         items=dto.nodes,
         columns=snapshot_tree_columns(),
         header=header,

@@ -7,7 +7,7 @@ from contract_costs.model.document import Document, DocumentType
 from contract_costs.model.financial_record import FinancialRecordStatus
 from contract_costs.repository.financial_record_repository import FinancialRecordRepository
 
-from contract_costs.services.catalogues.invoice_file_organizer import RecordFileOrganizer
+from contract_costs.services.catalogues.record_file_organizer import RecordFileOrganizer
 from contract_costs.services.catalogues.record_file_workworkflow_service import RecordFileWorkflowService
 from contract_costs.services.companies.company_evaluate_orchestrator import CompanyEvaluateOrchestrator
 from contract_costs.services.financial_records.assigment.invoice_sources.dto.common import (

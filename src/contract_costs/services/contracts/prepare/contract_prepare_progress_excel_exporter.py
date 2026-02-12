@@ -37,7 +37,7 @@ class ContractPrepareProgressExcelExporter:
         cost_nodes: list[ContractNode],
         output_path: Path,
     ) -> None:
-        exporter = BaseExcelExporter[Any]()
+        exporter:BaseExcelExporter = BaseExcelExporter()
 
         cost_node_dtos = (
             ContractNodeProgressPrepareMapper.map(

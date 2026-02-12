@@ -50,6 +50,8 @@ class ApplyDocumentService:
             document_id=cmd.document_id,
         )
 
+
+
         if not document:
             raise RuntimeError("Document not found")
 

@@ -12,7 +12,7 @@ class ActionType(Enum):
     CREATE_FINANCIAL_RECORD = "create_financial_record"
     UPDATE_FINANCIAL_RECORD = "update_financial_record"
     VIEW_FINANCIAL_RECORD = "view_financial_record"
-    CREATE_COMPANY = "create_company"
+    COMPANY_MANAGEMENT = "company_management"
 
 
 def action_type(action: ActionType):

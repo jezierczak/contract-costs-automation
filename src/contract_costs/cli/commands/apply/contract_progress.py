@@ -37,7 +37,7 @@ def handle_apply_contract_progress(args) -> None:
         contract_code=contract.code)
     excel_path = fm.get_active_file()
 
-    services.apply_contract_progress_excel.apply(
+    services.apply_contract_progress_excel.execute(
         contract=contract,
         excel_path=excel_path,
         organization_id=organization_id,

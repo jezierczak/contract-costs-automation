@@ -6,7 +6,7 @@ from typing import Callable
 from uuid import UUID
 import mimetypes
 
-from contract_costs.action_bus.handler_registry import handles
+from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.common.ids import new_uuid
 from contract_costs.common.time import utc_now
 from contract_costs.model.document import Document, DocumentSource
@@ -20,8 +20,8 @@ import contract_costs.config as cfg
 
 logger = logging.getLogger(__name__)
 
-@handles(UploadDocumentCommand)
-class UploadDocumentService:
+# @handles(UploadDocumentCommand)
+class UploadDocumentService(ActionHandler[UploadDocumentCommand, UUID | None]):
 
     def __init__(
         self,

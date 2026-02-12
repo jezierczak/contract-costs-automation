@@ -1,0 +1,389 @@
+from pathlib import Path
+from decimal import Decimal
+from datetime import date, datetime
+from uuid import uuid4, UUID
+
+import pytest
+
+# ============================================================
+# MODELE DOMENOWE
+# ============================================================
+
+from contract_costs.model.company import Company, CompanyType
+from contract_costs.model.contract import (
+    Contract,
+    ContractStatus,
+    ContractStarter,
+)
+from contract_costs.model.contract_node import ContractNode
+from contract_costs.model.value_direction import ValueDirection
+from contract_costs.model.value_type import ValueType
+from contract_costs.model.unit_of_measure import UnitOfMeasure
+from contract_costs.repository.inmemory.company_repository import InMemoryCompanyRepository
+
+# ============================================================
+# REPOZYTORIA (IN-MEMORY)
+# ============================================================
+
+from contract_costs.repository.inmemory.contract_repository import (
+    InMemoryContractRepository,
+)
+from contract_costs.repository.inmemory.contract_node_repository import (
+    InMemoryContractNodeRepository,
+)
+from contract_costs.repository.inmemory.value_type_repository import (
+    InMemoryValueTypeRepository,
+)
+from contract_costs.repository.inmemory.financial_record_line_repository import (
+    InMemoryFinancialRecordLineRepository,
+)
+from contract_costs.repository.inmemory.financial_record_repository import InMemoryFinancialRecordRepository
+from contract_costs.services.catalogues.record_file_organizer import RecordFileOrganizer
+from contract_costs.services.catalogues.invoice_file_workflow_service import InvoiceFileWorkflowService
+from contract_costs.services.financial_records.assigment.ingest.completion_validator.invoice_completion_validator import \
+    RecordCompletionValidator
+from contract_costs.services.financial_records.assigment.ingest.excel_financial_record_ingest_service import ExcelFinancialRecordIngestService
+from contract_costs.services.financial_records.assigment.ingest.financial_record_ingest_orchestrator import FinancialRecordIngestOrchestrator
+
+# ============================================================
+# SERWISY
+# ============================================================
+
+from contract_costs.services.financial_records.assigment.ingest.financial_record_line_update_service import (
+    FinancialRecordLineUpdateService,
+)
+# from contract_costs.services.invoices.assigment.ingest.invoice_update_service import InvoiceUpdateService
+# from contract_costs.services.invoices.assigment.ingest.invoice_ingest_orchestrator import InvoiceIngestOrchestrator
+from contract_costs.services.financial_records.assigment.ingest.pdf_financial_record_ingest_service import PdfFinancialRecordIngestService
+
+
+NOW = datetime(2024, 1, 1, 12, 0, 0)
+
+@pytest.fixture
+def test_org_id() -> UUID:
+    return uuid4()
+
+@pytest.fixture
+def test_user_id() -> UUID:
+    return uuid4()
+
+
+def make_company(
+    *,
+    organization_id: UUID,
+    created_by_user_id: UUID,
+    name: str = "Test Company",
+    tax_number: str = "1234567890",
+    role: CompanyType = CompanyType.CLIENT,
+    description: str | None = None,
+    is_active: bool = True,
+) -> Company:
+    return Company(
+        id=uuid4(),
+        organization_id=organization_id,
+
+        name=name,
+        tax_number=tax_number,
+        description=description,
+
+        address=None,
+        contact=None,
+        bank_account=None,
+
+        role=role,
+        tags=set(),
+        is_active=is_active,
+
+        created_at=NOW,
+        created_by_user_id=created_by_user_id,
+        updated_at=None,
+        updated_by_user_id=None,
+    )
+
+# ============================================================
+# REPO FIXTURES
+# ============================================================
+
+@pytest.fixture
+def invoice_line_repo():
+    return InMemoryFinancialRecordLineRepository()
+
+@pytest.fixture
+def invoice_repo():
+    return InMemoryFinancialRecordRepository()
+
+
+@pytest.fixture
+def pdf_ingest_service(invoice_repo) -> PdfFinancialRecordIngestService:
+    return PdfFinancialRecordIngestService(invoice_repo)
+
+@pytest.fixture
+def excel_ingest_service(invoice_repo) -> ExcelFinancialRecordIngestService:
+    return ExcelFinancialRecordIngestService(invoice_repo)
+
+# ============================================================
+# COMPANY FIXTURES
+# ============================================================
+
+@pytest.fixture
+def owner_company(test_org_id, test_user_id) -> Company:
+    return make_company(
+        organization_id=test_org_id,
+        created_by_user_id=test_user_id,
+        name="Owner Sp. z o.o.",
+        tax_number="1111111111",
+        description="Owner contract description",
+        role=CompanyType.OWN,
+    )
+
+
+@pytest.fixture
+def client_company(test_org_id, test_user_id) -> Company:
+    return make_company(
+        organization_id=test_org_id,
+        created_by_user_id=test_user_id,
+        name="Client Sp. z o.o.",
+        tax_number="2222222222",
+        description="Client contract description",
+        role=CompanyType.CLIENT,
+    )
+
+
+# ============================================================
+# CONTRACT FIXTURES
+# ============================================================
+
+@pytest.fixture
+def contract_1(owner_company, client_company) -> Contract:
+    starter: ContractStarter = {
+        "name": "Test Contract",
+        "code": "C1",
+        "contract_owner": owner_company,
+        "client": client_company,
+        "description": "Test contract description",
+        "start_date": date(2024, 1, 1),
+        "end_date": None,
+        "budget": Decimal("100000"),
+        "path": Path("/contracts/C1"),
+        "status": ContractStatus.ACTIVE,
+    }
+    return Contract.from_contract_starter(starter)
+
+
+@pytest.fixture
+def contract_repo(contract_1):
+    repo = InMemoryContractRepository()
+    repo.add(contract_1)
+    return repo
+
+
+# ============================================================
+# COST NODE FIXTURES
+# ============================================================
+
+@pytest.fixture
+def cost_node_root(contract_1):
+    return ContractNode(
+        id=uuid4(),
+        contract_id=contract_1.id,
+        code="N1",
+        name="Root Node",
+        parent_id=None,
+        quantity=None,
+        unit=None,
+        budget=Decimal("100000"),
+        is_active=True,
+        progress_history={}
+    )
+
+
+@pytest.fixture
+def cost_node_child(cost_node_root, contract_1):
+    return ContractNode(
+        id=uuid4(),
+        contract_id=contract_1.id,
+        code="N1.1",
+        name="Child Node",
+        parent_id=cost_node_root.id,
+        quantity=Decimal("10"),
+        unit=UnitOfMeasure.PIECE,
+        budget=Decimal("50000"),
+        is_active=True,
+        progress_history={}
+    )
+
+
+@pytest.fixture
+def inactive_cost_node(contract_1):
+    return ContractNode(
+        id=uuid4(),
+        contract_id=contract_1.id,
+        code="N2",
+        name="Inactive Node",
+        parent_id=None,
+        quantity=None,
+        unit=None,
+        budget=None,
+        is_active=False,
+        progress_history={}
+    )
+
+
+@pytest.fixture
+def cost_node_repo(cost_node_root, cost_node_child, inactive_cost_node):
+    repo = InMemoryContractNodeRepository()
+    repo.add(cost_node_root)
+    repo.add(cost_node_child)
+    repo.add(inactive_cost_node)
+    return repo
+
+
+# ============================================================
+# COST NODE INPUT (DO BUILDERÓW / IMPORTERÓW)
+# UWAGA: NIE używać bezpośrednio z repozytoriami
+# ============================================================
+
+@pytest.fixture
+def cost_node_input_tree():
+    return {
+        "code": "ROOT",
+        "name": "Root",
+        "budget": Decimal("100000"),
+        "quantity": None,
+        "unit": None,
+        "is_active": True,
+        "progress": None,
+        "children": [
+            {
+                "code": "CH1",
+                "name": "Child 1",
+                "budget": Decimal("50000"),
+                "quantity": Decimal("10"),
+                "unit": UnitOfMeasure.PIECE,
+                "is_active": True,
+                "progress": Decimal("0.5"),
+                "children": [],
+            },
+            {
+                "code": "CH2",
+                "name": "Child 2",
+                "budget": None,
+                "quantity": None,
+                "unit": None,
+                "is_active": False,
+                "progress": Decimal("0"),
+                "children": [],
+            },
+        ],
+    }
+
+
+# ============================================================
+# COST TYPE FIXTURES
+# ============================================================
+
+@pytest.fixture
+def value_type_material() -> ValueType:
+    return ValueType(
+        id=uuid4(),
+        code="MATERIAL",
+        name="Materiały",
+        description="Koszty materiałów budowlanych",
+        direction=ValueDirection.COST,
+        is_active=True,
+    )
+
+
+@pytest.fixture
+def value_type_salary() -> ValueType:
+    return ValueType(
+        id=uuid4(),
+        code="SALARY",
+        name="Wynagrodzenia",
+        description="Koszty pracy",
+        direction=ValueDirection.COST,
+        is_active=True,
+    )
+
+
+@pytest.fixture
+def inactive_value_type() -> ValueType:
+    return ValueType(
+        id=uuid4(),
+        code="ARCHIVED",
+        name="Archiwalny",
+        description=None,
+        direction=ValueDirection.COST,
+        is_active=False,
+    )
+
+
+@pytest.fixture
+def value_type_repo(
+        value_type_material,
+        value_type_salary,
+        inactive_value_type,
+):
+    repo = InMemoryValueTypeRepository()
+    repo.add(value_type_material)
+    repo.add(value_type_salary)
+    repo.add(inactive_value_type)
+    return repo
+
+
+# ============================================================
+# SERVICE FIXTURE
+# ============================================================
+
+@pytest.fixture
+def invoice_line_update_service(
+    invoice_line_repo,
+    contract_repo,
+    cost_node_repo,
+        value_type_repo,
+):
+    return FinancialRecordLineUpdateService(
+        record_line_repository=invoice_line_repo,
+        contract_repository=contract_repo,
+        contract_node_repository=cost_node_repo,
+        value_type_repository=value_type_repo,
+    )
+
+
+# @pytest.fixture
+# def invoice_update_service(invoice_repo):
+#     return InvoiceUpdateService(invoice_repo)
+
+
+# @pytest.fixture
+# def invoice_line_update_service(
+#     invoice_line_repo,
+#     contract_repo,
+#     cost_node_repo,
+#     cost_type_repo,
+# ):
+#     return InvoiceLineUpdateService(
+#         invoice_line_repo,
+#         contract_repo,
+#         cost_node_repo,
+#         cost_type_repo,
+#     )
+
+
+@pytest.fixture
+def orchestrator( invoice_repo,invoice_line_update_service,pdf_ingest_service,excel_ingest_service):
+    return FinancialRecordIngestOrchestrator(
+        record_ingest_service_document=pdf_ingest_service,
+        record_ingest_service_excel=excel_ingest_service,
+        record_line_service=invoice_line_update_service,
+        record_repository=invoice_repo,
+        file_workflow=InvoiceFileWorkflowService(
+            invoice_repo,
+            InMemoryCompanyRepository(),
+            RecordFileOrganizer()
+        ),
+        record_completion_validator=RecordCompletionValidator()
+    )
+
+
+

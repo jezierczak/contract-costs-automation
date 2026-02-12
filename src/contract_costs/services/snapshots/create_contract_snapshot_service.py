@@ -91,8 +91,8 @@ class CreateContractSnapshotService:
             snapshot_date=cmd.snapshot_date,
             created_at=self._clock(),
             created_by_user_id=cmd.actor_user_id,
-            updated_at=None,
-            updated_by_user_id=None,
+            # updated_at=None,
+            # updated_by_user_id=None,
         )
 
         # ==================================================

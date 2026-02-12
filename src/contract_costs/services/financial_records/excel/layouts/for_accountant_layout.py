@@ -3,8 +3,8 @@ from contract_costs.services.financial_records.review.dto.invoice_review_item_vi
 
 ACCOUNTANT_COLUMNS: list[ExcelColumn[FinancialRecordReviewItemView]] = [
     # ExcelColumn("X", lambda _: False, ExcelColumnType.CHECKBOX, editable=True),
-    ExcelColumn("ACTION",lambda _: "none",ExcelColumnType.DROPDOWN,editable=True,
-                    options=["none", "approved", "reopen"],),
+    ExcelColumn("ACTION", lambda _: "none", ExcelColumnType.DROPDOWN, editable=True,
+                options=["none", "approved", "reopen"], ),
     ExcelColumn("INVOICE_ID", lambda x: str(x.invoice_id), ExcelColumnType.HIDDEN),
 
     ExcelColumn("Invoice No", lambda x: x.reference),

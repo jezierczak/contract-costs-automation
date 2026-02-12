@@ -4,6 +4,8 @@ from queue import Empty
 from multiprocessing import Process
 from uuid import UUID
 
+from contract_costs.model.document import DocumentSource
+from contract_costs.services.documents.exeptions import DocumentFatalError
 from contract_costs.services.documents.process.dto.process_document_command import (
     ProcessDocumentCommand,
 )
@@ -27,21 +29,29 @@ def process_document_in_subprocess(
         services = get_services()
 
         services.action_bus.execute(
-            ProcessDocumentCommand(
+            action=ProcessDocumentCommand(
                 organization_id=organization_id,
                 actor_user_id=actor_id,
                 document_id=document_id,
-            )
+            ),
+            handler=services.process_document_service
         )
 
+
+    except DocumentFatalError:
+        logger.exception("Fatal parse error")
+        exit(100)  # specjalny exitcode
+
     except Exception:
-        logger.exception(
-            "Subprocess failed while processing document %s (org=%s user=%s)",
-            document_id,
-            organization_id,
-            actor_id,
-        )
+        logger.exception("Retryable error")
         raise
+        # logger.exception(
+        #     "Subprocess failed while processing document %s (org=%s user=%s)",
+        #     document_id,
+        #     organization_id,
+        #     actor_id,
+        # )
+        # raise
 
 
 class DocumentParseWorker:
@@ -74,11 +84,19 @@ class DocumentParseWorker:
                     document_id,
                 )
 
+
             finally:
                 document_queue.task_done()
 
                 if self._running:
-                    time.sleep(self._sleep)
+                    from contract_costs.cli.context import get_services
+                    services = get_services()
+                    document = services.document_repository.get(
+                        organization_id=organization_id,
+                        document_id=document_id,
+                    )
+                    if document and document.document_source != DocumentSource.KSEF:
+                        time.sleep(self._sleep)
 
     def _process_with_retry(
         self,
@@ -104,7 +122,9 @@ class DocumentParseWorker:
             )
             p.start()
             p.join(timeout=self._timeout)
-
+            if p.exitcode == 100:
+                logger.error("Fatal error — no retry")
+                return
             # Timeout
             if p.is_alive():
                 logger.error(

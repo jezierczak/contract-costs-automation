@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Sequence
 from uuid import UUID
 
 from openpyxl import Workbook

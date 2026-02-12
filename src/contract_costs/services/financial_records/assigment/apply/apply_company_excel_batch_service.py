@@ -14,9 +14,9 @@ logger = logging.getLogger(__name__)
 
 
 class ApplyCompanyExcelBatchService:
-    def __init__(self, company_repository: CompanyRepository):
+    def __init__(self, company_repository: CompanyRepository, create_company_service: CreateCompanyService):
         self._repo = company_repository
-        self._create_company_service = CreateCompanyService(company_repository)
+        self._create_company_service = create_company_service
         self._normalizator= CompanyNormalizeService()
 
     def apply(self,

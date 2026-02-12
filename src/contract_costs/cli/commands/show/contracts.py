@@ -7,12 +7,13 @@ from contract_costs.cli.printers.table_printer.cmd_printer import CmdPrinter
 from contract_costs.cli.printers.table_printer.excel_printer import ExcelPrinter
 from contract_costs.cli.printers.table_printer.table_printer import TablePrinter
 from contract_costs.cli.registry import REGISTRY
-from contract_costs.cli.utils.context_helpers import require_organization_id
+from contract_costs.cli.utils.context_helpers import require_organization_id, require_user_id
 from contract_costs.common.context.exceptions import ContextError
 
 # from contract_costs.infrastructure.excel.contracts.contract_cost_node_tree_excel_exporter import \
 #     ContractTreeExcelExporter
 from contract_costs.infrastructure.filesystem.show_file_manager import ContractsShowFileManager
+from contract_costs.model.contract import ContractType
 from contract_costs.reports.contracts.contract_list_columns import contract_list_columns
 from contract_costs.reports.contracts.contract_node_tree_column import contract_node_tree_columns
 
@@ -42,6 +43,13 @@ def build_show_contracts(subparsers):
         action="store_true",
         help="Show only active contracts",
     )
+
+    p.add_argument(
+        "--system",
+        action="store_true",
+        help="Show only system contracts attached to owners companies",
+    )
+
     p.add_argument(
         "--at-date",
         help="Show contract state at given date (YYYY-MM-DD)",
@@ -57,6 +65,7 @@ def handle_show_contracts(args) -> None:
 
     try:
         organization_id = require_organization_id(services.context)
+        actor_user_id = require_user_id(services.context)
     except ContextError:
         return None
 
@@ -65,7 +74,15 @@ def handle_show_contracts(args) -> None:
     if args.ref:
         return _handle_show_single_contract(args, query,services.contract_repository,organization_id)
 
-    items = query.list_contracts(organization_id=organization_id)
+    contract_type = ContractType.PROJECT
+    if args.system:
+        contract_type = ContractType.SYSTEM
+
+    items = query.list_contracts(
+        organization_id=organization_id,
+        contract_type= contract_type,
+        actor_user_id= actor_user_id
+    )
 
     if args.active:
         items = [c for c in items if c.is_active]

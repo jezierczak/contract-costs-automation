@@ -2,14 +2,14 @@ from uuid import UUID
 
 from contract_costs.model.company import CompanyType
 from contract_costs.services.companies.apply.command import (
-    CompanyActionCommand,
+    ApplyCompanyCommand,
     CompanyActionType,
 )
 
 
 class CompanyExcelActionMapper:
     @staticmethod
-    def map(row: dict) -> CompanyActionCommand:
+    def map(row: dict) -> ApplyCompanyCommand:
         action = CompanyActionType((row.get("ACTION") or "none").lower())
 
         company_id = (
@@ -18,8 +18,8 @@ class CompanyExcelActionMapper:
             else None
         )
 
-        return CompanyActionCommand(
-            action=action,
+        return ApplyCompanyCommand(
+            apply_action_type=action,
             company_id=company_id,
             tax_number=row["Tax Number"],
             name=row["Name"],

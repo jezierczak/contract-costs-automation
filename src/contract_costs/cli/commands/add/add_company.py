@@ -42,7 +42,7 @@ def _run_add_company_interactive() -> None:
         organization_id=organization_id,
         actor_user_id=actor_user_id,
         action_bus=services.action_bus,
-        # create_company_service=services.create_company,
+        create_company_service=services.create_company,
     )
 
     logger.info("\nCompany added successfully.")

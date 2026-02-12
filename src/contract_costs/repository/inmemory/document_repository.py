@@ -121,3 +121,55 @@ class InMemoryDocumentRepository(DocumentRepository):
             and d.file_hash == file_hash
             for d in self._documents.values()
         )
+
+
+    def list_all(
+        self,
+        *,
+        organization_id: UUID,
+    ) -> List[Document]:
+        return sorted(
+            [
+                d for d in self._documents.values()
+                if d.organization_id == organization_id
+            ],
+            key=lambda d: d.created_at,
+            reverse=True,
+        )
+
+
+    def list_filtered(
+        self,
+        *,
+        organization_id: UUID,
+        has_payload: bool | None = None,
+        has_record: bool | None = None,
+        document_source: str | None = None,
+    ) -> List[Document]:
+
+        documents = [
+            d for d in self._documents.values()
+            if d.organization_id == organization_id
+        ]
+
+        if has_payload:
+            documents = [d for d in documents if d.parsed_payload is not None]
+        elif has_payload is False:
+            documents = [d for d in documents if d.parsed_payload is None]
+
+        if has_record:
+            documents = [d for d in documents if d.financial_record_id is not None]
+        elif has_record is False:
+            documents = [d for d in documents if d.financial_record_id is None]
+
+        if document_source:
+            documents = [
+                d for d in documents
+                if d.document_source == document_source
+            ]
+
+        return sorted(
+            documents,
+            key=lambda d: d.created_at,
+            reverse=True,
+        )

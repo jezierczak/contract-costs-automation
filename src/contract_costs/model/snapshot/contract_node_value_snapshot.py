@@ -3,7 +3,7 @@ from uuid import UUID
 from decimal import Decimal
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True)
 class ContractNodeValueSnapshot:
     id: UUID
     node_snapshot_id: UUID

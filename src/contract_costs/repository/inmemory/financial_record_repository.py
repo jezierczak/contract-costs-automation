@@ -1,6 +1,5 @@
 from uuid import UUID
 
-from contract_costs.model.document import Document
 from contract_costs.model.financial_record import (
     FinancialRecord,
     FinancialRecordStatus,

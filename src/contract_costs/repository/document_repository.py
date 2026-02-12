@@ -59,3 +59,20 @@ class DocumentRepository(ABC):
         organization_id: UUID,
         file_hash: str,
     ) -> bool: ...
+
+    @abstractmethod
+    def list_all(
+            self,
+            *,
+            organization_id: UUID,
+    ) -> list[Document]: ...
+
+    @abstractmethod
+    def list_filtered(
+            self,
+            *,
+            organization_id: UUID,
+            has_payload: bool | None = None,
+            has_record: bool | None = None,
+            document_source: str | None = None,
+    ) -> list[Document]: ...

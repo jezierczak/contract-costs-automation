@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Callable
 from uuid import UUID
 
+from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.common.time import utc_now
 from contract_costs.model.contract import Contract
 from contract_costs.repository.contract_repository import ContractRepository
@@ -10,7 +11,7 @@ from contract_costs.services.contracts.apply.command.set_contract_status_command
     SetContractStatusCommand
 )
 
-class SetContractStatusService:
+class SetContractStatusService(ActionHandler[SetContractStatusCommand,None]):
 
     def __init__(
         self,

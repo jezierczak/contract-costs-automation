@@ -254,6 +254,72 @@ class MySQLDocumentRepository(DocumentRepository):
             cur.execute(sql, (str(organization_id), file_hash))
             return cur.fetchone() is not None
 
+    def list_all(
+        self,
+        *,
+        organization_id: UUID,
+    ) -> list[Document]:
+        sql = """
+            SELECT *
+            FROM documents
+            WHERE organization_id = %s
+            ORDER BY created_at DESC
+        """
+
+        conn = get_connection()
+        with conn.cursor(dictionary=True) as cur:
+            cur.execute(sql, (str(organization_id),))
+            rows = cur.fetchall()
+
+        return [self._map_row(r) for r in rows]
+
+
+    def list_filtered(
+        self,
+        *,
+        organization_id: UUID,
+        has_payload: bool | None = None,
+        has_record: bool | None = None,
+        document_source: str | None = None,
+    ) -> list[Document]:
+
+        conditions = ["organization_id = %s"]
+        params: list[str] = [str(organization_id)]
+
+        # has_payload
+        if has_payload is True:
+            conditions.append("parsed_payload IS NOT NULL")
+        elif has_payload is False:
+            conditions.append("parsed_payload IS NULL")
+
+        # has_record
+        if has_record is True:
+            conditions.append("financial_record_id IS NOT NULL")
+        elif has_record is False:
+            conditions.append("financial_record_id IS NULL")
+
+        # document_source
+        if document_source:
+            conditions.append("document_source = %s")
+            params.append(document_source)
+
+        where_clause = " AND ".join(conditions)
+
+        sql = f"""
+            SELECT *
+            FROM documents
+            WHERE {where_clause}
+            ORDER BY created_at DESC
+        """
+
+        conn = get_connection()
+        with conn.cursor(dictionary=True) as cur:
+            cur.execute(sql, tuple(params))
+            rows = cur.fetchall()
+
+        return [self._map_row(r) for r in rows]
+
+
     # ============================================================
     # MAPPING
     # ============================================================

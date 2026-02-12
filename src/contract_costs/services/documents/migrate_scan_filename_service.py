@@ -1,15 +1,10 @@
 import hashlib
 import logging
-import mimetypes
-from dataclasses import replace
 from pathlib import Path
 from uuid import UUID
 
 import contract_costs.config as cfg
 
-from contract_costs.common.ids import new_uuid
-from contract_costs.common.time import utc_now
-from contract_costs.model.document import Document, DocumentType, DocumentSource
 from contract_costs.repository.document_repository import DocumentRepository
 from contract_costs.repository.financial_record_repository import FinancialRecordRepository
 

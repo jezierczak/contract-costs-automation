@@ -88,3 +88,4 @@ class Amount:
             vat_rate=vat_rate,
             tax_treatment=tax_treatment,
         )
+

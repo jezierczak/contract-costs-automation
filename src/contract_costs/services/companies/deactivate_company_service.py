@@ -2,6 +2,7 @@ from dataclasses import replace
 from datetime import datetime
 from typing import Callable
 
+from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.common.time import utc_now
 from contract_costs.repository.company_repository import CompanyRepository
 from contract_costs.services.companies.dto.deactivate_company_command import (
@@ -9,7 +10,7 @@ from contract_costs.services.companies.dto.deactivate_company_command import (
 )
 
 
-class DeactivateCompanyService:
+class DeactivateCompanyService(ActionHandler[DeactivateCompanyCommand,None]):
 
     def __init__(
         self,

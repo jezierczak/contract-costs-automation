@@ -7,7 +7,7 @@ from contract_costs.model.company import CompanyType
 from contract_costs.model.financial_record import FinancialRecord, FinancialRecordStatus
 from contract_costs.repository.company_repository import CompanyRepository
 from contract_costs.repository.document_repository import DocumentRepository
-from contract_costs.services.catalogues.invoice_file_organizer import RecordFileOrganizer
+from contract_costs.services.catalogues.record_file_organizer import RecordFileOrganizer
 
 import contract_costs.config as cfg
 

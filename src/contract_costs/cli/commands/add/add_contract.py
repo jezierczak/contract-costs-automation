@@ -6,6 +6,7 @@ from contract_costs.cli.schemas.contract import CONTRACT_FIELDS
 from contract_costs.cli.context import get_services
 from contract_costs.cli.utils.context_helpers import require_user_id, require_organization_id
 from contract_costs.common.context.exceptions import ContextError
+from contract_costs.model.contract import ContractType
 
 from contract_costs.services.contracts.dto.create_contract_command import CreateContractCommand
 
@@ -63,11 +64,17 @@ def handle_add_contract(args=None) -> None:
         budget=data.get("budget"),
         path=None,
         status=data["status"],
+        contract_type=ContractType.PROJECT
     )
 
-    service = services.create_contract
-    service.init(command)
-    service.execute()
+    # service = services.create_contract
+    # service.init(command)
+    # service.execute()
+
+    services.action_bus.execute(
+        action=command,
+        handler=services.create_contract
+    )
 
     logger.info("\nContract created successfully.")
 

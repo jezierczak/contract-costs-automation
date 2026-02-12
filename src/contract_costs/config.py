@@ -76,17 +76,39 @@ WORK_DIR = Path(os.getenv("WORK_DIR", "./.test_work_dir" if APP_ENV == "test" el
 
 # --- owners (archiwum faktur źródłowych) ---
 #OWNERS_DIR = WORK_DIR / "companies"
-OWNERS_DIR = Path("companies")
+OWNERS_DIR = Path("owners")
 
 # --- invoices (automatyczne) ---
 #INCOMING_DIR = WORK_DIR / "incoming"
 INCOMING_DIR = Path("incoming")
+# -------------------------------------------------
+# DOCUMENTS FLOW
+# -------------------------------------------------
 
-INVOICE_INPUT_DIR = INCOMING_DIR / "invoices"
-INVOICE_FAILED_DIR = INCOMING_DIR / "failed"
-INVOICE_DRAFT_DIR = INCOMING_DIR / "drafts"
-INVOICE_RAW_DIR = INCOMING_DIR / "raw"
-INVOICE_TRASH_DIR = INCOMING_DIR / "trash"
+DOCUMENTS_DIR = INCOMING_DIR / "documents"
+
+DOCUMENTS_PROCESSING_DIR = DOCUMENTS_DIR / "processing"
+DOCUMENTS_RAW_DIR = DOCUMENTS_DIR / "raw"
+DOCUMENTS_FAILED_DIR = DOCUMENTS_DIR / "failed"
+DOCUMENTS_TRASH_DIR = DOCUMENTS_DIR / "trash"
+DOCUMENTS_SKIPPED_DIR = DOCUMENTS_DIR / "skipped"
+DOCUMENTS_DUPLICATES_DIR = DOCUMENTS_DIR / "duplicates"
+
+# -------------------------------------------------
+# RECORD FILE FLOW (relative to org root)
+# -------------------------------------------------
+
+RECORD_DRAFT_DIR = Path("draft")
+RECORD_RAW_DIR = Path("raw")
+RECORD_TRASH_DIR = Path("trash")
+RECORD_FAILED_DIR = Path("failed")
+
+
+# INVOICE_INPUT_DIR = INCOMING_DIR / "invoices"
+# INVOICE_FAILED_DIR = INCOMING_DIR / "failed"
+# INVOICE_DRAFT_DIR = INCOMING_DIR / "drafts"
+# INVOICE_RAW_DIR = INCOMING_DIR / "raw"
+# INVOICE_TRASH_DIR = INCOMING_DIR / "trash"
 
 # --- inputs (Excel jako UI) ---
 #INPUTS_DIR = WORK_DIR / "inputs"
@@ -121,6 +143,7 @@ SHOW_DIR = Path("show")
 CONTRACTS_SHOW_DIR = SHOW_DIR / "contracts"
 INVOICES_SHOW_DIR = SHOW_DIR / "invoices"
 SNAPSHOTS_SHOW_DIR = SHOW_DIR / "snapshots"
+DOCUMENTS_SHOW_DIR =SHOW_DIR / "documents"
 
 # -------------------------------------------------
 # DATABASE

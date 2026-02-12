@@ -12,12 +12,13 @@ class WorkDirInitializer:
             org_root / cfg.OWNERS_DIR,
 
             # incoming (OCR / raw invoices)
-            org_root / cfg.INVOICE_INPUT_DIR,
-            org_root / cfg.INVOICE_FAILED_DIR,
-            org_root / cfg.INVOICE_DRAFT_DIR,
-            org_root / cfg.INVOICE_RAW_DIR,
-            org_root / cfg.INVOICE_TRASH_DIR,
-
+            org_root / cfg.DOCUMENTS_DIR,
+            org_root / cfg.DOCUMENTS_FAILED_DIR,
+            org_root / cfg.DOCUMENTS_PROCESSING_DIR,
+            org_root / cfg.DOCUMENTS_TRASH_DIR,
+            org_root / cfg.DOCUMENTS_RAW_DIR,
+            org_root / cfg.DOCUMENTS_SKIPPED_DIR,
+            org_root / cfg.DOCUMENTS_DUPLICATES_DIR,
             # inputs (Excel UI)
             org_root / cfg.INPUTS_COMPANIES_DIR,
             org_root / cfg.INPUTS_CONTRACTS_DIR,

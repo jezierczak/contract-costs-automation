@@ -1,6 +1,6 @@
 [project]
 name = "contract-costs-automation"
-version = "0.7.1"
+version = "0.7.5"
 description = "Production-grade system for tracking, aggregating, and auditing construction contract costs using hierarchical cost trees and historical snapshots."
 
 requires-python = ">=3.13"
@@ -16,6 +16,7 @@ dependencies = [
     "pydantic>=2.12.5",
     "pytesseract>=0.3.13",
     "python-dotenv>=1.2.1",
+    "uuid>=1.30",
     "watchdog>=6.0.0",
 ]
 

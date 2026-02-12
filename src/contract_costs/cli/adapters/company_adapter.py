@@ -15,7 +15,7 @@ def create_company_from_cli(
     organization_id: UUID,
     actor_user_id: UUID,
     action_bus: ActionBus,
-    # create_company_service: CreateCompanyService,
+    create_company_service: CreateCompanyService,
 ) -> None:
     address = Address(
         street=data["address_street"],
@@ -52,7 +52,7 @@ def create_company_from_cli(
         bank_account=bank_account,
         tags=None,
     )
-    action_bus.execute(cmd)
+    action_bus.execute(action=cmd,handler=create_company_service)
     # create_company_service.execute(cmd)
 
 def update_company_from_cli(
@@ -61,6 +61,7 @@ def update_company_from_cli(
     data: dict,
     organization_id: UUID,
     actor_user_id: UUID,
+    action_bus: ActionBus,
     update_company_service: UpdateCompanyService,
 ) -> None:
     address = Address(
@@ -98,7 +99,9 @@ def update_company_from_cli(
         bank_account=bank_account,
         tags=None,
     )
-
+    action_bus.execute(
+        action=cmd,
+        handler=update_company_service)
     update_company_service.execute(cmd)
 
     # TU później:

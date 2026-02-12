@@ -1,4 +1,6 @@
 from pathlib import Path
 
 def scan_unprocessed(folder: Path) -> list[Path]:
-    return list(folder.glob("*.pdf"))
+    pdfs = folder.glob("*.pdf")
+    xmls = folder.glob("*.xml")
+    return list(pdfs) + list(xmls)

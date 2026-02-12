@@ -7,9 +7,11 @@ from enum import Enum
 
 
 import contract_costs.config as cfg
-from contract_costs.action_bus.handler_registry import handles
+from contract_costs.action_bus.action_handler import ActionHandler
+# from contract_costs.action_bus.handler_registry import handles
 from contract_costs.repository.document_repository import DocumentRepository
 from contract_costs.services.catalogues.document_file_organizer import DocumentFileOrganizer
+from contract_costs.services.documents.exeptions import DocumentFatalError
 from contract_costs.services.documents.process.dto.process_document_command import (
     ProcessDocumentCommand,
 )
@@ -19,8 +21,8 @@ from contract_costs.services.documents.process.parse_document_from_file import (
 
 logger = logging.getLogger(__name__)
 
-@handles(ProcessDocumentCommand)
-class ProcessDocumentService:
+# @handles(ProcessDocumentCommand)
+class ProcessDocumentService(ActionHandler[ProcessDocumentCommand,None]):
 
     def __init__(
         self,
@@ -41,8 +43,11 @@ class ProcessDocumentService:
             raise ValueError("Document not found")
 
         # idempotencja
-        if document.parsed_payload is not None:
-            return
+        if document.parsed_payload is not None and not cmd.force:
+            logger.info("Document already parsed. Use --force to reprocess. Document id: %s",document.id)
+
+        if cmd.force:
+            logger.info("Force reprocessing document %s", document.id)
 
         org_root = cfg.WORK_DIR / str(cmd.organization_id)
         file_path = org_root / document.file_path  # zakładamy ścieżkę relative
@@ -59,8 +64,10 @@ class ProcessDocumentService:
                 file_path=file_path,
                 source=document.document_source,
             )
-        except Exception as e:
-            logger.exception("Parsing failed for document %s", document.id)
+        except DocumentFatalError as e:
+            logger.exception(
+                "Fatal parsing error for document %s", document.id
+            )
 
             # move → failed
             try:
@@ -99,7 +106,7 @@ class ProcessDocumentService:
             except Exception:
                 logger.exception("Failed to move document to failed after move error")
 
-            raise e
+            raise
 
         # =====================================================
         # 3️⃣ UPDATE DOCUMENT

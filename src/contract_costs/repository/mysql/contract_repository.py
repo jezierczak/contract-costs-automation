@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from contract_costs.model.contract import Contract, ContractStatus
+from contract_costs.model.contract import Contract, ContractStatus, ContractType
 from contract_costs.repository.contract_repository import ContractRepository
 from contract_costs.infrastructure.db.mysql_connection import get_connection
 
@@ -30,9 +30,10 @@ class MySQLContractRepository(ContractRepository):
                 created_at,
                 created_by_user_id,
                 updated_at,
-                updated_by_user_id
+                updated_by_user_id,
+                contract_type
             )
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """,
             (
                 str(contract.id),
@@ -55,6 +56,9 @@ class MySQLContractRepository(ContractRepository):
                 str(contract.updated_by_user_id)
                 if contract.updated_by_user_id
                 else None,
+                contract.contract_type.value,
+
+
             ),
         )
 
@@ -80,7 +84,9 @@ class MySQLContractRepository(ContractRepository):
                 path=%s,
                 status=%s,
                 updated_at=%s,
-                updated_by_user_id=%s
+                updated_by_user_id=%s,
+                contract_type=%s
+            
             WHERE id=%s
               AND organization_id=%s
             """,
@@ -99,9 +105,10 @@ class MySQLContractRepository(ContractRepository):
                 str(contract.updated_by_user_id)
                 if contract.updated_by_user_id
                 else None,
+                contract.contract_type.value,
                 str(contract.id),
                 str(contract.organization_id),
-            ),
+            )
         )
 
         conn.commit()
@@ -110,6 +117,7 @@ class MySQLContractRepository(ContractRepository):
 
     def get(
         self,
+        *,
         organization_id: UUID,
         contract_id: UUID,
     ) -> Contract | None:
@@ -131,16 +139,51 @@ class MySQLContractRepository(ContractRepository):
 
         return self._row_to_contract(row) if row else None
 
-    def list(self, organization_id: UUID) -> list[Contract]:
+    def get_system_contract(
+            self,
+            organization_id: UUID,
+            owner_id: UUID,
+    ) -> Contract | None:
+
+        conn = get_connection()
+        cur = conn.cursor(dictionary=True)
+
+        cur.execute(
+            """
+            SELECT *
+            FROM contracts
+            WHERE organization_id = %s
+              AND contract_type = %s
+              AND owner_id = %s
+            LIMIT 1
+            """,
+            (
+                str(organization_id),
+                ContractType.SYSTEM.value,
+                str(owner_id),
+            ),
+        )
+
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+
+        if not row:
+            return None
+
+        return self._row_to_contract(row)
+
+
+    def list_contracts(self, organization_id: UUID,contract_type: ContractType = ContractType.PROJECT) -> list[Contract]:
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
 
         cur.execute(
             """
             SELECT * FROM contracts
-            WHERE organization_id = %s
+            WHERE organization_id = %s and contract_type = %s
             """,
-            (str(organization_id),),
+            (str(organization_id),contract_type.value),
         )
 
         rows = cur.fetchall()
@@ -247,4 +290,5 @@ class MySQLContractRepository(ContractRepository):
             budget=row["budget"],
             path=row["path"],
             status=ContractStatus(row["status"]),
+            contract_type=ContractType(row["contract_type"]),
         )

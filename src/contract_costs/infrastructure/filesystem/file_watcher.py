@@ -11,7 +11,7 @@ class _Handler(FileSystemEventHandler):
         if event.is_directory:
             return
         path = Path(event.src_path)
-        if path.suffix.lower() != ".pdf":
+        if path.suffix.lower() != ".pdf" and path.suffix.lower() != ".xml":
             return
         self._on_file_created(path)
 

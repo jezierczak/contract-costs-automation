@@ -13,22 +13,22 @@ from contract_costs.services.watcher.document_watcher import DocumentWatcherServ
 
 
 def run_watcher(*, services, organization_id: UUID, actor_user_id: UUID) -> None:
-    invoice_input_dir: Path = (
+    document_incoming_dir: Path = (
         cfg.WORK_DIR
         / str(organization_id)
-        / cfg.INVOICE_INPUT_DIR
+        / cfg.DOCUMENTS_DIR
     )
 
     logging.info("Starting invoice processing pipeline")
     logging.info("Organization: %s", organization_id)
-    logging.info("Watching directory: %s", invoice_input_dir)
+    logging.info("Watching directory: %s", document_incoming_dir)
     logging.info("Press Ctrl+C to stop")
 
     watcher = DocumentWatcherService(
-        action_bus=services.action_bus,
+        services=services,
         organization_id=organization_id,
         actor_user_id=actor_user_id,
-        watch_dir=invoice_input_dir,
+        watch_dir=document_incoming_dir,
     )
 
     worker = services.document_parse_worker
@@ -36,13 +36,14 @@ def run_watcher(*, services, organization_id: UUID, actor_user_id: UUID) -> None
     # 🔁 scan przy starcie
     action_bus = services.action_bus
 
-    for file in scan_unprocessed(invoice_input_dir):
+    for file in scan_unprocessed(document_incoming_dir):
         action_bus.execute(
-            UploadDocumentCommand(
+            action = UploadDocumentCommand(
                 organization_id=organization_id,
                 actor_user_id=actor_user_id,
                 file_path=file,
-            )
+            ),
+            handler=services.upload_document_service
         )
 
     worker_thread = threading.Thread(

@@ -1,9 +1,12 @@
+from typing import Sequence
+
 from contract_costs.infrastructure.excel.excel_column_v2.excel_column import ExcelColumn
-from contract_costs.infrastructure.excel.excel_column_v2.excel_column_type import ExcelColumnType
+# from contract_costs.infrastructure.excel.excel_column_v2.excel_column_type import ExcelColumnType
+from contract_costs.infrastructure.excel.excel_column import ExcelColumnType
 from contract_costs.services.snapshots.dto.contract_snapshot_list_dto import ContractSnapshotListDTO
 
 
-def snapshot_list_columns() -> list[ExcelColumn[ContractSnapshotListDTO]]:
+def snapshot_list_columns() -> Sequence[ExcelColumn[ContractSnapshotListDTO]]:
     return ExcelColumn.from_lists(
         headers=[
             "SNAPSHOT",

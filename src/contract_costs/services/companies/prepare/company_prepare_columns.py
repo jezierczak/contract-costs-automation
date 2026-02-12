@@ -1,3 +1,4 @@
+
 from contract_costs.infrastructure.excel.excel_column import ExcelColumn, ExcelColumnType
 from contract_costs.model.company import CompanyType
 from contract_costs.services.companies.apply.command import CompanyActionType

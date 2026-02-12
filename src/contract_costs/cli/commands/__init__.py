@@ -16,4 +16,5 @@ from contract_costs.cli.commands import whoami   # noqa
 from contract_costs.cli.commands import use_organization   # noqa
 from contract_costs.cli.commands import remove   # noqa
 from contract_costs.cli.commands import accept_organization   # noqa
-from contract_costs.cli.commands import migrate_scan_filename   # noqa
+from contract_costs.cli.commands import init_company_contracts   # noqa
+from contract_costs.cli.commands import documents   # noqa

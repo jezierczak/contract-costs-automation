@@ -8,4 +8,5 @@ from contract_costs.action_bus.action_type import ActionType, action_type
 @dataclass(frozen=True)
 class ProcessDocumentCommand(Action):
     document_id: UUID
+    force: bool=False
 

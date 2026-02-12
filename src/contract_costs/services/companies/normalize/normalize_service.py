@@ -56,10 +56,20 @@ class CompanyNormalizeService:
     def normalize_bank_account(value: str | None) -> str | None:
         if not value:
             return None
+
+        value = value.strip().upper()
         value = value.replace(" ", "").replace("-", "")
+
         if value.startswith("PL"):
-            value = value.replace("PL", "")
-        return value.upper()
+            value = value[2:]
+
+        if not value.isdigit():
+            return None
+
+        if len(value) != 26:
+            return None
+
+        return value
 
     @staticmethod
     def normalize_phone(phone: str | None) -> str | None:

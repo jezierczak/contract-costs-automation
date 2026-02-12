@@ -95,3 +95,16 @@ class FinancialRecordsShowFileManager(ShowFileManager):
             base_dir=cfg.INVOICES_SHOW_DIR / prefix,
             name=f"records_{prefix}",
         )
+
+class DocumentsShowFileManager(ShowFileManager):
+    def __init__(
+        self,
+        *,
+        organization_id: UUID,
+        prefix: str,
+    ):
+        super().__init__(
+            organization_id=organization_id,
+            base_dir=cfg.DOCUMENTS_SHOW_DIR / prefix,
+            name=f"records_{prefix}",
+        )

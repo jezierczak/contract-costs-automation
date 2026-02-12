@@ -1,5 +1,6 @@
 from contract_costs.infrastructure.excel.excel_column_v2.excel_column import ExcelColumn
-from contract_costs.infrastructure.excel.excel_column_v2.excel_column_type import ExcelColumnType
+# from contract_costs.infrastructure.excel.excel_column_v2.excel_column_type import ExcelColumnType
+from contract_costs.infrastructure.excel.excel_column import ExcelColumnType
 from contract_costs.services.contracts.query.dto.contract_list_dto import ContractListDTO
 
 

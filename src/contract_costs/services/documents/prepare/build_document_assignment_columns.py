@@ -1,11 +1,10 @@
-from uuid import UUID
-
 from contract_costs.infrastructure.excel.excel_column_v2.dropdown_options import DropdownOptions
 from contract_costs.infrastructure.excel.excel_column_v2.excel_column import ExcelColumn
-from contract_costs.infrastructure.excel.excel_column_v2.excel_column_type import ExcelColumnType
+# from contract_costs.infrastructure.excel.excel_column_v2.excel_column_type import ExcelColumnType
+from contract_costs.infrastructure.excel.excel_column import ExcelColumnType
 from contract_costs.services.documents.prepare.dto.prepare_document_dto import PreparedDocumentDto
 
-import contract_costs.config as cfg
+
 
 
 def build_document_assignment_columns(

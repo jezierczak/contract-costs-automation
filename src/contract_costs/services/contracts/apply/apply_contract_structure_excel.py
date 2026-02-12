@@ -15,7 +15,7 @@ from contract_costs.infrastructure.excel.contracts.cost_node_prepare_columns imp
 )
 
 from contract_costs.model.company import CompanyType
-from contract_costs.model.contract import ContractStatus
+from contract_costs.model.contract import ContractStatus, ContractType
 from contract_costs.model.contract_node import ContractNodeInput
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 
@@ -84,11 +84,11 @@ class ApplyContractStructureExcelService:
             budget=excel_data.budget,
             path=excel_data.path,
             status=excel_data.status,
+            contract_type=ContractType.PROJECT,
+            contract_node_input=contract_nodes
         )
 
-        self._create_contract.init(command=command)
-        self._create_contract.add_contract_node_tree(contract_nodes)
-        self._create_contract.execute()
+        self._create_contract.execute(command=command)
 
     def apply_update(self,
                      *,

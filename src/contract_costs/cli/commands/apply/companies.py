@@ -6,6 +6,7 @@ from contract_costs.common.context.exceptions import ContextError
 from contract_costs.infrastructure.excel.excel_loader import ExcelLoader
 from contract_costs.infrastructure.filesystem.excel_domain_file_manager import InputsCompaniesAssignmentFileManager
 from contract_costs.services.companies.apply.adapters.company_excel_action_mapper import CompanyExcelActionMapper
+from contract_costs.services.companies.apply.command import ApplyCompaniesCommand
 from contract_costs.services.companies.prepare.company_prepare_columns import (
     COMPANY_PREPARE_COLUMNS,
 )
@@ -54,12 +55,16 @@ def handle_apply_companies(args) -> None:
         for row in rows
     ]
 
+    apply_command = ApplyCompaniesCommand(
+        organization_id=organization_id,
+        actor_user_id=user_id,
+        commands=commands,
+    )
+
     # =====================
     # APPLY
     # =====================
-    services.apply_companies_from_excel_service.apply(
-        organization_id=organization_id,
-        actor_user_id=user_id,
-        commands=commands)
+    services.apply_companies_from_excel_service.execute(apply_command)
+
     fm.mark_processed()
     print(f"Applied {len(commands)} company commands from {input_path}")

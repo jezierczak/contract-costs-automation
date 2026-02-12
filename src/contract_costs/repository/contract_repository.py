@@ -1,7 +1,7 @@
 from uuid import UUID
 from abc import ABC, abstractmethod
 
-from contract_costs.model.contract import Contract
+from contract_costs.model.contract import Contract, ContractType
 
 
 class ContractRepository(ABC):
@@ -12,12 +12,19 @@ class ContractRepository(ABC):
         ...
 
     @abstractmethod
-    def get(self, organization_id: UUID, contract_id: UUID) -> Contract | None:
+    def get(self,*, organization_id: UUID, contract_id: UUID) -> Contract | None:
         """Get contract by id (org scoped)"""
         ...
-
     @abstractmethod
-    def list(self, organization_id: UUID) -> list[Contract]:
+    def get_system_contract(
+            self,
+            *,
+            organization_id: UUID,
+            owner_id: UUID,
+    ) -> Contract | None:
+        ...
+    @abstractmethod
+    def list_contracts(self, organization_id: UUID,contract_type: ContractType) -> list[Contract]:
         """List all contracts for organization"""
         ...
 

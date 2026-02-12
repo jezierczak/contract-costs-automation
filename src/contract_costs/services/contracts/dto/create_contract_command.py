@@ -4,12 +4,16 @@ from decimal import Decimal
 from pathlib import Path
 from uuid import UUID
 
+from contract_costs.action_bus.action_type import action_type, ActionType
+from contract_costs.action_bus.command import Command
 from contract_costs.model.company import Company
-from contract_costs.model.contract import ContractStatus
+from contract_costs.model.contract import ContractStatus, ContractType
+from contract_costs.model.contract_node import ContractNodeInput
 
 
+@action_type(ActionType.CREATE_CONTRACT)
 @dataclass(frozen=True)
-class CreateContractCommand:
+class CreateContractCommand(Command):
     organization_id: UUID
     actor_user_id: UUID
 
@@ -25,3 +29,5 @@ class CreateContractCommand:
     budget: Decimal | None
     path: Path | None
     status: ContractStatus
+    contract_type: ContractType
+    contract_node_input: list[ContractNodeInput] | None = None

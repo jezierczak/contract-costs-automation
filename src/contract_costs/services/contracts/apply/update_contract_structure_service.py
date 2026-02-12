@@ -4,7 +4,8 @@ from typing import Callable
 from uuid import UUID
 import logging
 
-from contract_costs.builders.contract_node_tree_builder import ContractNodeTreeBuilder
+from contract_costs.action_bus.action_handler import ActionHandler
+from contract_costs.services.contracts.builders.contract_node_tree_builder import ContractNodeTreeBuilder
 from contract_costs.common.time import utc_now
 from contract_costs.model.contract import Contract
 from contract_costs.repository.contract_repository import ContractRepository
@@ -17,7 +18,7 @@ from contract_costs.services.contracts.validators.contract_node_tree_validator i
 logger = logging.getLogger(__name__)
 
 
-class UpdateContractStructureService:
+class UpdateContractStructureService(ActionHandler[UpdateContractStructureCommand,None]):
     """
     Aktualizuje ISTNIEJĄCY kontrakt na podstawie pełnej struktury
     (Excel = źródło prawdy).

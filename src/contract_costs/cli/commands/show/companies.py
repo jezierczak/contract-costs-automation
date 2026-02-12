@@ -53,7 +53,7 @@ def handle_show_companies(args) -> None:
         role=role,
     )
 
-    items = services.company_query_service.list_companies(query)
+    items = services.company_query_service.execute(query)
 
     if not items:
         print("No companies found.")

@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 from uuid import UUID
 
+from contract_costs.action_bus.action import Action
 from contract_costs.model.company import CompanyType
 
 
@@ -16,11 +17,11 @@ class CompanyActionType(Enum):
 
 
 @dataclass(frozen=True)
-class CompanyActionCommand:
+class ApplyCompanyCommand:
     # =====================
     # ACTION
     # =====================
-    action: CompanyActionType
+    apply_action_type: CompanyActionType
 
     # =====================
     # IDENTYFIKACJA
@@ -59,3 +60,7 @@ class CompanyActionCommand:
     # TAGS
     # =====================
     tags: set[str]
+
+@dataclass(frozen=True)
+class ApplyCompaniesCommand(Action):
+    commands: list[ApplyCompanyCommand]

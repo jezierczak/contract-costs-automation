@@ -1,3 +1,4 @@
+from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.model.company import Company, CompanyType
 from contract_costs.repository.company_repository import CompanyRepository
 from contract_costs.services.companies.confidence.quality_default import (
@@ -8,14 +9,14 @@ from contract_costs.services.companies.query.dto.company_query import CompanyQue
 from contract_costs.services.companies.query.dto.company_dto import CompanyDTO
 
 
-class CompanyQueryService:
+class CompanyQueryService(ActionHandler[CompanyQuery,list[CompanyDTO]]):
     def __init__(self, company_repository: CompanyRepository) -> None:
         self._companies = company_repository
 
     # =====================
     # PUBLIC API
     # =====================
-    def list_companies(self, query: CompanyQuery) -> list[CompanyDTO]:
+    def execute(self, query: CompanyQuery) -> list[CompanyDTO]:
         companies = self._load_companies(query)
         return [self._to_dto(c) for c in companies]
 

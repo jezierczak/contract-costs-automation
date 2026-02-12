@@ -1,19 +1,19 @@
 
 from contract_costs.action_bus.permission_resolver import  MySqlPermissionResolver
+from contract_costs.services.contracts.apply.apply_contract_progress_service import ApplyContractProgressService
 
-from contract_costs.builders.contract_node_tree_builder import DefaultContractNodeTreeBuilder
+from contract_costs.services.contracts.builders.contract_node_tree_builder import DefaultContractNodeTreeBuilder
 from contract_costs.common.context.context_provider import ContextProvider
 from contract_costs.common.context.file_context_provider import FileContextProvider
 from contract_costs.infrastructure.excel.base_excel_exporter import BaseExcelExporter
 from contract_costs.infrastructure.excel.invoice_action_excel_loader import FinancialRecordActionExcelLoader
 from contract_costs.services.catalogues.document_file_organizer import DocumentFileOrganizer
-from contract_costs.services.catalogues.invoice_file_organizer import RecordFileOrganizer
+from contract_costs.services.catalogues.record_file_organizer import RecordFileOrganizer
 from contract_costs.services.catalogues.record_file_workworkflow_service import RecordFileWorkflowService
 from contract_costs.services.companies.activate_company_service import ActivateCompanyService
 from contract_costs.services.companies.apply.apply_companies_from_excel_service import ApplyCompaniesFromExcelService
 from contract_costs.services.companies.company_evaluate_orchestrator import CompanyEvaluateOrchestrator
 from contract_costs.services.companies.deactivate_company_service import DeactivateCompanyService
-from contract_costs.services.companies.dto.create_company_command import CreateCompanyCommand
 from contract_costs.services.companies.providers.street import StreetCandidateProvider
 from contract_costs.services.companies.providers.bank import BankAccountCandidateProvider
 from contract_costs.services.companies.providers.composite import CompositeCompanyCandidateProvider
@@ -28,10 +28,14 @@ from contract_costs.services.contracts.apply.apply_contract_progress_excel_servi
     ApplyContractProgressExcelService
 from contract_costs.services.contracts.apply.set_contract_status_service import SetContractStatusService
 from contract_costs.services.contracts.create_contract_service import CreateContractService
+from contract_costs.services.contracts.migration.back_fill_system_contracts_service import \
+    BackfillSystemContractsService
 
 from contract_costs.services.contracts.prepare.contract_prepare_excel_exporter import ContractPrepareExcelExporter
 from contract_costs.services.contracts.prepare.contract_prepare_progress_excel_exporter import \
     ContractPrepareProgressExcelExporter
+from contract_costs.services.contracts.query.contract_details.contract_details_query_service import \
+    ContractDetailsQueryService
 from contract_costs.services.contracts.query.contract_query_service import ContractQueryService
 
 from contract_costs.services.contracts.apply.update_contract_structure_service import (
@@ -40,6 +44,10 @@ from contract_costs.services.contracts.apply.update_contract_structure_service i
 from contract_costs.services.contracts.apply.apply_contract_structure_excel import (
     ApplyContractStructureExcelService,
 )
+from contract_costs.services.contracts.query.list_contracts.list_contracts_query_service import \
+    ListContractsQueryService
+from contract_costs.services.contracts.system_contract.create_system_contract_orchestrator import \
+    CreateSystemContractOrchestrator
 
 from contract_costs.services.contracts.validators.contract_node_tree_validator import (
     ContractNodeEntityValidator,
@@ -47,8 +55,11 @@ from contract_costs.services.contracts.validators.contract_node_tree_validator i
 from contract_costs.services.documents.apply.apply_document_service import ApplyDocumentService
 from contract_costs.services.documents.apply.document_action_excel_loader import DocumentActionExcelLoader
 from contract_costs.services.documents.migrate_scan_filename_service import MigrateScanFilenameService
+from contract_costs.services.documents.process.delete.delete_command_service import DeleteDocumentService
 from contract_costs.services.documents.process.document_parser_resolver import DefaultDocumentParserResolver
 from contract_costs.services.documents.process.parse_document_from_file import ParseDocumentFromFileService
+from contract_costs.services.documents.process.reprocess.reprocess_document_service import ReprocessDocumentService
+from contract_costs.services.documents.query.list_documents_query_service import ListDocumentsQueryService
 from contract_costs.services.financial_records.assigment.invoice_sources.document.create_record_from_document_service import \
     CreateRecordFromDocumentService
 
@@ -209,6 +220,13 @@ class Services:
         self._record_file_workflow_service = None
         self._create_record_service = None
         self._permission_resolver = None
+        self._apply_contract_progress_service = None
+        self._list_contracts_service = None
+        self._contract_details_service = None
+        self._list_documents_query_service = None
+        self._reprocess_document_service = None
+        self._delete_document_service = None
+        self._create_system_contract = None
 
         self._document_action_excel_loader_service = None
 
@@ -237,118 +255,116 @@ class Services:
         return self._permission_validator
 
 
-    @property
-    def service_registry(self):
-        if self._service_registry is None:
+    # @property
+    # def service_registry(self):
+    #     if self._service_registry is None:
+    #
+    #         from contract_costs.services.documents.upload.dto.upload_document_command import (
+    #             UploadDocumentCommand,
+    #         )
+    #
+    #         from contract_costs.services.documents.process.dto.process_document_command import (
+    #             ProcessDocumentCommand,
+    #         )
+    #
+    #         registry = {
+    #             CreateCompanyCommand: self.create_company,
+    #             UploadDocumentCommand: self.upload_document_service,
+    #             ProcessDocumentCommand: self.process_document_service,
+    #         }
+    #         # registry = {}
+    #         #
+    #         # for attr_name in dir(self):
+    #         #     service = getattr(self, attr_name)
+    #         #
+    #         #     command_type = getattr(service.__class__, "__command_type__", None)
+    #         #     if command_type:
+    #         #         registry[command_type] = service
+    #
+    #         # 🔥 UploadDocument
+    #
+    #         # 👉 później kolejne komendy tutaj
+    #
+    #         self._service_registry = registry
+    #
+    #     return self._service_registry
 
-            from contract_costs.services.documents.upload.dto.upload_document_command import (
-                UploadDocumentCommand,
-            )
-
-            from contract_costs.services.documents.process.dto.process_document_command import (
-                ProcessDocumentCommand,
-            )
-
-            registry = {
-                CreateCompanyCommand: self.create_company,
-                UploadDocumentCommand: self.upload_document_service,
-                ProcessDocumentCommand: self.process_document_service,
-            }
-            # registry = {}
-            #
-            # for attr_name in dir(self):
-            #     service = getattr(self, attr_name)
-            #
-            #     command_type = getattr(service.__class__, "__command_type__", None)
-            #     if command_type:
-            #         registry[command_type] = service
-
-            # 🔥 UploadDocument
-
-            # 👉 później kolejne komendy tutaj
-
-            self._service_registry = registry
-
-        return self._service_registry
-
-    def _resolve_by_type(self, annotation):
-        for attr_name in dir(self):
-            if attr_name.startswith("_"):
-                continue
-
-            try:
-                attr = getattr(self, attr_name)
-            except Exception:
-                continue
-
-            try:
-                if isinstance(attr, annotation):
-                    return attr
-            except TypeError:
-                # np. annotation to typing stuff
-                continue
-
-        return None
+    # def _resolve_by_type(self, annotation):
+    #     for attr_name in dir(self):
+    #         if attr_name.startswith("_"):
+    #             continue
+    #
+    #         try:
+    #             attr = getattr(self, attr_name)
+    #         except Exception:
+    #             continue
+    #
+    #         try:
+    #             if isinstance(attr, annotation):
+    #                 return attr
+    #         except TypeError:
+    #             # np. annotation to typing stuff
+    #             continue
+    #
+    #     return None
 
     @property
     def action_bus(self):
         if self._action_bus is None:
             from contract_costs.action_bus.action_bus import ActionBus
-            from contract_costs.action_bus.bootstrap import (
-                build_handler_instances,
-            )
-
-            import inspect
-
-            import inspect
-
-            def handler_factory(handler_cls):
-                sig = inspect.signature(handler_cls.__init__)
-                kwargs = {}
-
-                for name, param in sig.parameters.items():
-                    if name == "self":
-                        continue
-
-                    annotation = param.annotation
-
-                    # -------------------------------------------------
-                    # 1️⃣ TYPE-BASED RESOLUTION
-                    # -------------------------------------------------
-                    if annotation is not inspect.Parameter.empty:
-                        resolved = self._resolve_by_type(annotation)
-                        if resolved is not None:
-                            kwargs[name] = resolved
-                            continue
-
-                    # -------------------------------------------------
-                    # 2️⃣ NAME-BASED FALLBACK
-                    # -------------------------------------------------
-                    if hasattr(self, name):
-                        kwargs[name] = getattr(self, name)
-                        continue
-
-                    # -------------------------------------------------
-                    # 3️⃣ DEFAULT VALUE
-                    # -------------------------------------------------
-                    if param.default is not inspect.Parameter.empty:
-                        continue
-
-                    # -------------------------------------------------
-                    # 4️⃣ HARD FAIL
-                    # -------------------------------------------------
-                    raise RuntimeError(
-                        f"Cannot resolve dependency '{name}' "
-                        f"for handler {handler_cls.__name__}"
-                    )
-
-                return handler_cls(**kwargs)
-
-            handlers = build_handler_instances(handler_factory)
+            # from contract_costs.action_bus.bootstrap import (
+            #     build_handler_instances,
+            # )
+            #
+            # import inspect
+            #
+            # def handler_factory(handler_cls):
+            #     sig = inspect.signature(handler_cls.__init__)
+            #     kwargs = {}
+            #
+            #     for name, param in sig.parameters.items():
+            #         if name == "self":
+            #             continue
+            #
+            #         annotation = param.annotation
+            #
+            #         # -------------------------------------------------
+            #         # 1️⃣ TYPE-BASED RESOLUTION
+            #         # -------------------------------------------------
+            #         if annotation is not inspect.Parameter.empty:
+            #             resolved = self._resolve_by_type(annotation)
+            #             if resolved is not None:
+            #                 kwargs[name] = resolved
+            #                 continue
+            #
+            #         # -------------------------------------------------
+            #         # 2️⃣ NAME-BASED FALLBACK
+            #         # -------------------------------------------------
+            #         if hasattr(self, name):
+            #             kwargs[name] = getattr(self, name)
+            #             continue
+            #
+            #         # -------------------------------------------------
+            #         # 3️⃣ DEFAULT VALUE
+            #         # -------------------------------------------------
+            #         if param.default is not inspect.Parameter.empty:
+            #             continue
+            #
+            #         # -------------------------------------------------
+            #         # 4️⃣ HARD FAIL
+            #         # -------------------------------------------------
+            #         raise RuntimeError(
+            #             f"Cannot resolve dependency '{name}' "
+            #             f"for handler {handler_cls.__name__}"
+            #         )
+            #
+            #     return handler_cls(**kwargs)
+            #
+            # handlers = build_handler_instances(handler_factory)
 
             self._action_bus = ActionBus(
                 permission_validator=self.permission_validator,
-                handlers=handlers,
+                # handlers=handlers,
             )
 
         return self._action_bus
@@ -533,7 +549,7 @@ class Services:
         if self._apply_financial_record_excel_batch is None:
             self._apply_financial_record_excel_batch = ApplyFinancialRecordExcelBatchService(
                 FinancialRecordExcelBatchResolver(company_evaluate_orchestrator=self.company_evaluate_orchestrator),
-                ApplyCompanyExcelBatchService(self.company_repository),
+                ApplyCompanyExcelBatchService(self.company_repository,self.create_company),
                 self.financial_record_ingest_orchestrator,
             )
         return self._apply_financial_record_excel_batch
@@ -574,9 +590,21 @@ class Services:
         return self._export_financial_record_assignment_excel
 
     @property
+    def create_system_contract(self):
+        if self._create_system_contract is None:
+            self._create_system_contract =  CreateSystemContractOrchestrator(
+                contract_repository=self.contract_repository,
+                create_contract_service=self.create_contract
+            )
+        return self._create_system_contract
+
+    @property
     def create_company(self):
         if self._create_company_service is None:
-            self._create_company_service = CreateCompanyService(self.company_repository)
+            self._create_company_service = CreateCompanyService(
+                self.company_repository,
+                self.create_system_contract
+            )
         return self._create_company_service
 
     @property
@@ -806,10 +834,20 @@ class Services:
         return self._contract_prepare_progress_excel_exporter
 
     @property
+    def apply_contract_progress_service(self):
+        if self._apply_contract_progress_service is None:
+            self._apply_contract_progress_service = ApplyContractProgressService(
+                contract_repository=self.contract_repository,
+                contract_node_repository=self.contract_node_repository,
+            )
+        return self._apply_contract_progress_service
+
+    @property
     def apply_contract_progress_excel(self):
         if self._apply_contract_progress_excel is None:
             self._apply_contract_progress_excel = ApplyContractProgressExcelService(
-                contract_node_repository=self.contract_node_repository
+                # contract_node_repository=self.contract_node_repository
+                apply_contract_progress_service=self.apply_contract_progress_service
             )
         return self._apply_contract_progress_excel
 
@@ -840,13 +878,32 @@ class Services:
         return self._contract_snapshot_query_service
 
     @property
-    def contract_query_service(self):
-        if self._contract_query_service is None:
-            self._contract_query_service = ContractQueryService(
+    def list_contracts_service(self):
+        if self._list_contracts_service is None:
+            self._list_contracts_service = ListContractsQueryService(
                 contract_repo=self.contract_repository,
                 contract_node_repo=self.contract_node_repository,
                 record_line_repo=self.financial_record_line_repository,
                 value_type_repo=self.value_type_repository,
+            )
+        return self._list_contracts_service
+
+    @property
+    def contract_details_service(self):
+        if self._contract_details_service is None:
+            self._contract_details_service = ContractDetailsQueryService(
+                contract_repo=self.contract_repository,
+                contract_node_repo=self.contract_node_repository,
+                record_line_repo=self.financial_record_line_repository,
+                value_type_repo=self.value_type_repository,
+            )
+        return self._contract_details_service
+    @property
+    def contract_query_service(self):
+        if self._contract_query_service is None:
+            self._contract_query_service = ContractQueryService(
+                list_contracts_service = self.list_contracts_service,
+                contract_details_service =self.contract_details_service,
             )
         return self._contract_query_service
 
@@ -999,6 +1056,14 @@ class Services:
         return self._process_document_service
 
     @property
+    def delete_document_service(self):
+        if self._delete_document_service is None:
+            self._delete_document_service = DeleteDocumentService(
+                documents=self.document_repository
+            )
+        return self._delete_document_service
+
+    @property
     def prepare_documents_service(self):
         if self._prepare_documents_service is None:
             from contract_costs.services.documents.prepare.prepare_documents_service import (
@@ -1012,6 +1077,25 @@ class Services:
             )
 
         return self._prepare_documents_service
+
+    @property
+    def list_documents_query_service(self):
+        if self._list_documents_query_service is None:
+            self._list_documents_query_service = ListDocumentsQueryService(
+                document_repository=self.document_repository
+            )
+        return self._list_documents_query_service
+
+    @property
+    def reprocess_document_service(self):
+        if self._reprocess_document_service is None:
+            self._reprocess_document_service = ReprocessDocumentService(
+                documents=self.document_repository,
+                action_bus=self.action_bus,
+                process_document_service=self.process_document_service
+            )
+        return self._reprocess_document_service
+
 
     @property
     def export_document_assignment_excel_service(self):
@@ -1062,10 +1146,10 @@ class Services:
 
         return self._document_action_excel_loader_service
     @property
-    def migrate_scan_filename_service(self):
-        return MigrateScanFilenameService(
-        record_repository=self.financial_record_repository,
-        document_repository=self.document_repository
+    def backfill_system_contracts(self):
+        return BackfillSystemContractsService(
+            company_repository=self.company_repository,
+            create_system_contract=self.create_system_contract
     )
     # @staticmethod
     # def current_user_id() -> UUID:
@@ -1081,7 +1165,7 @@ def get_services(env: str = "prod") -> Services:
     if env not in _services:
         backend = (
             RepoBackend.MEMORY
-            if env in {"test", "tests", "memory"}
+            if env in {"memory"}
             else RepoBackend.MYSQL
         )
         context = FileContextProvider()

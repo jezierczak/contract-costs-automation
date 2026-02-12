@@ -10,6 +10,12 @@ class Action(ABC):
     organization_id: UUID
     actor_user_id: UUID
 
+
     @property
     def action_type(self) -> ActionType:
-        return getattr(type(self), "__action_type__", None)
+        action = getattr(type(self), "__action_type__", None)
+        if action is None:
+            raise RuntimeError(
+                f"{type(self).__name__} missing @action_type decorator"
+            )
+        return action

@@ -31,4 +31,9 @@ ROLE_PERMISSIONS: dict[ActionType, set[OrganizationRole]] = {
         OrganizationRole.ADMIN,
         OrganizationRole.USER,
     },
+    ActionType.COMPANY_MANAGEMENT:{
+        OrganizationRole.OWNER,
+        OrganizationRole.ADMIN,
+        OrganizationRole.USER,
+    }
 }

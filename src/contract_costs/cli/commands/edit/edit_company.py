@@ -87,6 +87,7 @@ def handle_edit_company(args=None) -> None:
         actor_user_id=actor_user_id,
         company=company,
         data=data,
+        action_bus=services.action_bus,
         update_company_service=services.update_company_service,
     )
 
