@@ -24,10 +24,11 @@ def build_input(name=None):
 # BASIC
 # ------------------------------------------------------------
 
-def test_returns_empty_when_name_missing(company_repo):
-    provider = NameCandidateProvider(company_repo)
+def test_returns_empty_when_name_missing(uow):
+    provider = NameCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=new_uuid(),
         input_=build_input(),
     )
@@ -35,10 +36,11 @@ def test_returns_empty_when_name_missing(company_repo):
     assert result == []
 
 
-def test_returns_empty_when_name_too_short(company_repo):
-    provider = NameCandidateProvider(company_repo)
+def test_returns_empty_when_name_too_short(uow):
+    provider = NameCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=new_uuid(),
         input_=build_input(name="A"),
     )
@@ -50,7 +52,7 @@ def test_returns_empty_when_name_too_short(company_repo):
 # HARD MATCH
 # ------------------------------------------------------------
 
-def test_returns_exact_normalized_match(company_repo):
+def test_returns_exact_normalized_match(company_repo, uow):
     org_id = new_uuid()
 
     company = (
@@ -62,9 +64,10 @@ def test_returns_exact_normalized_match(company_repo):
 
     company_repo.add(company)
 
-    provider = NameCandidateProvider(company_repo)
+    provider = NameCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=org_id,
         input_=build_input(name="acme sp z o o"),
     )
@@ -77,7 +80,7 @@ def test_returns_exact_normalized_match(company_repo):
 # SOFT MATCH (substring)
 # ------------------------------------------------------------
 
-def test_returns_soft_match_when_substring(company_repo):
+def test_returns_soft_match_when_substring(company_repo, uow):
     org_id = new_uuid()
 
     company = (
@@ -89,9 +92,10 @@ def test_returns_soft_match_when_substring(company_repo):
 
     company_repo.add(company)
 
-    provider = NameCandidateProvider(company_repo)
+    provider = NameCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=org_id,
         input_=build_input(name="Mega Construction"),
     )
@@ -99,7 +103,7 @@ def test_returns_soft_match_when_substring(company_repo):
     assert len(result) == 1
 
 
-def test_returns_multiple_when_multiple_match(company_repo):
+def test_returns_multiple_when_multiple_match(company_repo, uow):
     org_id = new_uuid()
 
     c1 = (
@@ -119,9 +123,10 @@ def test_returns_multiple_when_multiple_match(company_repo):
     company_repo.add(c1)
     company_repo.add(c2)
 
-    provider = NameCandidateProvider(company_repo)
+    provider = NameCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=org_id,
         input_=build_input(name="Alpha"),
     )
@@ -133,7 +138,7 @@ def test_returns_multiple_when_multiple_match(company_repo):
 # SCOPING
 # ------------------------------------------------------------
 
-def test_is_scoped_to_organization(company_repo):
+def test_is_scoped_to_organization(company_repo, uow):
     org1 = new_uuid()
     org2 = new_uuid()
 
@@ -146,9 +151,10 @@ def test_is_scoped_to_organization(company_repo):
 
     company_repo.add(company)
 
-    provider = NameCandidateProvider(company_repo)
+    provider = NameCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=org2,
         input_=build_input(name="Scoped"),
     )

@@ -41,10 +41,10 @@ class TestInMemoryCostNodeRepository:
         repo.add(root_node)
         repo.add(child_node)
 
-        result = repo.list_by_contract(root_node.contract_id)
+        result = repo.list_by_contract(root_node.contract_code)
 
         assert len(result) == 2
-        assert all(n.contract_id == root_node.contract_id for n in result)
+        assert all(n.contract_id == root_node.contract_code for n in result)
 
     def test_cost_node_repository_list_by_parent(self, root_node, child_node):
         repo = InMemoryContractNodeRepository()

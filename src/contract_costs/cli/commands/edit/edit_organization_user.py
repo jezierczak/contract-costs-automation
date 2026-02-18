@@ -69,7 +69,8 @@ def _handle_change_role(args):
         new_role=data["new_role"],
     )
 
-    services.change_organization_user_role.execute(cmd)
+
+    services.action_bus.execute(action=cmd,handler=services.change_organization_user_role)
     print("User role updated")
 
 
@@ -79,8 +80,8 @@ def _handle_deactivate(args):
     ctx = services.context
 
     try:
-        organization_id = ctx.current_organization_id()
-        actor_user_id = ctx.current_user_id()
+        organization_id = require_organization_id(services.context)
+        actor_user_id = require_user_id(services.context)
     except ContextError as e:
         print(f"❌ {e}")
         return
@@ -103,6 +104,6 @@ def _handle_deactivate(args):
         actor_user_id=actor_user_id,
         target_user_id=user.id,
     )
+    services.action_bus.execute(action=cmd, handler=services.deactivate_organization_user)
 
-    services.deactivate_organization_user.execute(cmd)
     print("User deactivated")

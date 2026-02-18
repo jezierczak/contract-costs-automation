@@ -2,7 +2,11 @@ from contract_costs.cli.registry import REGISTRY
 from contract_costs.cli.utils.context_helpers import require_organization_id, require_user_id
 from contract_costs.cli.utils.contract_resolver import resolve_contract
 from contract_costs.common.context.exceptions import ContextError
-
+from contract_costs.cli.context import get_services
+from contract_costs.model.contract import ContractStatus
+from contract_costs.services.contracts.apply.command.set_contract_status_command import (
+    SetContractStatusCommand
+)
 
 def build_set_contract_status(subparsers):
     p = subparsers.add_parser(
@@ -25,11 +29,6 @@ def build_set_contract_status(subparsers):
 REGISTRY.register_group("set", build_set_contract_status)
 
 
-from contract_costs.cli.context import get_services
-from contract_costs.model.contract import ContractStatus
-from contract_costs.services.contracts.apply.command.set_contract_status_command import (
-    SetContractStatusCommand
-)
 
 def handle_set_contract_status(args) -> None:
     services = get_services()
@@ -60,8 +59,7 @@ def handle_set_contract_status(args) -> None:
         new_status=new_status,
     )
 
-    services.set_contract_status_service.execute(cmd)
-
+    services.action_bus.execute(action=cmd,handler=services.set_contract_status_service)
     print(
         f"Contract '{contract.code}' status changed "
         f"{contract.status.value} → {new_status.value}"

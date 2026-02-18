@@ -25,6 +25,10 @@ class FakeContractNodeTreeBuilder(ContractNodeTreeBuilder):
         root_name: str | None = None,
     ):
         self.called = True
+        for node in self.nodes_to_return:
+            node.contract_id = contract_id
+            node.organization_id = organization_id
+
         return self.nodes_to_return
 
 class FakeValidator(ContractNodeEntityValidator):

@@ -34,6 +34,6 @@ def test_list_active_only(user_repo):
     user_repo.add(active)
     user_repo.add(inactive)
 
-    result = user_repo.list_contracts(active_only=True)
+    result = user_repo.list(active_only=True)
 
     assert result == [active]

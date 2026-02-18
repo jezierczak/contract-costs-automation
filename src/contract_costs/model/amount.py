@@ -16,7 +16,7 @@ class VatRate(Enum):
     VAT_8 = Decimal("0.08")
     VAT_5 = Decimal("0.05")
     VAT_0 = Decimal("0.00")
-    VAT_ZW = None
+    VAT_ZW = Decimal("0.00")
 
 
 @dataclass(frozen=True)

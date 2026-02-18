@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from enum import Enum
@@ -29,6 +30,36 @@ logger = logging.getLogger(__name__)
 
 E = TypeVar("E", bound=Enum)
 
+UNIT_ALIASES = {
+        "szt": "PIECE",
+        "szt.": "PIECE",
+        "sztuk": "PIECE",
+
+        "m": "METER",
+        "mb": "METER",
+
+        "m2": "SQUARE_METER",
+        "m²": "SQUARE_METER",
+
+        "m3": "CUBIC_METER",
+        "m³": "CUBIC_METER",
+
+        "kg": "KILOGRAM",
+        "t": "TON",
+
+        "h": "HOUR",
+        "godz": "HOUR",
+        "godzina": "HOUR",
+
+        "day": "DAY",
+        "dzien": "DAY",
+
+        "usluga": "SERVICE",
+        "usługa": "SERVICE",
+        "services": "SERVICE",
+
+        "l": "LITER",
+    }
 
 class AIDocumentMapper:
     """
@@ -104,7 +135,7 @@ class AIDocumentMapper:
             quantity = self._parse_decimal(item.get("quantity"))
             net_total = self._parse_decimal(item.get("net_total"))
             vat_rate = self._parse_vat(item.get("vat_rate"))
-            unit = self._parse_enum(UnitOfMeasure, item.get("unit")) or UnitOfMeasure.UNKNOWN
+            unit = self._parse_unit(item.get("unit")) or UnitOfMeasure.UNKNOWN
 
             lines.append(
                 FinancialRecordLineUpdate(
@@ -118,9 +149,11 @@ class AIDocumentMapper:
                         value=net_total,
                         vat_rate=vat_rate,
                     ),
-                    contract_id=None,
-                    contract_node_id=None,
+                    contract_code=None,
+                    contract_node_code=None,
                     value_type_code=None,
+                    agreement_code=None,
+                    agreement_node_code=None
                 )
             )
 
@@ -185,8 +218,29 @@ class AIDocumentMapper:
         if value is None:
             return Decimal("0")
 
+        raw = str(value).strip()
+
+        if not raw:
+            return Decimal("0")
+
         try:
-            return Decimal(str(value))
+            # usuń spacje (1 234,56 → 1234,56)
+            raw = raw.replace(" ", "")
+
+            # przypadek: 1,234.56 (US)
+            if "," in raw and "." in raw:
+                if raw.rfind(",") < raw.rfind("."):
+                    # przecinek = separator tysięcy
+                    raw = raw.replace(",", "")
+                else:
+                    # kropka = separator tysięcy
+                    raw = raw.replace(".", "").replace(",", ".")
+            # przypadek: tylko przecinek → separator dziesiętny
+            elif "," in raw:
+                raw = raw.replace(",", ".")
+
+            return Decimal(raw)
+
         except (InvalidOperation, ValueError):
             logger.warning("Invalid decimal from AI: %s", value)
             return Decimal("0")
@@ -201,13 +255,58 @@ class AIDocumentMapper:
             logger.warning("Invalid %s from AI: %s", enum_cls.__name__, value)
             return None
 
+
+
+    @staticmethod
+    def _parse_unit(value: str | None) -> UnitOfMeasure:
+        if not value:
+            return UnitOfMeasure.UNKNOWN
+
+        raw = value.strip().lower()
+
+        # alias
+        if raw in UNIT_ALIASES:
+            return UnitOfMeasure[UNIT_ALIASES[raw]]
+
+        # próba po value enum
+        for unit in UnitOfMeasure:
+            if unit.value == raw:
+                return unit
+
+        logger.warning("Invalid UnitOfMeasure from AI: %s", value)
+        return UnitOfMeasure.UNKNOWN
+
+
     @staticmethod
     def _parse_vat(value: str | None) -> VatRate:
         if not value:
             return VatRate.VAT_23
 
+        raw = str(value).strip().lower().replace(",", ".")
+
+        # zwolnione
+        if raw in {"zw", "zw.", "zwolnione"}:
+            return VatRate.VAT_ZW
+
+        # usuwamy %
+        raw = raw.replace("%", "")
+
+        # jeżeli ktoś podał 0.23 zamiast 23
         try:
-            return VatRate(f"VAT_{value}")
+            decimal_val = Decimal(raw)
+            if decimal_val <= 1:
+                percent = int(decimal_val * 100)
+            else:
+                percent = int(decimal_val)
         except Exception:
+            match = re.search(r"\d+", raw)
+            if not match:
+                logger.warning("Invalid VAT rate from AI: %s", value)
+                return VatRate.VAT_23
+            percent = int(match.group())
+
+        try:
+            return VatRate[f"VAT_{percent}"]
+        except KeyError:
             logger.warning("Invalid VAT rate from AI: %s", value)
             return VatRate.VAT_23

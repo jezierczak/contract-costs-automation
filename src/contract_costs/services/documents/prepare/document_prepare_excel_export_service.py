@@ -4,52 +4,37 @@ from contract_costs.infrastructure.excel.excel_column_v2.base_excel_exporter_v2 
 from contract_costs.model.document import DocumentType
 from contract_costs.services.documents.apply.dto.apply_document_command import DocumentApplyAction
 from contract_costs.services.documents.prepare.build_document_assignment_columns import build_document_assignment_columns
+# from contract_costs.services.documents.prepare.dto.document_prepare_excel_export_command import \
+#     DocumentPrepareExcelExportCommand
+from contract_costs.services.documents.prepare.dto.prepare_document_bundle import PrepareDocumentsBundle
 
 from contract_costs.services.documents.prepare.dto.prepare_document_dto import (
     PreparedDocumentDto,
-)
-from contract_costs.services.documents.prepare.dto.prepare_document_bundle import (
-    PrepareDocumentsBundle
 )
 
 
 class DocumentPrepareExcelExportService:
 
-    def __init__(self) -> None:
-        self._exporter = BaseExcelExporterV2[PreparedDocumentDto]()
+    @staticmethod
+    def export(
+            *,
+            organization_id: str,
+            bundle: PrepareDocumentsBundle,
+            output_path: Path
+          ):
 
-    def execute(
-        self,
-        *,
-        organization_id,
-        bundle: PrepareDocumentsBundle,
-        output_path: Path,
-    ) -> None:
+        _exporter = BaseExcelExporterV2[PreparedDocumentDto]()
 
-        # =============================================
-        # 1️⃣ REGISTER DICTIONARIES
-        # =============================================
-
-        # self._exporter.register_dictionary(
-        #     name="document_source",
-        #     rows=[
-        #         {"KEY": "ALL", "VALUE": "PDF"},
-        #         {"KEY": "ALL", "VALUE": "KSEF"},
-        #         {"KEY": "ALL", "VALUE": "IMAGE"},
-        #     ],
-        #     hidden=True,
-        # )
-
-        self._exporter.register_dictionary(
+        _exporter.register_dictionary(
             name="document_action",
             rows=[
-                {"KEY": "ALL", "VALUE": action.value}
-                for action in DocumentApplyAction
+                {"KEY": "ALL", "VALUE": doc_action.value}
+                for doc_action in DocumentApplyAction
             ],
             hidden=True,
         )
 
-        self._exporter.register_dictionary(
+        _exporter.register_dictionary(
             name="document_type",
             rows=[
                 {"KEY": "ALL", "VALUE": t.value}
@@ -75,20 +60,20 @@ class DocumentPrepareExcelExportService:
                 )
 
         if rows:
-            self._exporter.register_dictionary(
+            _exporter.register_dictionary(
                 name="existing_records",
                 rows=rows,
                 hidden=True,
             )
         else:
             # rejestrujemy pusty słownik z technicznym placeholderem
-            self._exporter.register_dictionary(
+            _exporter.register_dictionary(
                 name="existing_records",
                 rows=[{"KEY": "NONE", "VALUE": "", "RECORD_ID":""}],
                 hidden=True,
             )
 
-        self._exporter.add_sheet(
+        _exporter.add_sheet(
             organization_id=organization_id,
             items=bundle.documents,
             columns=build_document_assignment_columns(),
@@ -103,4 +88,4 @@ class DocumentPrepareExcelExportService:
         # 4️⃣ SAVE
         # =============================================
 
-        self._exporter.save(output_path)
+        _exporter.save(output_path)

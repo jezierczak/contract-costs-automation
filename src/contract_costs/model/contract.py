@@ -3,6 +3,8 @@ from pathlib import Path
 from datetime import date
 from decimal import Decimal
 from enum import Enum
+from uuid import UUID
+
 from contract_costs.model.base_entity import BaseEntity
 
 from contract_costs.model.company import Company
@@ -10,6 +12,7 @@ from contract_costs.model.company import Company
 class ContractType(Enum):
     PROJECT = "project"
     SYSTEM = "system"
+    AGREEMENT= "agreement"
 
 class ContractStatus(Enum):
     PLANNED = "planned"
@@ -34,6 +37,7 @@ class Contract(BaseEntity):
     status: ContractStatus
 
     contract_type: ContractType
+    parent_project_id: UUID | None = None
 
 
     @staticmethod
@@ -45,3 +49,7 @@ class Contract(BaseEntity):
     @property
     def is_active(self) -> bool:
         return self.status == ContractStatus.ACTIVE
+
+    @property
+    def is_agreement(self) -> bool:
+        return self.contract_type == ContractType.AGREEMENT

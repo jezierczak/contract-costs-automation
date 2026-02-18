@@ -4,10 +4,11 @@ from contract_costs.cli.context import get_services
 from contract_costs.cli.printers.table_printer.cmd_printer import CmdPrinter
 from contract_costs.cli.printers.table_printer.excel_printer import ExcelPrinter
 from contract_costs.cli.registry import REGISTRY
-from contract_costs.cli.utils.context_helpers import require_organization_id
+from contract_costs.cli.utils.context_helpers import require_organization_id, require_user_id
 from contract_costs.common.context.exceptions import ContextError
 from contract_costs.infrastructure.filesystem.show_file_manager import  SnapshotShowFileManager
 from contract_costs.reports.snapshots.snapshot_tree_columns import snapshot_tree_columns
+from contract_costs.services.snapshots.dto.contract_snapshot_query import GetContractSnapshotQuery
 
 
 # =========================================================
@@ -43,15 +44,19 @@ def handle_show_snapshot(args):
 
     try:
         organization_id = require_organization_id(services.context)
+        actor_user_id = require_user_id(services.context)
     except ContextError:
         return
 
     snapshot_ref = args.snapshot_id
 
-    dto = query.get_snapshot(
-        organization_id=organization_id,
-        snapshot_id=snapshot_ref,
-    )
+    dto = services.action_bus.execute(
+        action=GetContractSnapshotQuery(
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
+            snapshot_id_prefix=snapshot_ref
+        ),
+        handler=query)
 
     header = {
         "Snapshot ID": [str(dto.snapshot_id)],

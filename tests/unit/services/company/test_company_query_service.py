@@ -16,6 +16,7 @@ from tests.builders.company_builder import CompanyBuilder
 def build_query(org_id, **kwargs):
     return CompanyQuery(
         organization_id=org_id,
+        actor_user_id=kwargs.get("actor_user_id", new_uuid()),
         tax_number=kwargs.get("tax_number"),
         own_only=kwargs.get("own_only", False),
         role=kwargs.get("role"),
@@ -29,17 +30,17 @@ def build_query(org_id, **kwargs):
 # ============================================================
 
 
-def test_returns_empty_when_no_companies(company_repo):
-    service = CompanyQueryService(company_repo)
+def test_returns_empty_when_no_companies(uow):
+    service = CompanyQueryService()
     org_id = new_uuid()
 
-    result = service.execute(build_query(org_id))
+    result = service.execute(action=build_query(org_id), uow=uow)
 
     assert result == []
 
 
-def test_filter_by_tax_number(company_repo):
-    service = CompanyQueryService(company_repo)
+def test_filter_by_tax_number(company_repo, uow):
+    service = CompanyQueryService()
     org_id = new_uuid()
 
     c = (
@@ -51,16 +52,14 @@ def test_filter_by_tax_number(company_repo):
 
     company_repo.add(c)
 
-    result = service.execute(
-        build_query(org_id, tax_number="999")
-    )
+    result = service.execute(action=build_query(org_id, tax_number="999"), uow=uow)
 
     assert len(result) == 1
     assert result[0].tax_number == "999"
 
 
-def test_own_only_filter(company_repo):
-    service = CompanyQueryService(company_repo)
+def test_own_only_filter(company_repo, uow):
+    service = CompanyQueryService()
     org_id = new_uuid()
 
     own = (
@@ -80,16 +79,14 @@ def test_own_only_filter(company_repo):
     company_repo.add(own)
     company_repo.add(supplier)
 
-    result = service.execute(
-        build_query(org_id, own_only=True)
-    )
+    result = service.execute(action=build_query(org_id, own_only=True), uow=uow)
 
     assert len(result) == 1
     assert result[0].role == CompanyType.OWN
 
 
-def test_role_filter(company_repo):
-    service = CompanyQueryService(company_repo)
+def test_role_filter(company_repo, uow):
+    service = CompanyQueryService()
     org_id = new_uuid()
 
     supplier = (
@@ -101,16 +98,14 @@ def test_role_filter(company_repo):
 
     company_repo.add(supplier)
 
-    result = service.execute(
-        build_query(org_id, role=CompanyType.SUPPLIER)
-    )
+    result = service.execute(action=build_query(org_id, role=CompanyType.SUPPLIER), uow=uow)
 
     assert len(result) == 1
     assert result[0].role == CompanyType.SUPPLIER
 
 
-def test_excludes_inactive_by_default(company_repo):
-    service = CompanyQueryService(company_repo)
+def test_excludes_inactive_by_default(company_repo, uow):
+    service = CompanyQueryService()
     org_id = new_uuid()
 
     inactive = (
@@ -122,13 +117,13 @@ def test_excludes_inactive_by_default(company_repo):
 
     company_repo.add(inactive)
 
-    result = service.execute(build_query(org_id))
+    result = service.execute(action=build_query(org_id), uow=uow)
 
     assert result == []
 
 
-def test_include_inactive(company_repo):
-    service = CompanyQueryService(company_repo)
+def test_include_inactive(company_repo, uow):
+    service = CompanyQueryService()
     org_id = new_uuid()
 
     inactive = (
@@ -140,16 +135,14 @@ def test_include_inactive(company_repo):
 
     company_repo.add(inactive)
 
-    result = service.execute(
-        build_query(org_id, include_inactive=True)
-    )
+    result = service.execute(action=build_query(org_id, include_inactive=True), uow=uow)
 
     assert len(result) == 1
     assert result[0].is_active is False
 
 
-def test_search_matches_name_and_city(company_repo):
-    service = CompanyQueryService(company_repo)
+def test_search_matches_name_and_city(company_repo, uow):
+    service = CompanyQueryService()
     org_id = new_uuid()
 
     company = (
@@ -162,21 +155,17 @@ def test_search_matches_name_and_city(company_repo):
 
     company_repo.add(company)
 
-    result = service.execute(
-        build_query(org_id, search="mega")
-    )
+    result = service.execute(action=build_query(org_id, search="mega"), uow=uow)
 
     assert len(result) == 1
 
-    result = service.execute(
-        build_query(org_id, search="krak")
-    )
+    result = service.execute(action=build_query(org_id, search="krak"), uow=uow)
 
     assert len(result) == 1
 
 
-def test_search_is_case_insensitive(company_repo):
-    service = CompanyQueryService(company_repo)
+def test_search_is_case_insensitive(company_repo, uow):
+    service = CompanyQueryService()
     org_id = new_uuid()
 
     company = (
@@ -188,15 +177,13 @@ def test_search_is_case_insensitive(company_repo):
 
     company_repo.add(company)
 
-    result = service.execute(
-        build_query(org_id, search="super")
-    )
+    result = service.execute(action=build_query(org_id, search="super"), uow=uow)
 
     assert len(result) == 1
 
 
-def test_returns_dto_with_quality_score(company_repo):
-    service = CompanyQueryService(company_repo)
+def test_returns_dto_with_quality_score(company_repo, uow):
+    service = CompanyQueryService()
     org_id = new_uuid()
 
     company = (
@@ -207,7 +194,7 @@ def test_returns_dto_with_quality_score(company_repo):
 
     company_repo.add(company)
 
-    result = service.execute(build_query(org_id))
+    result = service.execute(action=build_query(org_id), uow=uow)
 
     assert len(result) == 1
     assert isinstance(result[0].quality_score, (int, float))

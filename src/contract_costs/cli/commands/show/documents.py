@@ -66,9 +66,6 @@ def build_show_documents(subparsers):
 REGISTRY.register_group("show", build_show_documents)
 
 
-
-
-
 def handle_show_documents(args) -> None:
     services = get_services()
 
@@ -107,7 +104,7 @@ def handle_show_documents(args) -> None:
         source=source,
     )
 
-    result = query_service.execute(cmd)
+    result = services.action_bus.execute(action=cmd,handler=query_service)
 
     if not result:
         print("No documents found.")
@@ -127,7 +124,7 @@ def handle_show_documents(args) -> None:
         output_path = fm.create_output_file()
         printer: TablePrinter = ExcelPrinter(output_path=output_path)
         printer.print(
-            organization_id=organization_id,
+            organization_id=str(organization_id),
             items=result,
             columns=columns_excel,
             header=None,
@@ -137,7 +134,7 @@ def handle_show_documents(args) -> None:
 
     printer = CmdPrinter()
     printer.print(
-        organization_id=organization_id,
+        organization_id=str(organization_id),
         items=result,
         columns=columns,
         header=None,

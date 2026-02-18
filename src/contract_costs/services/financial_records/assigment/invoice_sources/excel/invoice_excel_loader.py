@@ -119,20 +119,13 @@ def load_invoice_excel_batch(path: Path) -> InvoiceExcelBatch:
         lines.append(
             FinancialRecordLineUpdate(
                 record_line_id=_parse_uuid(normalize(row["id"])),
-                record_reference=str(row["invoice_number"])
-                if not pd.isna(row["invoice_number"])
+                record_reference=str(row["record_reference"])
+                if not pd.isna(row["record_reference"])
                 else None,
                 item_name=normalize(row["item_name"]),
                 description=normalize(row.get("description")),
                 quantity=Decimal(str(row["quantity"])),
                 unit=normalize(UnitOfMeasure(row["unit"])),
-                # amount=Amount(
-                #     value=Decimal(str(row["net"])),
-                #     vat_rate=_parse_vat_rate(row["vat_rate"])
-                #     if not pd.isna(row["vat_rate"])
-                #     else VatRate.VAT_ZW,
-                #     tax_treatment=TaxTreatment(row["tax_treatment"]),
-                # ),
                 amount=Amount.from_input(
                     value=Decimal(str(row["amount"])),  # <- fizyczna liczba z Excela
                     input_type=(
@@ -147,9 +140,11 @@ def load_invoice_excel_batch(path: Path) -> InvoiceExcelBatch:
                     ),
                     tax_treatment=TaxTreatment(row["tax_treatment"])
                 ),
-                contract_id=normalize(row.get("contract_code")),  # <-- CODE
-                contract_node_id=normalize(row.get("cost_node_code")),  # <-- CODE
-                value_type_code=normalize(row.get("cost_type_code")),  # <-- CODE
+                contract_code=normalize(row.get("contract_code")),  # <-- CODE
+                contract_node_code=normalize(row.get("contract_node_code")),  # <-- CODE
+                value_type_code=normalize(row.get("value_type_code")),  # <-- CODE
+                agreement_code=normalize(row.get("agreement_code")),
+                agreement_node_code=normalize(row.get("agreement_node_code")),
             )
         )
 

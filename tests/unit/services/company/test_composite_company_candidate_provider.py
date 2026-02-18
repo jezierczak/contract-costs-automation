@@ -9,11 +9,11 @@ class FakeProvider(CompanyCandidateProvider):
     def __init__(self, companies):
         self._companies = companies
 
-    def find_candidates(self, *, organization_id, input_):
+    def find_candidates(self, *, uow, organization_id, input_):
         return self._companies
 
 
-def test_merges_results_from_multiple_providers():
+def test_merges_results_from_multiple_providers(uow):
     org_id = new_uuid()
 
     c1 = CompanyBuilder().with_organization_id(org_id).build()
@@ -25,6 +25,7 @@ def test_merges_results_from_multiple_providers():
     composite = CompositeCompanyCandidateProvider([p1, p2])
 
     result = composite.find_candidates(
+        uow=uow,
         organization_id=org_id,
         input_=None,
     )
@@ -32,7 +33,7 @@ def test_merges_results_from_multiple_providers():
     assert len(result) == 2
 
 
-def test_deduplicates_by_id():
+def test_deduplicates_by_id(uow):
     org_id = new_uuid()
 
     c1 = CompanyBuilder().with_organization_id(org_id).build()
@@ -43,6 +44,7 @@ def test_deduplicates_by_id():
     composite = CompositeCompanyCandidateProvider([p1, p2])
 
     result = composite.find_candidates(
+        uow=uow,
         organization_id=org_id,
         input_=None,
     )

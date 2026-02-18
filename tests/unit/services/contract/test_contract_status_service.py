@@ -15,6 +15,7 @@ from contract_costs.model.company import CompanyType
 
 def test_set_contract_status_updates_status(
     contract_repo,
+    uow,
 ):
     org_id = uuid4()
     user_id = uuid4()
@@ -32,7 +33,6 @@ def test_set_contract_status_updates_status(
     fixed_time = datetime(2024, 1, 1)
 
     service = SetContractStatusService(
-        contract_repository=contract_repo,
         clock=lambda: fixed_time,
     )
 
@@ -43,7 +43,7 @@ def test_set_contract_status_updates_status(
         new_status=ContractStatus.COMPLETED,
     )
 
-    service.execute(cmd)
+    service.execute(action=cmd, uow=uow)
 
     updated = contract_repo.get(
         organization_id=org_id,
@@ -57,6 +57,7 @@ def test_set_contract_status_updates_status(
 
 def test_set_contract_status_is_idempotent(
     contract_repo,
+    uow,
 ):
     org_id = uuid4()
 
@@ -70,9 +71,7 @@ def test_set_contract_status_is_idempotent(
 
     contract_repo.add(contract)
 
-    service = SetContractStatusService(
-        contract_repository=contract_repo,
-    )
+    service = SetContractStatusService()
 
     cmd = SetContractStatusCommand(
         organization_id=org_id,
@@ -81,7 +80,7 @@ def test_set_contract_status_is_idempotent(
         new_status=ContractStatus.ACTIVE,
     )
 
-    service.execute(cmd)
+    service.execute(action=cmd, uow=uow)
 
     # status nie powinien się zmienić
     updated = contract_repo.get(
@@ -94,11 +93,9 @@ def test_set_contract_status_is_idempotent(
 
 
 def test_set_contract_status_raises_when_not_found(
-    contract_repo,
+    uow,
 ):
-    service = SetContractStatusService(
-        contract_repository=contract_repo,
-    )
+    service = SetContractStatusService()
 
     cmd = SetContractStatusCommand(
         organization_id=uuid4(),
@@ -108,4 +105,4 @@ def test_set_contract_status_raises_when_not_found(
     )
 
     with pytest.raises(ValueError):
-        service.execute(cmd)
+        service.execute(action=cmd, uow=uow)

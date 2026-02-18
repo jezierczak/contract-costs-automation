@@ -8,9 +8,8 @@ from contract_costs.model.company import CompanyType, Address, Contact, BankAcco
 # from contract_costs.model.identity.organization_role import OrganizationRole
 
 
-@action_type(ActionType.COMPANY_MANAGEMENT)
 @dataclass(frozen=True)
-class UpdateCompanyCommand(Command):
+class BaseUpdateCompanyCommand(Command):
     company_id: UUID
     name: str
     role: CompanyType
@@ -20,3 +19,15 @@ class UpdateCompanyCommand(Command):
     tax_number: str | None
     bank_account: BankAccount | None
     tags: set[str] | None
+
+
+@action_type(ActionType.OWNER_COMPANY_MANAGEMENT)
+@dataclass(frozen=True)
+class UpdateOwnerCompanyCommand(BaseUpdateCompanyCommand):
+    pass
+
+
+@action_type(ActionType.COUNTERPARTY_MANAGEMENT)
+@dataclass(frozen=True)
+class UpdateCounterpartyCompanyCommand(BaseUpdateCompanyCommand):
+    pass

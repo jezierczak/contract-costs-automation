@@ -19,6 +19,8 @@ class FinancialRecordLineExport:
     vat_rate: VatRate
     tax_treatment: TaxTreatment
 
-    contract_id: UUID | None
-    contract_node_id: UUID | None
-    value_type_id: UUID | None
+    contract_code: str | None
+    contract_node_code: str | None
+    value_type_code: str | None
+    agreement_code: str | None
+    agreement_node_code: str | None

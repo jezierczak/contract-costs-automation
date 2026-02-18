@@ -11,16 +11,21 @@ from contract_costs.model.document import Document
 class PaymentMethod(Enum):
     PRE_PAID = "pre_paid"
     BANK_TRANSFER = "bank_transfer"   # przelew
-    CASH = "cash"                     # gotówka
+    CASH = "cash"                     # gotowka
     CARD = "card"                     # karta
     BLIK = "blik"                     # BLIK
+    BON = "bon"                       # bon
+    CHECK = "check"                   # czek
+    CREDIT = "credit"                 # kredyt
     UNKNOWN = "unknown"
+
 
 class PaymentStatus(Enum):
     UNPAID = "unpaid"
     PARTIALLY_PAID = "partially_paid"
     PAID = "paid"
     UNKNOWN = "unknown"
+
 
 class FinancialRecordStatus(Enum):
     NEW_COST = "new_cost"

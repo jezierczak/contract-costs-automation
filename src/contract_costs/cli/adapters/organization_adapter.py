@@ -1,3 +1,6 @@
+from contract_costs.cli.context import get_services
+from contract_costs.cli.utils.context_helpers import require_organization_id, require_user_id
+from contract_costs.common.context.exceptions import ContextError
 from contract_costs.services.identity.add.dto.create_organization_command import (
     CreateOrganizationCommand,
 )
@@ -6,8 +9,9 @@ from contract_costs.services.identity.add.dto.create_organization_command import
 def create_organization_from_cli(
     *,
     data: dict,
-    create_organization_service,
 ) -> None:
+    services = get_services()
+
     cmd = CreateOrganizationCommand(
         organization_code=data["organization_code"],
         organization_name=data["organization_name"],
@@ -17,4 +21,8 @@ def create_organization_from_cli(
         created_by_user_id=None,  # CLI = system / bootstrap
     )
 
-    create_organization_service.execute(cmd)
+    services.action_bus.execute(
+        action=cmd,
+        handler=services.create_organization_with_owner,
+    )
+

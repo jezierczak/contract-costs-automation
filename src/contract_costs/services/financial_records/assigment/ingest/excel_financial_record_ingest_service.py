@@ -6,8 +6,6 @@ from uuid import UUID
 
 from contract_costs.common.time import utc_now
 from contract_costs.model.financial_record import FinancialRecord, FinancialRecordStatus
-from contract_costs.repository.document_repository import DocumentRepository
-from contract_costs.repository.financial_record_repository import FinancialRecordRepository
 from contract_costs.services.catalogues.document_file_organizer import DocumentFileOrganizer
 from contract_costs.services.financial_records.assigment.apply.commands.invoice_command import InvoiceCommand
 from contract_costs.services.financial_records.assigment.ingest.completion_validator.invoice_completion_validator import \
@@ -21,6 +19,7 @@ from contract_costs.services.financial_records.assigment.ingest.financial_record
 
 import contract_costs.config as cfg
 from contract_costs.services.number_generator.number_generator import NumberGenerator
+from contract_costs.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
 
@@ -33,26 +32,28 @@ class ExcelFinancialRecordIngestService(FinancialRecordIngestService):
     - obsługuje old_invoice_number
     - respektuje workflow
     """
-    def __init__(self,
-                 record_repository: FinancialRecordRepository,
-                 document_repository: DocumentRepository,
-                 file_organizer: DocumentFileOrganizer,
-                 number_generator: NumberGenerator,
-                 clock: Callable[[], datetime] = utc_now,
-                 ):
-        super().__init__(record_repository=record_repository)
-        self._document_repository = document_repository
+
+    def __init__(
+            self,
+            file_organizer: DocumentFileOrganizer,
+            number_generator: NumberGenerator,
+            clock: Callable[[], datetime] = utc_now,
+    ):
+        super().__init__(clock=clock)
         self._file_organizer = file_organizer
         self._number_generator = number_generator
-        self._clock = clock
 
     def apply(
             self,
             *,
+            uow: UnitOfWork,
             organization_id: UUID,
             actor_user_id: UUID,
             updates: list[ResolvedFinancialRecordUpdate],
     ) -> dict[str, FinancialRecordRefResult]:
+
+        record_repo = uow.financial_records
+        document_repo = uow.documents
 
         results: dict[str, FinancialRecordRefResult] = {}
 
@@ -67,7 +68,9 @@ class ExcelFinancialRecordIngestService(FinancialRecordIngestService):
 
             existing = self._get_existing_record(
                 organization_id=organization_id,
-                update=update)
+                update=update,
+                record_repo=record_repo
+            )
 
             buyer = update.buyer
             seller = update.seller
@@ -110,13 +113,13 @@ class ExcelFinancialRecordIngestService(FinancialRecordIngestService):
                     )
                     continue
 
-                self._record_repository.update(
+                record_repo.update(
                     replace(existing, status=FinancialRecordStatus.DELETED)
                 )
                 # -------------------------------------------------
                 # DETACH DOCUMENTS
                 # -------------------------------------------------
-                documents = self._document_repository.list_by_record_id(
+                documents = document_repo.list_by_record_id(
                     organization_id=organization_id,
                     record_id=existing.id,
                 )
@@ -137,7 +140,7 @@ class ExcelFinancialRecordIngestService(FinancialRecordIngestService):
                         filename=raw_relative.name,
                     )
 
-                    self._document_repository.update(updated_doc)
+                    document_repo.update(updated_doc)
 
                 results[ref_key] = FinancialRecordRefResult(
                     record_id=existing.id,
@@ -183,7 +186,7 @@ class ExcelFinancialRecordIngestService(FinancialRecordIngestService):
                     updated_at=now,
                     updated_by_user_id=actor_user_id,
                 )
-                self._record_repository.update(updated)
+                record_repo.update(updated)
 
                 results[ref_key] = FinancialRecordRefResult(
                     record_id=existing.id,
@@ -199,6 +202,7 @@ class ExcelFinancialRecordIngestService(FinancialRecordIngestService):
             # CREATE
             # -------------------------------------------------
             generated_reference_number = self._number_generator.generate(
+                uow=uow,
                 organization_id=organization_id,
                 pattern=update.reference,
                 date=self._clock())
@@ -229,36 +233,7 @@ class ExcelFinancialRecordIngestService(FinancialRecordIngestService):
                 documents=[]
             )
 
-            self._record_repository.add(record)
-
-            # -------------------------------------------------
-            # OLD INVOICE NUMBER → logical delete
-            # -------------------------------------------------
-            # LEGACY:
-            # old_invoice_number logic was used when invoice_number
-            # was the primary identity (pre invoice_id refactor).
-            # Kept temporarily for safety during transition.
-
-            # if update.old_invoice_number and update.old_invoice_number != update.invoice_number:
-            #     candidates = self._invoice_repository.get_for_assignment(
-            #         InvoiceStatus.IN_PROGRESS
-            #     )
-            #
-            #     old = next(
-            #         (c for c in candidates if c.invoice_number == update.old_invoice_number),
-            #         None,
-            #     )
-            #
-            #     if old is None:
-            #         raise ValueError(
-            #             f"Old invoice not found in IN_PROGRESS: {update.old_invoice_number}"
-            #         )
-            #
-            #     self._invoice_repository.update(
-            #         replace(old, status=InvoiceStatus.DELETED)
-            #     )
-
-
+            record_repo.add(record)
 
             results[ref_key] = FinancialRecordRefResult(
                 record_id=record_id,

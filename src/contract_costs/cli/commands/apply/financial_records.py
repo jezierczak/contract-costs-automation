@@ -75,8 +75,10 @@ def handle_apply_financial_records(args):
         batch=batch,
     )
 
-    service = services.apply_financial_record_excel_batch
-    service.execute(cmd=cmd)
+    services.action_bus.execute(
+        action=cmd,
+        handler=services.apply_financial_record_excel_batch,
+    )
 
     if managed:
         file_manager.mark_processed()
@@ -84,3 +86,4 @@ def handle_apply_financial_records(args):
 
 
 REGISTRY.register_group("apply", build_apply_financial_records)
+

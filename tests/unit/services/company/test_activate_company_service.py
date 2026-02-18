@@ -5,16 +5,15 @@ from contract_costs.services.companies.activate_company_service import (
     ActivateCompanyService,
 )
 from contract_costs.services.companies.dto.activate_company_command import (
-    ActivateCompanyCommand,
+    BaseActivateCompanyCommand,
 )
 from tests.builders.company_builder import CompanyBuilder
 
 
-def test_activate_company_success(company_repo):
+def test_activate_company_success(company_repo, uow):
     fixed_time = datetime(2024, 1, 1)
 
     service = ActivateCompanyService(
-        company_repository=company_repo,
         clock=lambda: fixed_time,
     )
 
@@ -30,13 +29,13 @@ def test_activate_company_success(company_repo):
 
     company_repo.add(company)
 
-    cmd = ActivateCompanyCommand(
+    cmd = BaseActivateCompanyCommand(
         organization_id=org_id,
         company_id=company.id,
         actor_user_id=actor_id,
     )
 
-    service.execute(cmd)
+    service.execute(action=cmd, uow=uow)
 
     updated = company_repo.get(company.id, org_id)
 
@@ -48,21 +47,21 @@ def test_activate_company_success(company_repo):
 import pytest
 
 
-def test_activate_company_not_exists_raises(company_repo):
-    service = ActivateCompanyService(company_repo)
+def test_activate_company_not_exists_raises(uow):
+    service = ActivateCompanyService()
 
-    cmd = ActivateCompanyCommand(
+    cmd = BaseActivateCompanyCommand(
         organization_id=uuid4(),
         company_id=uuid4(),
         actor_user_id=uuid4(),
     )
 
     with pytest.raises(ValueError):
-        service.execute(cmd)
+        service.execute(action=cmd, uow=uow)
 
 
-def test_activate_company_is_idempotent(company_repo):
-    service = ActivateCompanyService(company_repo)
+def test_activate_company_is_idempotent(company_repo, uow):
+    service = ActivateCompanyService()
 
     org_id = uuid4()
 
@@ -75,13 +74,13 @@ def test_activate_company_is_idempotent(company_repo):
 
     company_repo.add(company)
 
-    cmd = ActivateCompanyCommand(
+    cmd = BaseActivateCompanyCommand(
         organization_id=org_id,
         company_id=company.id,
         actor_user_id=uuid4(),
     )
 
-    service.execute(cmd)
+    service.execute(action=cmd, uow=uow)
 
     updated = company_repo.get(company.id, org_id)
 

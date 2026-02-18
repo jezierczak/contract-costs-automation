@@ -14,6 +14,8 @@ class FinancialRecordLine(BaseEntity):
     financial_record_id: UUID | None   # zamiast invoice_id
     contract_id: UUID | None
     contract_node_id: UUID | None
+    agreement_id: UUID | None
+    agreement_node_id: UUID | None
     value_type_id: UUID | None
 
     item_name: str

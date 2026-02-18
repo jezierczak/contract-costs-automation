@@ -41,6 +41,7 @@ from tests.unit.services.contract.test_create_contract_service import (
 def test_safe_replace_updates_inserts_deletes(
     contract_repo,
     contract_node_repo,
+    uow,
 ):
     cmd = make_update_structure_command()
 
@@ -79,8 +80,6 @@ def test_safe_replace_updates_inserts_deletes(
     contract_node_repo.node_has_values = lambda **kwargs: False
 
     service = UpdateContractStructureService(
-        contract_repository=contract_repo,
-        contract_node_repository=contract_node_repo,
         contract_node_tree_builder=builder,
         contract_node_tree_validator=validator,
     )
@@ -93,7 +92,7 @@ def test_safe_replace_updates_inserts_deletes(
 
     contract_repo.add(contract)
 
-    service.execute(cmd)
+    service.execute(action=cmd, uow=uow)
 
     nodes = contract_node_repo.list_by_contract(
         contract_id=cmd.contract_id,
@@ -110,6 +109,7 @@ def test_safe_replace_updates_inserts_deletes(
 def test_safe_replace_blocks_delete_if_node_has_values(
     contract_repo,
     contract_node_repo,
+    uow,
 ):
     cmd = make_update_structure_command()
 
@@ -130,19 +130,18 @@ def test_safe_replace_blocks_delete_if_node_has_values(
     contract_node_repo.node_has_values = lambda **kwargs: True  # 🔥 blokada
 
     service = UpdateContractStructureService(
-        contract_repository=contract_repo,
-        contract_node_repository=contract_node_repo,
         contract_node_tree_builder=builder,
         contract_node_tree_validator=validator,
     )
 
     with pytest.raises(ValueError):
-        service.execute(cmd)
+        service.execute(action=cmd, uow=uow)
 
 
 def test_safe_replace_only_updates_existing(
     contract_repo,
     contract_node_repo,
+    uow,
 ):
     cmd = make_update_structure_command()
 
@@ -166,8 +165,6 @@ def test_safe_replace_only_updates_existing(
     contract_node_repo.node_has_values = lambda **kwargs: False
 
     service = UpdateContractStructureService(
-        contract_repository=contract_repo,
-        contract_node_repository=contract_node_repo,
         contract_node_tree_builder=builder,
         contract_node_tree_validator=validator,
     )
@@ -179,7 +176,7 @@ def test_safe_replace_only_updates_existing(
                 .build())
 
     contract_repo.add(contract)
-    service.execute(cmd)
+    service.execute(action=cmd, uow=uow)
 
     nodes = contract_node_repo.list_by_contract(
         contract_id=cmd.contract_id,
@@ -193,6 +190,7 @@ def test_safe_replace_only_updates_existing(
 def test_safe_replace_only_inserts_when_no_existing_nodes(
     contract_repo,
     contract_node_repo,
+    uow,
 ):
     cmd = make_update_structure_command()
 
@@ -209,8 +207,6 @@ def test_safe_replace_only_inserts_when_no_existing_nodes(
     contract_node_repo.node_has_values = lambda **kwargs: False
 
     service = UpdateContractStructureService(
-        contract_repository=contract_repo,
-        contract_node_repository=contract_node_repo,
         contract_node_tree_builder=builder,
         contract_node_tree_validator=validator,
     )
@@ -225,7 +221,7 @@ def test_safe_replace_only_inserts_when_no_existing_nodes(
 
     contract_repo.add(contract)
 
-    service.execute(cmd)
+    service.execute(action=cmd, uow=uow)
 
     nodes = contract_node_repo.list_by_contract(
         contract_id=cmd.contract_id,

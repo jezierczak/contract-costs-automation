@@ -31,6 +31,7 @@ def build_set_financial_record(subparsers):
     p.set_defaults(handler=handle_set_financial_record)
 
 REGISTRY.register_group("set", build_set_financial_record)
+
 ACTION_MAP = {
     "paid": FinancialRecordAction.MARK_PAID,
     "unpaid": FinancialRecordAction.MARK_UNPAID,
@@ -61,12 +62,10 @@ def handle_set_financial_record(args) -> None:
     cmd = FinancialRecordActionCommand(
         action=action,
         selectors=[selector],
-    )
-
-    services.financial_record_action_service.execute(
         organization_id=organization_id,
-        actor_user_id=actor_user_id,
-        cmd=cmd)
+        actor_user_id=actor_user_id
+    )
+    services.action_bus.execute(action=cmd,handler=services.financial_record_action_service)
 
     print(f"✔ Invoice {args.ref} → {action.value}")
 

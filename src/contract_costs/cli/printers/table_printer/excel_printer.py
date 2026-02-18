@@ -15,7 +15,7 @@ class ExcelPrinter[T](TablePrinter[T]):
     def print(
         self,
         *,
-        organization_id: UUID,
+        organization_id: str,
         items: list[T],
         columns: list[ExcelColumn[T]],
         header: dict[str, list[str]] | None = None,

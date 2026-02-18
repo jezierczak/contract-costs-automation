@@ -1,8 +1,6 @@
 
 from contract_costs.action_bus.permission_resolver import  MySqlPermissionResolver
-from contract_costs.services.contracts.apply.apply_contract_progress_service import ApplyContractProgressService
 
-from contract_costs.services.contracts.builders.contract_node_tree_builder import DefaultContractNodeTreeBuilder
 from contract_costs.common.context.context_provider import ContextProvider
 from contract_costs.common.context.file_context_provider import FileContextProvider
 from contract_costs.infrastructure.excel.base_excel_exporter import BaseExcelExporter
@@ -12,21 +10,28 @@ from contract_costs.services.catalogues.record_file_organizer import RecordFileO
 from contract_costs.services.catalogues.record_file_workworkflow_service import RecordFileWorkflowService
 from contract_costs.services.companies.activate_company_service import ActivateCompanyService
 from contract_costs.services.companies.apply.apply_companies_from_excel_service import ApplyCompaniesFromExcelService
+
 from contract_costs.services.companies.company_evaluate_orchestrator import CompanyEvaluateOrchestrator
+from contract_costs.services.companies.create_company_service import CreateCompanyService
 from contract_costs.services.companies.deactivate_company_service import DeactivateCompanyService
 from contract_costs.services.companies.providers.street import StreetCandidateProvider
 from contract_costs.services.companies.providers.bank import BankAccountCandidateProvider
 from contract_costs.services.companies.providers.composite import CompositeCompanyCandidateProvider
 from contract_costs.services.companies.providers.email import EmailCandidateProvider
 from contract_costs.services.companies.providers.excact_nip import ExactNipCandidateProvider
-from contract_costs.services.companies.create_company_service import CreateCompanyService
+
 from contract_costs.services.companies.providers.name import NameCandidateProvider
 from contract_costs.services.companies.providers.phone import PhoneCandidateProvider
 from contract_costs.services.companies.query.company_query_service import CompanyQueryService
 from contract_costs.services.companies.update_company_service import UpdateCompanyService
 from contract_costs.services.contracts.apply.apply_contract_progress_excel_service import \
     ApplyContractProgressExcelService
+from contract_costs.services.contracts.apply.apply_contract_progress_service import ApplyContractProgressService
+from contract_costs.services.contracts.apply.apply_contract_structure_excel import ApplyContractStructureExcelService
 from contract_costs.services.contracts.apply.set_contract_status_service import SetContractStatusService
+from contract_costs.services.contracts.apply.update_contract_structure_service import UpdateContractStructureService
+from contract_costs.services.contracts.builders.contract_node_tree_builder import  \
+    DefaultContractNodeTreeBuilder
 from contract_costs.services.contracts.create_contract_service import CreateContractService
 from contract_costs.services.contracts.migration.back_fill_system_contracts_service import \
     BackfillSystemContractsService
@@ -36,54 +41,66 @@ from contract_costs.services.contracts.prepare.contract_prepare_progress_excel_e
     ContractPrepareProgressExcelExporter
 from contract_costs.services.contracts.query.contract_details.contract_details_query_service import \
     ContractDetailsQueryService
-from contract_costs.services.contracts.query.contract_query_service import ContractQueryService
+# from contract_costs.services.contracts.query.contract_query_service import ContractQueryService
 
-from contract_costs.services.contracts.apply.update_contract_structure_service import (
-    UpdateContractStructureService,
-)
-from contract_costs.services.contracts.apply.apply_contract_structure_excel import (
-    ApplyContractStructureExcelService,
-)
 from contract_costs.services.contracts.query.list_contracts.list_contracts_query_service import \
     ListContractsQueryService
 from contract_costs.services.contracts.system_contract.create_system_contract_orchestrator import \
     CreateSystemContractOrchestrator
-
-from contract_costs.services.contracts.validators.contract_node_tree_validator import (
-    ContractNodeEntityValidator,
-)
+from contract_costs.services.contracts.validators.contract_node_tree_validator import ContractNodeEntityValidator
 from contract_costs.services.documents.apply.apply_document_service import ApplyDocumentService
+
 from contract_costs.services.documents.apply.document_action_excel_loader import DocumentActionExcelLoader
-from contract_costs.services.documents.migrate_scan_filename_service import MigrateScanFilenameService
+from contract_costs.services.documents.prepare.prepare_documents_service import PrepareDocumentsService
 from contract_costs.services.documents.process.delete.delete_command_service import DeleteDocumentService
 from contract_costs.services.documents.process.document_parser_resolver import DefaultDocumentParserResolver
 from contract_costs.services.documents.process.parse_document_from_file import ParseDocumentFromFileService
+from contract_costs.services.documents.process.process_document_service import ProcessDocumentService
 from contract_costs.services.documents.process.reprocess.reprocess_document_service import ReprocessDocumentService
+
 from contract_costs.services.documents.query.list_documents_query_service import ListDocumentsQueryService
+from contract_costs.services.documents.upload.upload_document_service import UploadDocumentService
+from contract_costs.services.financial_records.actions.financial_record_action_service import \
+    FinancialRecordActionService
+from contract_costs.services.financial_records.assigment.apply.apply_company_excel_batch_service import \
+    ApplyCompanyExcelBatchService
+from contract_costs.services.financial_records.assigment.apply.apply_financial_record_excel_batch_service import \
+    ApplyFinancialRecordExcelBatchService
 from contract_costs.services.financial_records.assigment.invoice_sources.document.create_record_from_document_service import \
     CreateRecordFromDocumentService
-
+from contract_costs.services.financial_records.assigment.invoice_sources.excel.invoice_excel_resolver import \
+    FinancialRecordExcelBatchResolver
+from contract_costs.services.identity.accept.accept_organization_invite_service import AcceptOrganizationInviteService
 from contract_costs.services.identity.add.add_organization_user_service import AddOrganizationUserService
 from contract_costs.services.identity.add.create_organization_with_owner import CreateOrganizationWithOwnerService
 from contract_costs.services.identity.add.create_user_service import CreateUserService
-from contract_costs.services.identity.query.show_organization_users import ShowOrganizationUsersQueryService
-from contract_costs.services.identity.query.show_organizations import ShowOrganizationsQueryService
+from contract_costs.services.identity.change.change_organization_user_role_service import \
+    ChangeOrganizationUserRoleService
+from contract_costs.services.identity.deactivate.deactivate_organization_user_service import \
+    DeactivateOrganizationUserService
+
+from contract_costs.services.identity.query.show_organization_users import ListOrganizationUsersQueryService
+from contract_costs.services.identity.query.show_organizations import ListUserOrganizationsQueryService
 from contract_costs.services.identity.remove.remove_organization_user_service import RemoveOrganizationUserService
+
 from contract_costs.services.identity.use.use_organization_service import UseOrganizationService
 from contract_costs.services.financial_records.assigment.ingest.completion_validator.invoice_completion_validator import RecordCompletionValidator
+from contract_costs.services.init.init_application_service import InitApplicationService
 from contract_costs.services.number_generator.number_generator import NumberGenerator
 from contract_costs.services.snapshots.contract_snapshot_query_service import ContractSnapshotQueryService
 from contract_costs.services.snapshots.create_contract_snapshot_service import CreateContractSnapshotService
+
 from contract_costs.services.value_types.apply.change_value_type_code_service import ChangeValueTypeCodeService
 from contract_costs.services.value_types.apply.deactivate_value_type_service import DeactivateValueTypeService
+
 from contract_costs.services.value_types.apply.update_value_type_service import UpdateValueTypeService
 from contract_costs.services.value_types.create_value_type_service import CreateValueTypeService
+
 from contract_costs.services.value_types.query.value_type_query_service import ValueTypeQueryService
-from contract_costs.services.financial_records.actions.financial_record_action_service import FinancialRecordActionService
+
 from contract_costs.services.financial_records.assigment.ingest.excel_financial_record_ingest_service import ExcelFinancialRecordIngestService
 from contract_costs.services.financial_records.assigment.ingest.pdf_financial_record_ingest_service import PdfFinancialRecordIngestService
 
-from contract_costs.services.financial_records.assigment.invoice_sources.excel.invoice_excel_resolver import FinancialRecordExcelBatchResolver
 from contract_costs.services.financial_records.assigment.invoice_sources.normalization.invoice_parser_normalizer import \
     DocumentParseNormalizer
 from contract_costs.services.financial_records.assigment.prepare.export.export_invoice_assignment_excel_service import \
@@ -96,12 +113,6 @@ from contract_costs.services.financial_records.assigment.ingest.financial_record
 )
 
 
-from contract_costs.services.financial_records.assigment.apply.apply_financial_record_excel_batch_service import (
-    ApplyFinancialRecordExcelBatchService,
-)
-from contract_costs.services.financial_records.assigment.apply.apply_company_excel_batch_service import (
-    ApplyCompanyExcelBatchService,
-)
 from contract_costs.services.financial_records.assigment.prepare.generate_assignment_bundle_service import (
     GenerateFinancialRecordAssignmentBundleService,
 )
@@ -112,6 +123,7 @@ from contract_costs.repository.factory.repository_factory import (
     RepositoryFactory,
     RepoBackend,
 )
+from contract_costs.unit_of_work import UnitOfWork
 from typing import Dict
 
 from contract_costs.services.financial_records.review.financial_record_review_list_query_service import FinancialRecordReviewListQueryService
@@ -202,7 +214,7 @@ class Services:
         self._contract_snapshot_query_service = None
 
         self._create_organization_with_owner =None
-        self._show_organizations = None
+        self._list_organization_users_query_service = None
         self._show_organization_users = None
         self._add_organization_user = None
         self._create_user = None
@@ -227,6 +239,7 @@ class Services:
         self._reprocess_document_service = None
         self._delete_document_service = None
         self._create_system_contract = None
+        self._list_user_organizations_user_service = None
 
         self._document_action_excel_loader_service = None
 
@@ -364,6 +377,7 @@ class Services:
 
             self._action_bus = ActionBus(
                 permission_validator=self.permission_validator,
+                uow_factory=self._factory.unit_of_work,
                 # handlers=handlers,
             )
 
@@ -454,6 +468,10 @@ class Services:
             self._number_sequence_repo = self._factory.number_sequence_repository()
         return self._number_sequence_repo
 
+    @property
+    def uow(self) -> UnitOfWork:
+        return self._factory.unit_of_work()
+
     # ---------- domain services ----------
     @property
     def open_ai_invoice_service(self):
@@ -477,22 +495,12 @@ class Services:
     def financial_record_ingest_orchestrator(self):
         if self._financial_record_ingest_orchestrator is None:
             self._financial_record_ingest_orchestrator = FinancialRecordIngestOrchestrator(
-                record_ingest_service_document=PdfFinancialRecordIngestService(self.financial_record_repository),
+                record_ingest_service_document=PdfFinancialRecordIngestService(),
                 record_ingest_service_excel=ExcelFinancialRecordIngestService(
-                    self.financial_record_repository,
-                    self.document_repository,
                     DocumentFileOrganizer(),
-                    NumberGenerator(
-                        number_sequence_repository=self.number_sequence_repository
-                    )
+                    NumberGenerator()
                 ),
-                record_line_service=FinancialRecordLineUpdateService(
-                    self.financial_record_line_repository,
-                    self.contract_repository,
-                    self.contract_node_repository,
-                    self.value_type_repository,
-                ),
-                record_repository=self.financial_record_repository,
+                record_line_service=FinancialRecordLineUpdateService( ),
                 file_workflow= self.record_file_workflow_service,
                 record_completion_validator=RecordCompletionValidator()
             )
@@ -503,8 +511,8 @@ class Services:
         if self._record_file_workflow_service is None:
             self._record_file_workflow_service = RecordFileWorkflowService(
                 # record_repository=self.financial_record_repository,
-                company_repository=self.company_repository,
-                document_repository=self.document_repository,
+                # company_repository=self.company_repository,
+                # document_repository=self.document_repository,
                 file_organizer=RecordFileOrganizer()
             )
         return self._record_file_workflow_service
@@ -513,14 +521,13 @@ class Services:
     def company_evaluate_orchestrator(self):
         if self._company_evaluate_orchestrator is None:
             self._company_evaluate_orchestrator = CompanyEvaluateOrchestrator(
-                self.company_repository,
                 CompositeCompanyCandidateProvider(
-                    [ExactNipCandidateProvider(self.company_repository),
-                     BankAccountCandidateProvider(self.company_repository),
-                     EmailCandidateProvider(self.company_repository),
-                     StreetCandidateProvider(self.company_repository),
-                     NameCandidateProvider(self.company_repository),
-                     PhoneCandidateProvider(self.company_repository)
+                    [ExactNipCandidateProvider(),
+                     BankAccountCandidateProvider(),
+                     EmailCandidateProvider(),
+                     StreetCandidateProvider(),
+                     NameCandidateProvider(),
+                     PhoneCandidateProvider()
                      ]
                 ),  self.open_ai_invoice_service )
         return self._company_evaluate_orchestrator
@@ -546,13 +553,13 @@ class Services:
 
     @property
     def apply_financial_record_excel_batch(self):
-        if self._apply_financial_record_excel_batch is None:
-            self._apply_financial_record_excel_batch = ApplyFinancialRecordExcelBatchService(
-                FinancialRecordExcelBatchResolver(company_evaluate_orchestrator=self.company_evaluate_orchestrator),
-                ApplyCompanyExcelBatchService(self.company_repository,self.create_company),
-                self.financial_record_ingest_orchestrator,
-            )
-        return self._apply_financial_record_excel_batch
+        return ApplyFinancialRecordExcelBatchService(
+            excel_resolver=FinancialRecordExcelBatchResolver(
+                self.company_evaluate_orchestrator
+            ),
+            company_apply_service=ApplyCompanyExcelBatchService(self.create_company),
+            orchestrator=self.financial_record_ingest_orchestrator,
+        )
 
 
     @property
@@ -564,71 +571,46 @@ class Services:
             )
         return self._document_parse_worker
 
-
     @property
     def generate_financial_record_assignment_bundle(self):
         if self._generate_financial_record_assignment_bundle is None:
-            self._generate_financial_record_assignment_bundle = GenerateFinancialRecordAssignmentBundleService(
-                self.financial_record_repository,
-                self.financial_record_line_repository,
-                self.company_repository,
-                self.contract_repository,
-                self.contract_node_repository,
-                self.value_type_repository,
-            )
+            self._generate_financial_record_assignment_bundle = GenerateFinancialRecordAssignmentBundleService()
         return self._generate_financial_record_assignment_bundle
+
     @property
     def export_financial_record_assignment_excel_service(self):
         if self._export_financial_record_assignment_excel is None:
             self._export_financial_record_assignment_excel = ExportFinancialRecordAssignmentExcelService(
-                exporter=ExcelInvoiceAssignmentExporter(
-                                    self.contract_repository,
-                                    self.contract_node_repository,
-                                    self.value_type_repository,
-                                )
+                exporter=ExcelInvoiceAssignmentExporter()
             )
         return self._export_financial_record_assignment_excel
 
     @property
     def create_system_contract(self):
-        if self._create_system_contract is None:
-            self._create_system_contract =  CreateSystemContractOrchestrator(
-                contract_repository=self.contract_repository,
-                create_contract_service=self.create_contract
-            )
-        return self._create_system_contract
+        return CreateSystemContractOrchestrator(
+            create_contract_service=self.create_contract
+        )
 
     @property
     def create_company(self):
-        if self._create_company_service is None:
-            self._create_company_service = CreateCompanyService(
-                self.company_repository,
-                self.create_system_contract
-            )
-        return self._create_company_service
+        return CreateCompanyService(
+            create_system_contract=self.create_system_contract,
+        )
 
     @property
     def update_company_service(self):
-        if self._update_company_service is None:
-            self._update_company_service = UpdateCompanyService(self.company_repository)
-        return self._update_company_service
+        return UpdateCompanyService()
 
     @property
     def create_value_type(self):
-        if self._create_value_type is None:
-            self._create_value_type = CreateValueTypeService(self.value_type_repository)
-        return self._create_value_type
+        return CreateValueTypeService()
 
     @property
     def create_contract(self):
-        if self._create_contract is None:
-            self._create_contract = CreateContractService(
-                self.contract_repository,
-                self.contract_node_repository,
-                DefaultContractNodeTreeBuilder(),
-                ContractNodeEntityValidator(),
-            )
-        return self._create_contract
+        return CreateContractService(
+           contract_node_tree_builder=DefaultContractNodeTreeBuilder(),
+            contract_node_tree_validator=ContractNodeEntityValidator()
+        )
 
     # @property
     # def update_contract(self):
@@ -639,14 +621,10 @@ class Services:
 
     @property
     def update_contract_structure_service(self):
-        if self._update_contract_structure_service is None:
-            self._update_contract_structure_service = UpdateContractStructureService(
-                self.contract_repository,
-                self.contract_node_repository,
-                DefaultContractNodeTreeBuilder(),
-                ContractNodeEntityValidator(),
-            )
-        return self._update_contract_structure_service
+        return UpdateContractStructureService(
+            contract_node_tree_builder=DefaultContractNodeTreeBuilder(),
+            contract_node_tree_validator= ContractNodeEntityValidator()
+        )
 
     # @property
     # def generate_contract_structure_bundle(self):
@@ -667,13 +645,11 @@ class Services:
 
     @property
     def apply_contract_structure_excel(self):
-        if self._apply_contract_structure_excel is None:
-            self._apply_contract_structure_excel = ApplyContractStructureExcelService(
-                self.create_contract,
-                self.update_contract_structure_service,
-                self.company_evaluate_orchestrator,
-            )
-        return self._apply_contract_structure_excel
+        return ApplyContractStructureExcelService(
+        create_contract_service=self.create_contract,
+        update_contract_structure_service=self.update_contract_structure_service,
+        company_evaluate_orchestrator=self.company_evaluate_orchestrator,
+        )
 
     @property
     def contract_cost_report(self):
@@ -681,36 +657,19 @@ class Services:
             from contract_costs.services.reports.contract_cost_report_service import (
                 ContractCostReportService,
             )
-            self._contract_cost_report = ContractCostReportService(
-                self.contract_repository,
-                self.financial_record_line_repository,
-                self.contract_node_repository,
-                self.value_type_repository
-            )
+            self._contract_cost_report = ContractCostReportService()
         return self._contract_cost_report
 
     @property
     def financial_record_query_service(self):
         if self._financial_record_query_service is None:
-            self._financial_record_query_service = FinancialRecordDetailsQueryService(
-                record_repo=self.financial_record_repository,
-                record_line_repo=self.financial_record_line_repository,
-                company_repo=self.company_repository,
-                contract_repo=self.contract_repository,
-                contract_node_repo=self.contract_node_repository,
-                value_type_repo=self.value_type_repository,
-            )
+            self._financial_record_query_service = FinancialRecordDetailsQueryService()
         return self._financial_record_query_service
 
     @property
     def review_query_service(self):
         if self._review_query_service is None:
-            self._review_query_service = FinancialRecordReviewListQueryService(
-                record_repo=self.financial_record_repository,
-                record_line_repo=self.financial_record_line_repository,
-                company_repo=self.company_repository,
-                contract_repo=self.contract_repository
-            )
+            self._review_query_service = FinancialRecordReviewListQueryService()
         return self._review_query_service
 
     @property
@@ -735,11 +694,7 @@ class Services:
 
     @property
     def financial_record_action_service(self):
-        if self._financial_record_action_service is None:
-            self._financial_record_action_service = FinancialRecordActionService(
-                self.financial_record_repository
-            )
-        return self._financial_record_action_service
+        return FinancialRecordActionService()
 
     @property
     def financial_record_action_excel_loader(self):
@@ -750,68 +705,48 @@ class Services:
     @property
     def company_query_service(self):
         if self._company_query_service is None:
-            self._company_query_service = CompanyQueryService(
-                self.company_repository
-            )
+            self._company_query_service = CompanyQueryService()
         return self._company_query_service
     @property
     def activate_company_service(self):
-        if self._activate_company_service is None:
-            self._activate_company_service = ActivateCompanyService(
-                self.company_repository
-            )
-        return self._activate_company_service
+        return ActivateCompanyService()
     @property
     def deactivate_company_service(self):
-        if self._deactivate_company_service is None:
-            self._deactivate_company_service = DeactivateCompanyService(
-                self.company_repository
-            )
-        return self._deactivate_company_service
+        return DeactivateCompanyService()
 
 
     @property
     def apply_companies_from_excel_service(self):
-        if self._apply_companies_from_excel_service is None:
-            self._apply_companies_from_excel_service = ApplyCompaniesFromExcelService(
-                create_company_service=self.create_company,
-                update_company_service=self.update_company_service,
-                activate_company_service=self.activate_company_service,
-                deactivate_company_service=self.deactivate_company_service,
-            )
-        return self._apply_companies_from_excel_service
+        return ApplyCompaniesFromExcelService(
+        create_company_service=self.create_company,
+        update_company_service=self.update_company_service,
+        activate_company_service=self.activate_company_service,
+        deactivate_company_service=self.deactivate_company_service,
+        )
 
     @property
     def value_type_query_service(self):
         if self._value_type_query_service is None:
-            self._value_type_query_service = ValueTypeQueryService(
-                self.value_type_repository
-            )
+            self._value_type_query_service = ValueTypeQueryService()
         return self._value_type_query_service
 
     @property
     def deactivate_value_type_service(self):
-        if self._deactivate_value_type_service is None:
-            self._deactivate_value_type_service = DeactivateValueTypeService(
-                self.value_type_repository
-            )
-        return self._deactivate_value_type_service
+        return DeactivateValueTypeService(
+
+        )
 
     @property
     def update_value_type_service(self):
-        if self._update_value_type_service is None:
-            self._update_value_type_service = UpdateValueTypeService(
-                self.value_type_repository
-            )
-        return self._update_value_type_service
+        return UpdateValueTypeService(
+
+        )
 
     @property
     def change_value_type_code_service(self):
-        if self._change_value_type_code_service is None:
-            self._change_value_type_code_service = ChangeValueTypeCodeService(
-                self.value_type_repository
-            )
-        return self._change_value_type_code_service
+        return ChangeValueTypeCodeService(
+
+        )
 
     @property
     def contract_prepare_excel_exporter(self):
@@ -821,11 +756,7 @@ class Services:
 
     @property
     def set_contract_status_service(self):
-        if self._set_contract_status_service is None:
-            self._set_contract_status_service = SetContractStatusService(
-                self.contract_repository
-            )
-        return self._set_contract_status_service
+        return SetContractStatusService()
 
     @property
     def contract_prepare_progress_excel_exporter(self):
@@ -835,96 +766,56 @@ class Services:
 
     @property
     def apply_contract_progress_service(self):
-        if self._apply_contract_progress_service is None:
-            self._apply_contract_progress_service = ApplyContractProgressService(
-                contract_repository=self.contract_repository,
-                contract_node_repository=self.contract_node_repository,
-            )
-        return self._apply_contract_progress_service
+        return ApplyContractProgressService( )
 
     @property
     def apply_contract_progress_excel(self):
-        if self._apply_contract_progress_excel is None:
-            self._apply_contract_progress_excel = ApplyContractProgressExcelService(
-                # contract_node_repository=self.contract_node_repository
-                apply_contract_progress_service=self.apply_contract_progress_service
-            )
-        return self._apply_contract_progress_excel
+        return ApplyContractProgressExcelService(
+            apply_contract_progress_service=self.apply_contract_progress_service,
+        )
 
     @property
     def create_contract_snapshot(self):
-        if self._create_contract_snapshot is None:
-            self._create_contract_snapshot = CreateContractSnapshotService(
-                contract_repo=self.contract_repository,
-                contract_node_repo=self.contract_node_repository,
-                invoice_line_repo=self.financial_record_line_repository,
-                snapshot_repo=self.contract_snapshot_repository,
-                node_snapshot_repo=self.contract_node_snapshot_repository,
-                value_snapshot_repo=self.contract_node_value_snapshot_repository
-            )
-        return self._create_contract_snapshot
+        return CreateContractSnapshotService()
 
     @property
     def contract_snapshot_query_service(self):
         if self._contract_snapshot_query_service is None:
-            self._contract_snapshot_query_service = ContractSnapshotQueryService(
-                contract_repo=self.contract_repository,
-                contract_node_repo=self.contract_node_repository,
-                value_type_repo=self.value_type_repository,
-                snapshot_repo=self.contract_snapshot_repository,
-                node_snapshot_repo=self.contract_node_snapshot_repository,
-                value_snapshot_repo=self.contract_node_value_snapshot_repository,
-            )
+            self._contract_snapshot_query_service = ContractSnapshotQueryService()
         return self._contract_snapshot_query_service
 
     @property
     def list_contracts_service(self):
         if self._list_contracts_service is None:
-            self._list_contracts_service = ListContractsQueryService(
-                contract_repo=self.contract_repository,
-                contract_node_repo=self.contract_node_repository,
-                record_line_repo=self.financial_record_line_repository,
-                value_type_repo=self.value_type_repository,
-            )
+            self._list_contracts_service = ListContractsQueryService()
         return self._list_contracts_service
 
     @property
     def contract_details_service(self):
         if self._contract_details_service is None:
-            self._contract_details_service = ContractDetailsQueryService(
-                contract_repo=self.contract_repository,
-                contract_node_repo=self.contract_node_repository,
-                record_line_repo=self.financial_record_line_repository,
-                value_type_repo=self.value_type_repository,
-            )
+            self._contract_details_service = ContractDetailsQueryService()
         return self._contract_details_service
-    @property
-    def contract_query_service(self):
-        if self._contract_query_service is None:
-            self._contract_query_service = ContractQueryService(
-                list_contracts_service = self.list_contracts_service,
-                contract_details_service =self.contract_details_service,
-            )
-        return self._contract_query_service
+    # @property
+    # def contract_query_service(self):
+    #     if self._contract_query_service is None:
+    #         self._contract_query_service = ContractQueryService(
+    #             list_contracts_service = self.list_contracts_service,
+    #             contract_details_service =self.contract_details_service,
+    #         )
+    #     return self._contract_query_service
+    #
 
     @property
     def create_organization_with_owner(self):
-        if self._create_organization_with_owner is None:
-            self._create_organization_with_owner = CreateOrganizationWithOwnerService(
-                organization_repo=self.organization_repository,
-                organization_user_repo=self.organization_user_repository,
-                user_repo=self.user_repository,
-            )
-        return self._create_organization_with_owner
+        return CreateOrganizationWithOwnerService(
+            init_app_service=InitApplicationService()
+        )
 
     @property
-    def show_organizations(self):
-        if self._show_organizations is None:
-            self._show_organizations = ShowOrganizationsQueryService(
-                organization_repo=self.organization_repository,
-                organization_user_repo=self.organization_user_repository,
-            )
-        return self._show_organizations
+    def list_organization_users_query_service(self):
+        if self._list_organization_users_query_service is None:
+            self._list_organization_users_query_service = ListOrganizationUsersQueryService()
+        return self._list_organization_users_query_service
 
     @property
     def context(self) -> ContextProvider:
@@ -933,91 +824,48 @@ class Services:
     @property
     def use_organization(self):
         return UseOrganizationService(
-            organization_repo=self.organization_repository,
-            organization_user_repo=self.organization_user_repository,
             context=self.context,
         )
+    @property
+    def list_user_organizations_user_service(self):
+        if self._list_user_organizations_user_service is None:
+            self._list_user_organizations_user_service = ListUserOrganizationsQueryService()
+        return self._list_user_organizations_user_service
+
 
     @property
     def show_organization_users(self):
         if self._show_organization_users is None:
-            self._show_organization_users = ShowOrganizationUsersQueryService(
-                organization_user_repo=self.organization_user_repository,
-                user_repo=self.user_repository,
-            )
+            self._show_organization_users = ListOrganizationUsersQueryService()
         return self._show_organization_users
 
     @property
     def add_organization_user(self):
-        if self._add_organization_user is None:
-            self._add_organization_user = AddOrganizationUserService(
-                organization_repo=self.organization_repository,
-                user_repo=self.user_repository,
-                organization_user_repo=self.organization_user_repository,
-            )
-        return self._add_organization_user
+        return AddOrganizationUserService()
 
     @property
     def create_user(self):
-        if self._create_user is None:
-            self._create_user = CreateUserService(
-                user_repo=self.user_repository,
-            )
-        return self._create_user
+        return CreateUserService()
 
     @property
     def remove_organization_user(self):
-        if self._remove_organization_user is None:
-            self._remove_organization_user = RemoveOrganizationUserService(
-                organization_user_repo=self.organization_user_repository
-            )
-        return self._remove_organization_user
+        return RemoveOrganizationUserService()
 
     @property
     def change_organization_user_role(self):
-        if self._change_organization_user_role is None:
-            from contract_costs.services.identity.change.change_organization_user_role_service import (
-                ChangeOrganizationUserRoleService,
-            )
-            self._change_organization_user_role = ChangeOrganizationUserRoleService(
-                organization_user_repo=self.organization_user_repository
-            )
-        return self._change_organization_user_role
+        return ChangeOrganizationUserRoleService()
 
     @property
     def deactivate_organization_user(self):
-        if self._deactivate_organization_user is None:
-            from contract_costs.services.identity.deactivate.deactivate_organization_user_service import (
-                DeactivateOrganizationUserService,
-            )
-            self._deactivate_organization_user = DeactivateOrganizationUserService(
-                organization_user_repo=self.organization_user_repository
-            )
-        return self._deactivate_organization_user
+        return DeactivateOrganizationUserService()
 
     @property
     def accept_organization_invite(self):
-        if self._accept_organization_invite is None:
-            from contract_costs.services.identity.accept.accept_organization_invite_service import (
-                AcceptOrganizationInviteService,
-            )
-            self._accept_organization_invite = AcceptOrganizationInviteService(
-                organization_user_repo=self.organization_user_repository
-            )
-        return self._accept_organization_invite
+        return AcceptOrganizationInviteService()
 
     @property
     def upload_document_service(self):
-        if self._upload_document_service is None:
-            from contract_costs.services.documents.upload.upload_document_service import (
-                UploadDocumentService,
-            )
-
-            self._upload_document_service = UploadDocumentService(
-                document_repository=self.document_repository,
-            )
-
-        return self._upload_document_service
+        return UploadDocumentService()
 
     @property
     def document_parser_resolver(self):
@@ -1043,58 +891,31 @@ class Services:
 
     @property
     def process_document_service(self):
-        if self._process_document_service is None:
-            from contract_costs.services.documents.process.process_document_service import (
-                ProcessDocumentService,
-            )
-
-            self._process_document_service = ProcessDocumentService(
-                document_repository=self.document_repository,
-                parse_service=self.parse_document_from_file
-                )
-
-        return self._process_document_service
+        return ProcessDocumentService(
+            parse_service=self.parse_document_from_file,
+        )
 
     @property
     def delete_document_service(self):
-        if self._delete_document_service is None:
-            self._delete_document_service = DeleteDocumentService(
-                documents=self.document_repository
-            )
-        return self._delete_document_service
+        return DeleteDocumentService()
 
     @property
     def prepare_documents_service(self):
-        if self._prepare_documents_service is None:
-            from contract_costs.services.documents.prepare.prepare_documents_service import (
-                PrepareDocumentsService,
-            )
-
-            self._prepare_documents_service = PrepareDocumentsService(
-                document_repository=self.document_repository,
-                record_repository=self.financial_record_repository,
-                company_evaluate=self.company_evaluate_orchestrator
-            )
-
-        return self._prepare_documents_service
+        return PrepareDocumentsService(
+            company_evaluate=self.company_evaluate_orchestrator
+        )
 
     @property
     def list_documents_query_service(self):
         if self._list_documents_query_service is None:
-            self._list_documents_query_service = ListDocumentsQueryService(
-                document_repository=self.document_repository
-            )
+            self._list_documents_query_service = ListDocumentsQueryService()
         return self._list_documents_query_service
 
     @property
     def reprocess_document_service(self):
-        if self._reprocess_document_service is None:
-            self._reprocess_document_service = ReprocessDocumentService(
-                documents=self.document_repository,
-                action_bus=self.action_bus,
-                process_document_service=self.process_document_service
-            )
-        return self._reprocess_document_service
+        return ReprocessDocumentService(
+            process_document_service=self.process_document_service,
+        )
 
 
     @property
@@ -1103,7 +924,6 @@ class Services:
             from contract_costs.services.documents.prepare.document_prepare_excel_export_service import (
                 DocumentPrepareExcelExportService,
             )
-
             self._export_document_assignment_excel_service = (
                 DocumentPrepareExcelExportService()
             )
@@ -1112,32 +932,22 @@ class Services:
 
     @property
     def create_record_service(self):
-        if self._create_record_service is None:
-            self._create_record_service = CreateRecordFromDocumentService(
-                company_evaluate=self.company_evaluate_orchestrator,
-                normalizer=self._normalizer,
-                ingest_orchestrator=self.financial_record_ingest_orchestrator,
-                record_file_organizer=RecordFileOrganizer(),
-                document_repository=self.document_repository,
-                record_repository=self.financial_record_repository,
-                file_workflow=self.record_file_workflow_service
-
-            )
-        return self._create_record_service
+        return CreateRecordFromDocumentService(
+        company_evaluate=self.company_evaluate_orchestrator,
+        normalizer=self._normalizer,
+        ingest_orchestrator=self.financial_record_ingest_orchestrator,
+        record_file_organizer = RecordFileOrganizer(),
+        file_workflow = self.record_file_workflow_service
+        )
 
     @property
     def apply_document_service(self):
-        if self._apply_document_service is None:
-            self._apply_document_service = ApplyDocumentService(
-                document_repo=self.document_repository,
-                record_repo=self.financial_record_repository,
-                company_evaluator=self.company_evaluate_orchestrator,
-                create_record_service=self.create_record_service,
-                file_organizer=DocumentFileOrganizer(),
-                file_service=self.record_file_workflow_service,
-
-            )
-        return self._apply_document_service
+        return ApplyDocumentService(
+        company_evaluator=self.company_evaluate_orchestrator,
+        create_record_service=self.create_record_service,
+        file_organizer=DocumentFileOrganizer(),
+        file_service= self.record_file_workflow_service
+        )
 
     @property
     def document_action_excel_loader_service(self):
@@ -1148,9 +958,8 @@ class Services:
     @property
     def backfill_system_contracts(self):
         return BackfillSystemContractsService(
-            company_repository=self.company_repository,
-            create_system_contract=self.create_system_contract
-    )
+            create_system_contract=self.create_system_contract,
+        )
     # @staticmethod
     # def current_user_id() -> UUID:
     #     session = load_session()

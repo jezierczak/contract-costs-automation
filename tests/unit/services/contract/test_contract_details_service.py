@@ -1,6 +1,7 @@
 import pytest
 from decimal import Decimal
 from datetime import date
+from types import SimpleNamespace
 from uuid import uuid4
 
 from contract_costs.common.ids import new_uuid
@@ -27,13 +28,9 @@ def test_contract_not_found_raises(
     contract_node_repo,
     line_repo,
     value_type_repo,
+    uow,
 ):
-    service = ContractDetailsQueryService(
-        contract_repo=contract_repo,
-        contract_node_repo=contract_node_repo,
-        record_line_repo=line_repo,
-        value_type_repo=value_type_repo,
-    )
+    service = ContractDetailsQueryService()
 
     query = ContractDetailsQuery(
         organization_id=uuid4(),
@@ -43,7 +40,7 @@ def test_contract_not_found_raises(
     )
 
     with pytest.raises(ValueError, match="Contract not found"):
-        service.execute(query)
+        service.execute(action=query, uow=uow)
 
 
 def test_budget_and_progress_rollup(
@@ -51,6 +48,7 @@ def test_budget_and_progress_rollup(
     contract_node_repo,
     line_repo,
     value_type_repo,
+    uow,
 ):
     organization_id = uuid4()
 
@@ -161,20 +159,16 @@ def test_budget_and_progress_rollup(
         )
     )
 
-    service = ContractDetailsQueryService(
-        contract_repo=contract_repo,
-        contract_node_repo=contract_node_repo,
-        record_line_repo=line_repo,
-        value_type_repo=value_type_repo,
-    )
+    service = ContractDetailsQueryService()
 
     result = service.execute(
-        ContractDetailsQuery(
+        action=ContractDetailsQuery(
             organization_id=organization_id,
             contract_id=contract.id,
             at_date=None,
             actor_user_id=uuid4()
-        )
+        ),
+        uow=uow,
     )
 
     root_dto = next(n for n in result.nodes if n.parent_id is None)
@@ -188,6 +182,7 @@ def test_financial_rollup(
     contract_node_repo,
     line_repo,
     value_type_repo,
+    uow,
 ):
     organization_id = uuid4()
 
@@ -253,41 +248,29 @@ def test_financial_rollup(
 
     contract_node_repo.add_all([root, leaf])
 
-    line_repo.add(
-        organization_id=organization_id,
-        line=FinancialRecordLineBuilder()
-        .with_organization_id(organization_id)
-        .with_contract_id(contract.id)
-        .with_contract_node_id(leaf.id)
-        .with_value_type_id(cost_type.id)
-        .with_amount(Amount(Decimal("100"),VatRate.VAT_23))
-        .build()
-    )
+    line_repo.list_by_contract = lambda **kwargs: [
+        SimpleNamespace(
+            contract_node_code=leaf.id,
+            value_type_code=cost_type.id,
+            amount=Amount(Decimal("100"), VatRate.VAT_23),
+        ),
+        SimpleNamespace(
+            contract_node_code=leaf.id,
+            value_type_code=revenue_type.id,
+            amount=Amount(Decimal("200"), VatRate.VAT_23),
+        ),
+    ]
 
-    line_repo.add( organization_id=organization_id,
-        line=FinancialRecordLineBuilder()
-        .with_organization_id(organization_id)
-        .with_contract_id(contract.id)
-        .with_contract_node_id(leaf.id)
-        .with_value_type_id(revenue_type.id)
-        .with_amount(Amount(Decimal("200"), VatRate.VAT_23))
-        .build()
-    )
-
-    service = ContractDetailsQueryService(
-        contract_repo=contract_repo,
-        contract_node_repo=contract_node_repo,
-        record_line_repo=line_repo,
-        value_type_repo=value_type_repo,
-    )
+    service = ContractDetailsQueryService()
 
     result = service.execute(
-        ContractDetailsQuery(
+        action=ContractDetailsQuery(
             organization_id=organization_id,
             contract_id=contract.id,
             at_date=None,
             actor_user_id=uuid4()
-        )
+        ),
+        uow=uow,
     )
 
     root_dto = next(n for n in result.nodes if n.parent_id is None)
@@ -301,6 +284,7 @@ def test_progress_at_date(
     contract_node_repo,
     line_repo,
     value_type_repo,
+    uow,
 ):
     organization_id = uuid4()
 
@@ -382,20 +366,16 @@ def test_progress_at_date(
 
     contract_node_repo.add_all([root, leaf])
 
-    service = ContractDetailsQueryService(
-        contract_repo=contract_repo,
-        contract_node_repo=contract_node_repo,
-        record_line_repo=line_repo,
-        value_type_repo=value_type_repo,
-    )
+    service = ContractDetailsQueryService()
 
     result = service.execute(
-        ContractDetailsQuery(
+        action=ContractDetailsQuery(
             organization_id=organization_id,
             contract_id=contract.id,
             at_date=date(2024, 2, 1),
             actor_user_id=uuid4()
-        )
+        ),
+        uow=uow,
     )
 
     leaf_dto = next(n for n in result.nodes if n.code == "A")

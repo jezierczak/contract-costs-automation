@@ -1,40 +1,52 @@
 import logging
-from uuid import UUID
 
+from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.model.company import CompanyType
-from contract_costs.services.companies.company_evaluate_orchestrator import CompanyEvaluateOrchestrator, EvaluateMode
+from contract_costs.services.companies.company_evaluate_orchestrator import CompanyEvaluateOrchestrator
 from contract_costs.services.financial_records.assigment.invoice_sources.dto.common import (
-    InvoiceExcelBatch, ResolvedFinancialRecordUpdate, RecordIngestBatch,
+ ResolvedFinancialRecordUpdate, RecordIngestBatch,
 )
+from contract_costs.services.financial_records.assigment.invoice_sources.excel.resolve_financial_record_excel_batch_command import \
+    ResolveFinancialRecordExcelBatchCommand
+from contract_costs.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
 
 
-class FinancialRecordExcelBatchResolver:
+class FinancialRecordExcelBatchResolver(
+    ActionHandler[ResolveFinancialRecordExcelBatchCommand, RecordIngestBatch]
+):
     def __init__(self, company_evaluate_orchestrator: CompanyEvaluateOrchestrator) -> None:
         self._company_evaluate_orchestrator = company_evaluate_orchestrator
 
-    def resolve(self,
-                *,
-                organization_id: UUID,
-                actor_user_id: UUID,
-                batch: InvoiceExcelBatch) -> RecordIngestBatch:
+
+    def execute(
+        self,
+        *,
+        action: ResolveFinancialRecordExcelBatchCommand,
+        uow: UnitOfWork
+    ) -> RecordIngestBatch:
+
         resolved_invoices: list[ResolvedFinancialRecordUpdate] = []
 
-        for inv in batch.financial_records:
+        for inv in action.batch.financial_records:
             raw_buyer_nip = inv.buyer_tax_number
             raw_seller_nip = inv.seller_tax_number
             buyer_company = self._company_evaluate_orchestrator.evaluate_from_tax(
-                organization_id=organization_id,
-                actor_user_id=actor_user_id,
+                organization_id=action.organization_id,
+                actor_user_id=action.actor_user_id,
                 input_tax_number=raw_buyer_nip,
-                role=CompanyType.BUYER)#, mode=EvaluateMode.NO_CREATE)
+                role=CompanyType.BUYER,
+                uow = uow
+            )#, mode=EvaluateMode.NO_CREATE)
             seller_company = self._company_evaluate_orchestrator.evaluate_from_tax(
-                organization_id=organization_id,
-                actor_user_id=actor_user_id,
+                organization_id=action.organization_id,
+                actor_user_id=action.actor_user_id,
                 input_tax_number=
                 raw_seller_nip,
-                role=CompanyType.SELLER)
+                role=CompanyType.SELLER,
+                uow=uow
+            )
             # if buyer_company.role != CompanyType.OWN:
             #     logger.error(f"Buyer: {buyer_company.name} evaluated by NIP: {raw_buyer_nip} is not OWN company, and cannot act as buyer in cost invoice")
             #     raise RuntimeError(f"Buyer company role must be OWN! Wrong NIP: {raw_buyer_nip}")
@@ -65,5 +77,5 @@ class FinancialRecordExcelBatchResolver:
 
         return RecordIngestBatch(
             financial_records=resolved_invoices,
-            lines=batch.lines,
+            lines=action.batch.lines,
         )

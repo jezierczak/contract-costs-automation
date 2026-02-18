@@ -5,10 +5,8 @@ from contract_costs.action_bus.command import Command
 from contract_costs.model.company import CompanyType, Address, Contact, BankAccount
 
 
-
-@action_type(ActionType.COMPANY_MANAGEMENT)
 @dataclass(frozen=True)
-class CreateCompanyCommand(Command):
+class BaseCreateCompanyCommand(Command):
 
     name: str
     tax_number: str
@@ -19,3 +17,15 @@ class CreateCompanyCommand(Command):
     contact: Contact | None = None
     bank_account: BankAccount | None = None
     tags: set[str] | None = None
+
+
+@action_type(ActionType.OWNER_COMPANY_MANAGEMENT)
+@dataclass(frozen=True)
+class CreateOwnerCompanyCommand(BaseCreateCompanyCommand):
+    pass
+
+
+@action_type(ActionType.COUNTERPARTY_MANAGEMENT)
+@dataclass(frozen=True)
+class CreateCounterpartyCompanyCommand(BaseCreateCompanyCommand):
+    pass

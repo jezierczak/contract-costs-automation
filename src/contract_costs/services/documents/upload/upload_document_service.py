@@ -1,70 +1,61 @@
 import hashlib
 import logging
+import mimetypes
 from datetime import datetime
 from pathlib import Path
 from typing import Callable
 from uuid import UUID
-import mimetypes
 
+import contract_costs.config as cfg
 from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.common.ids import new_uuid
 from contract_costs.common.time import utc_now
 from contract_costs.model.document import Document, DocumentSource
-from contract_costs.repository.document_repository import DocumentRepository
 from contract_costs.services.catalogues.document_file_organizer import DocumentFileOrganizer
-from contract_costs.services.queue.document_queue import document_queue
 from contract_costs.services.documents.upload.dto.upload_document_command import UploadDocumentCommand
+from contract_costs.services.queue.document_queue import document_queue
 from contract_costs.services.workers.dto.document_process_queue_item import DocumentProcessQueueItem
-
-import contract_costs.config as cfg
+from contract_costs.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
 
-# @handles(UploadDocumentCommand)
+
 class UploadDocumentService(ActionHandler[UploadDocumentCommand, UUID | None]):
 
     def __init__(
         self,
-        document_repository: DocumentRepository,
+        # document_repository: DocumentRepository,
         id_generator: Callable[[], UUID] = new_uuid,
         clock: Callable[[], datetime] = utc_now,
     ) -> None:
-        self._documents = document_repository
+        # self._documents = document_repository
         self._clock = clock
         self._id_generator = id_generator
 
-    def execute(self, cmd: UploadDocumentCommand) -> UUID | None:
+    def execute(self, *, action: UploadDocumentCommand, uow: UnitOfWork) -> UUID | None:
 
-        file_path: Path = cmd.file_path
+        documents=uow.documents
+
+        file_path: Path = action.file_path
 
         if not file_path.exists():
             raise FileNotFoundError(file_path)
 
         file_hash = self._calculate_hash(file_path)
-        org_root = cfg.WORK_DIR / str(cmd.organization_id)
+        org_root = cfg.WORK_DIR / str(action.organization_id)
 
-        # 🔁 idempotencja
-        if self._documents.exists_by_hash(
-                organization_id=cmd.organization_id,
-                file_hash=file_hash,
+        if documents.exists_by_hash(
+            organization_id=action.organization_id,
+            file_hash=file_hash,
         ):
-            logger.info(
-                "Document already exists (hash=%s), moving to duplicates",
-                file_hash,
-            )
-
             DocumentFileOrganizer.move_to_duplicates(
                 root=org_root,
                 file_path=file_path,
             )
             return None
 
-
-
-        # 1 resolve source (PO ROZSZERZENIU)
         document_type = self._resolve_source(file_path)
         size = file_path.stat().st_size
-        # 2 move → processing
         processing_path = DocumentFileOrganizer.move_to_processing(
             root=org_root,
             file_path=file_path,
@@ -74,39 +65,42 @@ class UploadDocumentService(ActionHandler[UploadDocumentCommand, UUID | None]):
         document_id = self._id_generator()
         mime_type = self._resolve_mime_type(processing_path)
 
-
         document = Document(
             id=document_id,
-            organization_id=cmd.organization_id,
+            organization_id=action.organization_id,
             financial_record_id=None,
-
             document_source=document_type,
-
             document_type=None,
             document_number=None,
             seller_nip=None,
             parsed_payload=None,
-
             file_hash=file_hash,
-            file_path=str(processing_path),  # ⬅️ ważne!
+            file_path=str(processing_path),
             filename=processing_path.name,
             mime_type=mime_type,
             size=size,
-
             created_at=now,
-            created_by_user_id=cmd.actor_user_id,
+            created_by_user_id=action.actor_user_id,
             updated_at=None,
             updated_by_user_id=None,
         )
 
-        self._documents.add(document)
+        documents.add(document)
 
-        # 🚀 enqueue
-        document_queue.put(
-            DocumentProcessQueueItem(
-                cmd.organization_id,
-                cmd.actor_user_id,
-                document_id,
+        # document_queue.put(
+        #     DocumentProcessQueueItem(
+        #         action.organization_id,
+        #         action.actor_user_id,
+        #         document_id,
+        #     )
+        # )
+        uow.add_post_commit_hook(
+            lambda: document_queue.put(
+                DocumentProcessQueueItem(
+                    action.organization_id,
+                    action.actor_user_id,
+                    document_id,
+                )
             )
         )
 
@@ -119,8 +113,6 @@ class UploadDocumentService(ActionHandler[UploadDocumentCommand, UUID | None]):
             for chunk in iter(lambda: f.read(8192), b""):
                 hasher.update(chunk)
         return hasher.hexdigest()
-
-    # =========================================================
 
     @staticmethod
     def _resolve_source(file_path: Path) -> DocumentSource:

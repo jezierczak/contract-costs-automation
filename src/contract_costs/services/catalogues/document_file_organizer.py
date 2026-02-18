@@ -96,3 +96,42 @@ class DocumentFileOrganizer:
             target_dir=DOCUMENTS_DUPLICATES_DIR,
             log_level=logging.WARNING,
         )
+
+    @staticmethod
+    def delete_file(*, root: Path, relative_path: str) -> None:
+        """
+        Safely deletes a file stored under organization root.
+
+        - Works only on relative paths
+        - Prevents path traversal attacks
+        - Is idempotent (does nothing if file does not exist)
+        """
+
+        if not relative_path:
+            logger.warning("delete_file called with empty relative_path")
+            return
+
+        root = root.resolve()
+        target_path = (root / relative_path).resolve()
+
+        # 🔒 security: ensure file is inside organization root
+        if not str(target_path).startswith(str(root)):
+            raise RuntimeError(
+                f"Refusing to delete file outside organization root: {target_path}"
+            )
+
+        if not target_path.exists():
+            logger.debug("File already deleted: %s", target_path)
+            return
+
+        if target_path.is_dir():
+            raise RuntimeError(
+                f"Refusing to delete directory: {target_path}"
+            )
+
+        try:
+            target_path.unlink()
+            logger.info("Deleted document file: %s", target_path)
+        except Exception:
+            logger.exception("Failed to delete file: %s", target_path)
+            raise

@@ -55,6 +55,8 @@ class FinancialRecordActionExcelLoader:
                 ),
                 selectors=selectors,
                 payload=None,
+                organization_id=None,
+                actor_user_id=None
             )
             for raw_action, selectors in grouped.items()
         ]

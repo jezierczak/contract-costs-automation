@@ -1,9 +1,13 @@
 from dataclasses import dataclass
 from uuid import UUID
 
+from contract_costs.action_bus.action import Action
+from contract_costs.action_bus.action_type import action_type, ActionType
 
-@dataclass(frozen=True)
-class CreateOrganizationCommand:
+
+@dataclass(frozen=True,slots=True)
+@action_type(ActionType.SYSTEM_CREATE_ORGANIZATION_NEW_USER)
+class CreateOrganizationCommand(Action):
     organization_code: str
     organization_name: str
 

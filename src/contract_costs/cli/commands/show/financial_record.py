@@ -1,8 +1,10 @@
 import logging
 from contract_costs.cli.context import get_services
 from contract_costs.cli.registry import REGISTRY
-from contract_costs.cli.utils.context_helpers import require_organization_id
+from contract_costs.cli.utils.context_helpers import require_organization_id, require_user_id
 from contract_costs.common.context.exceptions import ContextError
+from contract_costs.services.financial_records.queries.dto.financial_record_details_query import \
+    FinancialRecordDetailsQuery
 
 logger = logging.getLogger(__name__)
 
@@ -28,15 +30,24 @@ def handle_show_financial_record(args) -> None:
     services = get_services()
     try:
         organization_id = require_organization_id(services.context)
+        actor_user_id = require_user_id(services.context)
     except ContextError:
         return
 
 
     record_details_service = services.financial_record_query_service
 
-    record = record_details_service.get_by_reference(
-        organization_id=organization_id,
-        reference=args.number)
+    # record = record_details_service.get_by_reference(
+    #     organization_id=organization_id,
+    #     reference=args.number)
+    #
+    record = services.action_bus.execute(
+        action=FinancialRecordDetailsQuery(
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
+            reference=args.number,
+        ),
+        handler=record_details_service,)
 
     if not record:
         print(f"Financial record not found: {args.number}")

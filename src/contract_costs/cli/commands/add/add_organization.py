@@ -36,11 +36,11 @@ def _run_add_organization_interactive() -> None:
         print("Operation cancelled.")
         return
 
-    services = get_services()
+
 
     create_organization_from_cli(
-        data=data,
-        create_organization_service=services.create_organization_with_owner,
+        data=data
     )
+
 
     logger.info("Organization added successfully.")

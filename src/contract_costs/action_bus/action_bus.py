@@ -1,10 +1,12 @@
 # action_bus/action_bus.py
 
 import logging
-from typing import Any
+from typing import Any, Callable
 
 from contract_costs.action_bus.action import Action
 from contract_costs.action_bus.action_handler import ActionHandler
+from contract_costs.action_bus.permission_validator import PermissionValidator
+from contract_costs.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
 
@@ -14,34 +16,29 @@ class ActionBus:
     def __init__(
         self,
         *,
-        permission_validator,
-        # handlers: dict[type, Any],
+        permission_validator:PermissionValidator,
+        uow_factory: Callable[[], UnitOfWork],
     ) -> None:
         self._permission_validator = permission_validator
-        # self._handlers = handlers
+        self._uow_factory = uow_factory
 
-    def execute(self,
-                *,
-                action: Action,
-                handler: ActionHandler,
-                ):
-
+    def execute(
+        self,
+        *,
+        action: Action,
+        handler: ActionHandler,
+    ):
         logger.info("ACTION BUS EXECUTE: %s", type(action).__name__)
 
-        # 🔒 Wymagamy action_type
         action_type = getattr(type(action), "__action_type__", None)
         if action_type is None:
             raise RuntimeError(
                 f"{type(action).__name__} missing @action_type decorator"
             )
 
-        # 🔐 Permission check
         self._permission_validator.validate(action)
         logger.info("PERMISSION OK")
 
-        # 🎯 Handler resolution
-        # handler = self._handlers.get(type(action))
-        # handler = handler
         if not handler:
             raise ValueError(
                 f"No handler registered for {type(action).__name__}"
@@ -50,6 +47,12 @@ class ActionBus:
         logger.info("HANDLER RESOLVED: %s", type(handler).__name__)
 
         if not hasattr(handler, "execute"):
-            raise TypeError("Handler must implement execute()")
+            raise TypeError("Handler must expose execute()")
 
-        return handler.execute(action)
+        # 🔥 TU JEST TRANSAKCJA
+        with self._uow_factory() as uow:
+            try:
+                return handler.execute(action=action, uow=uow)
+            except Exception:
+                logger.exception("ACTION FAILED: %s", type(action).__name__)
+                raise

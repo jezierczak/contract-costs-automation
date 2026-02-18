@@ -38,13 +38,14 @@ def run_watcher(*, services, organization_id: UUID, actor_user_id: UUID) -> None
 
     for file in scan_unprocessed(document_incoming_dir):
         action_bus.execute(
-            action = UploadDocumentCommand(
+            action=UploadDocumentCommand(
                 organization_id=organization_id,
                 actor_user_id=actor_user_id,
                 file_path=file,
             ),
-            handler=services.upload_document_service
-        )
+            handler = services.upload_document_service
+        ),
+
 
     worker_thread = threading.Thread(
         target=worker.run,
@@ -65,3 +66,4 @@ def run_watcher(*, services, organization_id: UUID, actor_user_id: UUID) -> None
         worker_thread.join(timeout=5)
         logging.info("Shutdown complete")
         sys.exit(0)
+

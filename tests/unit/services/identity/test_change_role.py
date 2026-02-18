@@ -9,6 +9,11 @@ from contract_costs.services.identity.exceptions import PermissionDenied
 from .helpers import make_org_with_owner
 
 
+class _FakeUow:
+    def __init__(self, org_user_repo):
+        self.organization_users = org_user_repo
+
+
 def test_owner_cannot_change_own_role(organization_repo, user_repo, organization_user_repo):
     org_id, owner_id = make_org_with_owner(organization_repo, user_repo, organization_user_repo)
 
@@ -19,9 +24,7 @@ def test_owner_cannot_change_own_role(organization_repo, user_repo, organization
         new_role=OrganizationRole.ADMIN,
     )
 
-    service = ChangeOrganizationUserRoleService(
-        organization_user_repo=organization_user_repo
-    )
+    service = ChangeOrganizationUserRoleService()
 
     with pytest.raises(PermissionDenied):
-        service.execute(cmd)
+        service.execute(action=cmd, uow=_FakeUow(organization_user_repo))

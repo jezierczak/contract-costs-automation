@@ -16,6 +16,9 @@ from contract_costs.services.contracts.apply.command.apply_contract_progerss_com
     ApplyContractProgressCommand,
     ContractNodeProgressUpdate,
 )
+from contract_costs.services.contracts.apply.command.apply_contract_progress_excel_command import (
+    ApplyContractProgressExcelCommand,
+)
 from contract_costs.model.contract import ContractStatus
 from contract_costs.model.company import CompanyType
 from tests.builders.contract_builder import ContractBuilder
@@ -47,10 +50,8 @@ def make_command(
 # TESTS
 # ============================================================
 
-def test_contract_not_found_raises(contract_repo, contract_node_repo):
+def test_contract_not_found_raises(uow):
     service = ApplyContractProgressService(
-        contract_repository=contract_repo,
-        contract_node_repository=contract_node_repo,
         id_generator=uuid4,
     )
 
@@ -62,10 +63,10 @@ def test_contract_not_found_raises(contract_repo, contract_node_repo):
     )
 
     with pytest.raises(ValueError, match="Contract does not exist"):
-        service.execute(cmd)
+        service.execute(action=cmd, uow=uow)
 
 
-def test_contract_has_no_nodes_raises(contract_repo, contract_node_repo):
+def test_contract_has_no_nodes_raises(contract_repo, uow):
     organization_id = uuid4()
     contract_id = uuid4()
 
@@ -82,8 +83,6 @@ def test_contract_has_no_nodes_raises(contract_repo, contract_node_repo):
     contract_repo.add(contract)
 
     service = ApplyContractProgressService(
-        contract_repository=contract_repo,
-        contract_node_repository=contract_node_repo,
         id_generator=uuid4,
     )
 
@@ -95,10 +94,10 @@ def test_contract_has_no_nodes_raises(contract_repo, contract_node_repo):
     )
 
     with pytest.raises(ValueError, match="Contract has no nodes"):
-        service.execute(cmd)
+        service.execute(action=cmd, uow=uow)
 
 
-def test_node_not_found_raises(contract_repo, contract_node_repo):
+def test_node_not_found_raises(contract_repo, contract_node_repo, uow):
     organization_id = uuid4()
     contract_id = uuid4()
 
@@ -115,8 +114,6 @@ def test_node_not_found_raises(contract_repo, contract_node_repo):
     contract_repo.add(contract)
 
     service = ApplyContractProgressService(
-        contract_repository=contract_repo,
-        contract_node_repository=contract_node_repo,
         id_generator=uuid4,
     )
     node = make_contract_node(
@@ -140,10 +137,10 @@ def test_node_not_found_raises(contract_repo, contract_node_repo):
     )
 
     with pytest.raises(ValueError, match="not found"):
-        service.execute(cmd)
+        service.execute(action=cmd, uow=uow)
 
 
-def test_cannot_set_progress_on_non_leaf(contract_repo, contract_node_repo):
+def test_cannot_set_progress_on_non_leaf(contract_repo, contract_node_repo, uow):
     organization_id = uuid4()
     contract_id = uuid4()
 
@@ -175,8 +172,6 @@ def test_cannot_set_progress_on_non_leaf(contract_repo, contract_node_repo):
     contract_node_repo.add_all([parent, child])
 
     service = ApplyContractProgressService(
-        contract_repository=contract_repo,
-        contract_node_repository=contract_node_repo,
         id_generator=uuid4,
     )
 
@@ -194,10 +189,10 @@ def test_cannot_set_progress_on_non_leaf(contract_repo, contract_node_repo):
     )
 
     with pytest.raises(ValueError, match="leaf"):
-        service.execute(cmd)
+        service.execute(action=cmd, uow=uow)
 
 
-def test_cannot_decrease_progress(contract_repo, contract_node_repo):
+def test_cannot_decrease_progress(contract_repo, contract_node_repo, uow):
     organization_id = uuid4()
     contract_id = uuid4()
 
@@ -237,8 +232,6 @@ def test_cannot_decrease_progress(contract_repo, contract_node_repo):
     )
 
     service = ApplyContractProgressService(
-        contract_repository=contract_repo,
-        contract_node_repository=contract_node_repo,
         id_generator=uuid4,
     )
 
@@ -256,10 +249,10 @@ def test_cannot_decrease_progress(contract_repo, contract_node_repo):
     )
 
     with pytest.raises(ValueError, match="cannot decrease"):
-        service.execute(cmd)
+        service.execute(action=cmd, uow=uow)
 
 
-def test_valid_progress_is_saved(contract_repo, contract_node_repo):
+def test_valid_progress_is_saved(contract_repo, contract_node_repo, uow):
     organization_id = uuid4()
     contract_id = uuid4()
 
@@ -284,8 +277,6 @@ def test_valid_progress_is_saved(contract_repo, contract_node_repo):
     contract_node_repo.add_all([node])
 
     service = ApplyContractProgressService(
-        contract_repository=contract_repo,
-        contract_node_repository=contract_node_repo,
         id_generator=uuid4,
     )
 
@@ -302,7 +293,7 @@ def test_valid_progress_is_saved(contract_repo, contract_node_repo):
         updates=[update],
     )
 
-    service.execute(cmd)
+    service.execute(action=cmd, uow=uow)
 
     nodes = contract_node_repo.list_by_contract(
         organization_id=organization_id,
@@ -315,6 +306,7 @@ def test_apply_progress_success(
     monkeypatch,
     contract_repo,
     contract_node_repo,
+    uow,
 ):
     organization_id = uuid4()
     actor_user_id = uuid4()
@@ -332,8 +324,6 @@ def test_apply_progress_success(
 
     # --- build real service ---
     apply_progress_service = ApplyContractProgressService(
-        contract_repository=contract_repo,
-        contract_node_repository=contract_node_repo,
         id_generator=uuid4,
     )
 
@@ -353,11 +343,14 @@ def test_apply_progress_success(
     )
 
     # --- execute ---
-    service.apply(
-        contract=contract,
-        excel_path=Path("fake.xlsx"),
-        organization_id=organization_id,
-        actor_user_id=actor_user_id,
+    service.execute(
+        action=ApplyContractProgressExcelCommand(
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
+            contract_id=contract.id,
+            excel_path=Path("fake.xlsx"),
+        ),
+        uow=uow,
     )
 
     # --- assert progress persisted ---

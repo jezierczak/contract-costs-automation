@@ -1,10 +1,12 @@
 import logging
 
 from contract_costs.cli.context import get_services
-from contract_costs.cli.utils.context_helpers import require_organization_id
+from contract_costs.cli.utils.context_helpers import require_organization_id, require_user_id
 from contract_costs.common.context.exceptions import ContextError
 from contract_costs.infrastructure.filesystem.show_file_manager import FinancialRecordShowFileManager
 from contract_costs.model.financial_record import PaymentStatus, FinancialRecordStatus
+from contract_costs.services.financial_records.excel.dto.financial_record_excel_export_command import \
+    FinancialRecordExcelExportCommand
 
 from contract_costs.services.financial_records.excel.layouts.financial_record_excel_layout_resolver import FinancialRecordExcelView
 from contract_costs.services.financial_records.review.dto.financial_record_review_query import FinancialRecordReviewQuery
@@ -56,6 +58,7 @@ def handle_prepare_financial_records_for_review(args) -> None:
     services = get_services()
     try:
         organization_id = require_organization_id(services.context)
+        actor_user_id = require_user_id(services.context)
     except ContextError:
         return
 
@@ -75,6 +78,8 @@ def handle_prepare_financial_records_for_review(args) -> None:
     )
 
     review_query = FinancialRecordReviewQuery(
+        organization_id=organization_id,
+        actor_user_id=actor_user_id,
         buyer_query=buyer_query,
         seller_query=seller_query,
         statuses=statuses,
@@ -90,12 +95,21 @@ def handle_prepare_financial_records_for_review(args) -> None:
         view=view
     )
     output_path = fm.create_output_file()
-    services.financial_record_excel_export_service.export(
-        organization_id=organization_id,
-        review_query=review_query,
-        view=view,
-        output_path=output_path,
-    )
+    # services.financial_record_excel_export_service.export(
+    #     organization_id=organization_id,
+    #     review_query=review_query,
+    #     view=view,
+    #     output_path=output_path,
+    # )
+    services.action_bus.execute(
+        action=FinancialRecordExcelExportCommand(
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
+            review_query=review_query,
+            view=view,
+            output_path=output_path,
+        ),
+        handler=services.financial_record_excel_export_service)
 
     logger.info("Prepared financial records for review: %s", output_path)
 

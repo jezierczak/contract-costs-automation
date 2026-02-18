@@ -19,6 +19,7 @@ from contract_costs.services.financial_records.assigment.invoice_sources.dto.com
 from contract_costs.services.common.resolve_utils import resolve_or_none
 import logging
 
+from contract_costs.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
 
@@ -32,25 +33,17 @@ class FinancialRecordLineUpdateService:
     """
 
     def __init__(self,
-                 record_line_repository: FinancialRecordLineRepository,
-                 contract_repository: ContractRepository,
-                 contract_node_repository: ContractNodeRepository,
-                 value_type_repository: ValueTypeRepository,
                  id_generator: Callable[[], UUID] = new_uuid,
                  clock: Callable[[], datetime] = utc_now
 
                  ) -> None:
-
-        self._record_line_repository = record_line_repository
-        self._contract_repository = contract_repository
-        self._contract_node_repository = contract_node_repository
-        self._value_type_repository = value_type_repository
         self._id_generator = id_generator
         self._clock = clock
 
     def apply(
             self,
             *,
+            uow:UnitOfWork,
             organization_id: UUID,
             actor_user_id: UUID,
             lines: list[FinancialRecordLineUpdate],
@@ -60,13 +53,12 @@ class FinancialRecordLineUpdateService:
         # If invoice_number is changed, line references MUST be updated in the batch.
         # The system does not auto-migrate invoice lines.
 
-        record_lines_updated: defaultdict[UUID,list[FinancialRecordLine]] = defaultdict(list) #fist is invoice id, second updated invoice_line_ids,
+        record_line_repo = uow.financial_record_lines
+        contract_repo = uow.contracts
+        contract_node_repo = uow.contract_nodes
+        value_type_repo = uow.value_types
 
-        # invoice_ids_from_excel: set[UUID] = {
-        #     ref.invoice_id
-        #     for ref in ref_map.values()
-        #     if ref.invoice_id is not None
-        # }
+        record_lines_updated: defaultdict[UUID,list[FinancialRecordLine]] = defaultdict(list) #fist is invoice id, second updated invoice_line_ids,
 
         record_ids_subject_to_cleanup: set[UUID] = {
             ref.record_id
@@ -76,7 +68,7 @@ class FinancialRecordLineUpdateService:
         }
 
         value_type_directions: dict[UUID, ValueDirection] = {
-            value_type.id: value_type.direction for value_type in self._value_type_repository.list_all(
+            value_type.id: value_type.direction for value_type in value_type_repo.list_all(
                 organization_id=organization_id)
         }
 
@@ -113,40 +105,75 @@ class FinancialRecordLineUpdateService:
                 continue
 
             contract_id = resolve_or_none(
-                self._contract_repository.get_by_code,
+                contract_repo.get_by_code,
                 organization_id,
-                update.contract_id,
+                update.contract_code,
                 "Contract",
             )
 
             contract_node_id = resolve_or_none(
-                self._contract_node_repository.get_by_code,
+                contract_node_repo.get_by_code,
                 organization_id,
-                update.contract_node_id,
+                update.contract_node_code,
                 "ContractNode",
             )
 
             value_type_id = resolve_or_none(
-                self._value_type_repository.get_by_code,
+                value_type_repo.get_by_code,
                 organization_id,
                 update.value_type_code,
                 "ValueType",
             )
 
+            #TODO resolve agreement_id powinno działać trzeba to sprawdzić
+            agreement_id = resolve_or_none(
+                contract_repo.get_by_code,
+                organization_id,
+                update.agreement_code,
+                "AgreementContract",
+            )
+
+            agreement_node_id = resolve_or_none(
+                contract_node_repo.get_by_code,
+                organization_id,
+                update.agreement_node_code,
+                "AgreementContractNode",
+            )
 
 
             if resolved_record_id:
                 if update.record_line_id is None:
-                    new_id = self._create_line(organization_id,actor_user_id,update, resolved_record_id, contract_id, contract_node_id, value_type_id)
-                    line = self._record_line_repository.get(
+                    new_id = self._create_line(
+                        record_line_repo,
+                        organization_id,
+                        actor_user_id,update,
+                        resolved_record_id,
+                        contract_id,
+                        contract_node_id,
+                        value_type_id,
+                        agreement_id,
+                        agreement_node_id
+                    )
+                    line = record_line_repo.get(
                         organization_id=organization_id,
                         line_id=new_id)
                     if line is None:
                         raise RuntimeError(f"InvoiceLine not found after create: {new_id}")
                     record_lines_updated[resolved_record_id].append(line)  # adding updated invoice lines ids by invoice_id
                 else:
-                    self._update_line(organization_id,actor_user_id,update, resolved_record_id, contract_id, contract_node_id, value_type_id)
-                    line = self._record_line_repository.get(
+                    self._update_line(
+                        record_line_repo,
+                        organization_id,
+                        actor_user_id,
+                        update,
+                        resolved_record_id,
+                        contract_id,
+                        contract_node_id,
+                        value_type_id,
+                        agreement_id,
+                        agreement_node_id
+                    )
+                    line = record_line_repo.get(
                         organization_id=organization_id,
                         line_id=update.record_line_id)
                     if line is None:
@@ -166,7 +193,7 @@ class FinancialRecordLineUpdateService:
         for rec_id, lines_up in record_lines_updated.items():
             record_lines_ids_updated[rec_id] = [line_up.id for line_up in lines_up]
 
-        self._delete_items_erased_from_excel(organization_id,record_ids_subject_to_cleanup,record_lines_ids_updated)
+        self._delete_items_erased_from_excel(record_line_repo,organization_id,record_ids_subject_to_cleanup,record_lines_ids_updated)
 
         logger.info(
             "Financial record lines processed: total=%d, invoices_affected=%d",
@@ -197,6 +224,7 @@ class FinancialRecordLineUpdateService:
 
     def _delete_items_erased_from_excel(
             self,
+            record_line_repo,
             organization_id: UUID,
             record_ids: set[UUID],
             record_lines_ids_updated: dict[UUID, list[UUID]],
@@ -212,7 +240,7 @@ class FinancialRecordLineUpdateService:
 
             keep_ids = set(record_lines_ids_updated.get(record_id, []))
 
-            deleted = self._record_line_repository.delete_not_in_ids(
+            deleted = record_line_repo.delete_not_in_ids(
                 organization_id=organization_id,
                 financial_record_id=record_id,
                 keep_ids=keep_ids,
@@ -234,13 +262,17 @@ class FinancialRecordLineUpdateService:
 
     def _create_line(
         self,
+        record_line_repo: FinancialRecordLineRepository,
         organization_id: UUID,
         actor_user_id: UUID,
         update: FinancialRecordLineUpdate,
         record_id: UUID | None,
         contract_id: UUID | None,
         cost_node_id: UUID | None,
-        cost_type_id: UUID | None
+        cost_type_id: UUID | None,
+        agreement_id: UUID | None,
+        agreement_node_id: UUID | None,
+
     ) -> UUID:
         line = FinancialRecordLine(
             id=self._id_generator(),
@@ -257,24 +289,30 @@ class FinancialRecordLineUpdateService:
             created_at=self._clock(),
             created_by_user_id=actor_user_id,
             updated_at=None,
-            updated_by_user_id=None
+            updated_by_user_id=None,
+            agreement_id = agreement_id,
+            agreement_node_id = agreement_node_id
         )
 
-        self._record_line_repository.add(organization_id=organization_id,line=line)
+        record_line_repo.add(organization_id=organization_id,line=line)
         return line.id
 
     def _update_line(
         self,
+        record_line_repo: FinancialRecordLineRepository,
         organization_id: UUID,
         actor_user_id: UUID,
         update: FinancialRecordLineUpdate,
         record_id: UUID | None,
         contract_id: UUID | None,
         contract_node_id: UUID | None,
-        value_type_id: UUID | None
+        value_type_id: UUID | None,
+        agreement_id: UUID | None,
+        agreement_node_id: UUID | None,
+
     ) -> None:
         if update.record_line_id:
-            line = self._record_line_repository.get(organization_id=organization_id,line_id=update.record_line_id)
+            line = record_line_repo.get(organization_id=organization_id,line_id=update.record_line_id)
             if line is None:
                 raise ValueError("Invoice line not found")
         else: raise ValueError("Invoice line not found")
@@ -292,9 +330,12 @@ class FinancialRecordLineUpdateService:
             value_type_id=value_type_id,
             updated_by_user_id=actor_user_id,
             updated_at=self._clock(),
+            agreement_id=agreement_id,
+            agreement_node_id=agreement_node_id
+
         )
 
-        self._record_line_repository.update(organization_id=organization_id,line=updated)
+        record_line_repo.update(organization_id=organization_id,line=updated)
 
     @staticmethod
     def _resolve_ref(

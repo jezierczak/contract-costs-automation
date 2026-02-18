@@ -21,10 +21,11 @@ def build_input(email=None):
     )
 
 
-def test_returns_empty_when_no_email(company_repo):
-    provider = EmailCandidateProvider(company_repo)
+def test_returns_empty_when_no_email(uow):
+    provider = EmailCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=new_uuid(),
         input_=build_input(),
     )
@@ -32,12 +33,13 @@ def test_returns_empty_when_no_email(company_repo):
     assert result == []
 
 
-def test_returns_empty_when_no_match(company_repo):
+def test_returns_empty_when_no_match(uow):
     org_id = new_uuid()
 
-    provider = EmailCandidateProvider(company_repo)
+    provider = EmailCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=org_id,
         input_=build_input(email="a@b.com"),
     )
@@ -45,7 +47,7 @@ def test_returns_empty_when_no_match(company_repo):
     assert result == []
 
 
-def test_returns_matching_company(company_repo):
+def test_returns_matching_company(company_repo, uow):
     org_id = new_uuid()
 
     company = (
@@ -57,9 +59,10 @@ def test_returns_matching_company(company_repo):
 
     company_repo.add(company)
 
-    provider = EmailCandidateProvider(company_repo)
+    provider = EmailCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=org_id,
         input_=build_input(email="test@example.com"),
     )
@@ -68,7 +71,7 @@ def test_returns_matching_company(company_repo):
     assert result[0].id == company.id
 
 
-def test_is_scoped_to_organization(company_repo):
+def test_is_scoped_to_organization(company_repo, uow):
     org1 = new_uuid()
     org2 = new_uuid()
 
@@ -81,9 +84,10 @@ def test_is_scoped_to_organization(company_repo):
 
     company_repo.add(company)
 
-    provider = EmailCandidateProvider(company_repo)
+    provider = EmailCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=org2,
         input_=build_input(email="test@example.com"),
     )

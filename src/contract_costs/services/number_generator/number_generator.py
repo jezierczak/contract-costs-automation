@@ -1,23 +1,25 @@
 from datetime import datetime
 from uuid import UUID
 
-from contract_costs.infrastructure.db.mysql_connection import get_connection
+
 from contract_costs.model.number_sequence import NumberSequence
-from contract_costs.repository.number_sequence_repository import (
-    NumberSequenceRepository,
-)
+
+from contract_costs.unit_of_work import UnitOfWork
 
 
 class NumberGenerator:
 
-    def __init__(
-        self,
-        number_sequence_repository: NumberSequenceRepository,
-    ):
-        self._repo = number_sequence_repository
+    # def __init__(
+    #     self,
+    #     # uow: UnitOfWork,
+    #     # number_sequence_repository: NumberSequenceRepository,
+    # ):
+    #     # self._repo = number_sequence_repository
+    #     # self._unit_of_work = uow
 
     def generate(
         self,
+        uow: UnitOfWork,
         organization_id: UUID,
         pattern: str,
         date: datetime,
@@ -35,6 +37,7 @@ class NumberGenerator:
 
         # 4️⃣ Pobieramy kolejny numer
         next_value = self._get_next_value(
+            uow=uow,
             organization_id=organization_id,
             scope_key=scope_key,
         )
@@ -53,42 +56,59 @@ class NumberGenerator:
 
     def _get_next_value(
         self,
+        uow: UnitOfWork,
         organization_id: UUID,
         scope_key: str,
     ) -> int:
+        sequence = uow.number_sequences.get_for_update(
+            organization_id,
+            scope_key,
+        )
 
-        conn = get_connection()
-
-        try:
-            conn.start_transaction()
-
-            sequence = self._repo.get_for_update(
-                conn,
-                organization_id,
-                scope_key,
+        if sequence is None:
+            sequence = NumberSequence(
+                organization_id=organization_id,
+                scope_key=scope_key,
+                current_value=1,
             )
+            uow.number_sequences.add(sequence)
+            return 1
 
-            if sequence is None:
-                sequence = NumberSequence(
-                    organization_id=organization_id,
-                    scope_key=scope_key,
-                    current_value=1,
-                )
-                self._repo.add(conn, sequence)
-                next_value = 1
-            else:
-                next_value = sequence.increase()
-                self._repo.save(conn, sequence)
-
-            conn.commit()
-
-        except Exception:
-            conn.rollback()
-            raise
-        finally:
-            conn.close()
-
+        next_value = sequence.increase()
+        uow.number_sequences.update(sequence)
         return next_value
+        # conn = get_connection()
+        #
+        # try:
+        #     conn.start_transaction()
+        #
+        #     sequence = self._repo.get_for_update(
+        #         conn,
+        #         organization_id,
+        #         scope_key,
+        #     )
+        #
+        #     if sequence is None:
+        #         sequence = NumberSequence(
+        #             organization_id=organization_id,
+        #             scope_key=scope_key,
+        #             current_value=1,
+        #         )
+        #         self._repo.add(conn, sequence)
+        #         next_value = 1
+        #     else:
+        #         next_value = sequence.increase()
+        #         self._repo.save(conn, sequence)
+        #
+        #     conn.commit()
+        #
+        # except Exception:
+        #     conn.rollback()
+        #     raise
+        # finally:
+        #     conn.close()
+        #
+        # return next_value
 
     @staticmethod
     def _resolve_context(
@@ -115,6 +135,6 @@ class NumberGenerator:
         scope = resolved_pattern.replace("<auto>", "")
 
         # usuwamy ewentualne końcowe znaki typu '_' lub '-'
-        scope = scope.rstrip("_-")
+        scope = scope.rstrip("_-/")
 
         return scope

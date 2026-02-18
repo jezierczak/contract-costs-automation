@@ -4,6 +4,8 @@ from contract_costs.cli.utils.context_helpers import require_organization_id, re
 from contract_costs.cli.utils.contract_resolver import resolve_contract
 from contract_costs.common.context.exceptions import ContextError
 from contract_costs.infrastructure.filesystem.excel_domain_file_manager import InputsContractsProgressFileManager
+from contract_costs.services.contracts.apply.command.apply_contract_progress_excel_command import \
+    ApplyContractProgressExcelCommand
 
 
 def build_apply_contract_progress(subparsers):
@@ -37,11 +39,14 @@ def handle_apply_contract_progress(args) -> None:
         contract_code=contract.code)
     excel_path = fm.get_active_file()
 
-    services.apply_contract_progress_excel.execute(
-        contract=contract,
-        excel_path=excel_path,
-        organization_id=organization_id,
-        actor_user_id=actor_user_id
+    services.action_bus.execute(
+        action=ApplyContractProgressExcelCommand(
+            contract_id=contract.id,
+            excel_path=excel_path,
+            organization_id=organization_id,
+            actor_user_id=actor_user_id
+        ),
+        handler=services.apply_contract_progress_excel
     )
 
     fm.mark_processed()

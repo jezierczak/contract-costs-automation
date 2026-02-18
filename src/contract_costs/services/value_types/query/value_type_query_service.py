@@ -1,30 +1,36 @@
+from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.model.value_direction import ValueDirection
-from contract_costs.repository.value_type_repository import ValueTypeRepository
 from contract_costs.services.value_types.query.value_type_mapper import ValueTypeMapper
 from contract_costs.services.value_types.query.dto.value_type_dto import ValueTypeDTO
 from contract_costs.services.value_types.query.dto.value_type_query import ValueTypeQuery
+from contract_costs.unit_of_work import UnitOfWork
 
 
-class ValueTypeQueryService:
+class ValueTypeQueryService(
+        ActionHandler[ValueTypeQuery, list[ValueTypeDTO]]
+    ):
 
-    def __init__(self, repository: ValueTypeRepository) -> None:
-        self._repository = repository
+    def execute(
+        self,
+        *,
+        action: ValueTypeQuery,
+        uow: UnitOfWork
+    ) -> list[ValueTypeDTO]:
+        repo = uow.value_types
+        items = repo.list_all(organization_id=action.organization_id)
 
-    def list(self, query: ValueTypeQuery) -> list[ValueTypeDTO]:
-        items = self._repository.list_all(organization_id=query.organization_id)
-
-        if not query.include_inactive:
+        if not action.include_inactive:
             items = [v for v in items if v.is_active]
 
-        if query.direction:
-            direction = ValueDirection(query.direction)
+        if action.direction:
+            direction = ValueDirection(action.direction)
             items = [v for v in items if v.direction == direction]
 
-        if query.code:
-            items = [v for v in items if v.code == query.code]
+        if action.code:
+            items = [v for v in items if v.code == action.code]
 
-        if query.search:
-            q = query.search.lower()
+        if action.search:
+            q = action.search.lower()
             items = [
                 v for v in items
                 if q in v.name.lower()

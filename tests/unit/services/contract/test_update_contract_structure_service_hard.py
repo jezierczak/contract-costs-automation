@@ -30,6 +30,7 @@ from tests.helpers.contracts_helpers import make_contract_node, FakeValidator, F
 def test_hard_replace_deletes_and_inserts(
     contract_repo,
     contract_node_repo,
+    uow,
 ):
     cmd = make_update_structure_command()
 
@@ -45,8 +46,6 @@ def test_hard_replace_deletes_and_inserts(
     validator = FakeValidator()
 
     service = UpdateContractStructureService(
-        contract_repository=contract_repo,
-        contract_node_repository=contract_node_repo,
         contract_node_tree_builder=builder,
         contract_node_tree_validator=validator,
     )
@@ -60,7 +59,7 @@ def test_hard_replace_deletes_and_inserts(
 
     contract_repo.add(contract)
 
-    service.execute(cmd)
+    service.execute(action=cmd, uow=uow)
 
     nodes = contract_node_repo.list_by_contract(
         contract_id=cmd.contract_id,

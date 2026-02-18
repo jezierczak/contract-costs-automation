@@ -16,19 +16,22 @@ TEST_USER_ID = uuid4()
 
 def test_apply_create_creates_company(
     company_repo,
-    create_service,
+    create_company_service,
     update_service,
     activate_service,
     deactivate_service,
+    uow,
 ):
     action = ApplyCompaniesFromExcelService(
-        create_company_service=create_service,
+        create_company_service=create_company_service,
         update_company_service=update_service,
         activate_company_service=activate_service,
         deactivate_company_service=deactivate_service,
     )
 
     cmd = ApplyCompanyCommand(
+        organization_id=TEST_ORG_ID,
+        actor_user_id=TEST_USER_ID,
         apply_action_type=CompanyActionType.CREATE,
         company_id=None,
         name="ACME",
@@ -52,7 +55,7 @@ def test_apply_create_creates_company(
         commands=[cmd],
     )
 
-    action.execute(apply_cmd)
+    action.execute(action=apply_cmd, uow=uow)
 
     companies = company_repo.list_all(TEST_ORG_ID)
     assert len(companies) == 1
@@ -61,23 +64,26 @@ def test_apply_create_creates_company(
 
 def test_apply_update_updates_company(
     company_repo,
-    create_service,
+    create_company_service,
     update_service,
     activate_service,
     deactivate_service,
+    uow,
 ):
 
     existing = CompanyBuilder().with_organization_id(TEST_ORG_ID).with_name("OLD").build()
     company_repo.add(existing)
 
     action = ApplyCompaniesFromExcelService(
-        create_company_service=create_service,
+        create_company_service=create_company_service,
         update_company_service=update_service,
         activate_company_service=activate_service,
         deactivate_company_service=deactivate_service,
     )
 
     cmd = ApplyCompanyCommand(
+        organization_id=TEST_ORG_ID,
+        actor_user_id=TEST_USER_ID,
         apply_action_type=CompanyActionType.UPDATE,
         company_id=existing.id,
         name="NEW",
@@ -101,30 +107,33 @@ def test_apply_update_updates_company(
         commands=[cmd],
     )
 
-    action.execute(apply_cmd)
+    action.execute(action=apply_cmd, uow=uow)
 
     updated = company_repo.get(existing.id, TEST_ORG_ID)
     assert updated.name == "NEW"
 
 def test_apply_deactivate(
     company_repo,
-    create_service,
+    create_company_service,
     update_service,
     activate_service,
     deactivate_service,
+    uow,
 ):
 
     company = CompanyBuilder().with_organization_id(org_id=TEST_ORG_ID).is_active(is_active=True).build()
     company_repo.add(company)
 
     action = ApplyCompaniesFromExcelService(
-        create_company_service=create_service,
+        create_company_service=create_company_service,
         update_company_service=update_service,
         activate_company_service=activate_service,
         deactivate_company_service=deactivate_service,
     )
 
     cmd = ApplyCompanyCommand(
+        organization_id=TEST_ORG_ID,
+        actor_user_id=TEST_USER_ID,
         apply_action_type=CompanyActionType.DEACTIVATE,
         company_id=company.id,
         name=company.name,
@@ -148,7 +157,7 @@ def test_apply_deactivate(
         commands=[cmd],
     )
 
-    action.execute(apply_cmd)
+    action.execute(action=apply_cmd, uow=uow)
 
     updated = company_repo.get(company.id, TEST_ORG_ID)
     assert updated.is_active is False

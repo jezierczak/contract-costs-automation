@@ -23,7 +23,6 @@ REGISTRY.register_group("remove", build_remove_organization_user)
 
 def handle_remove_organization_user(args):
     services = get_services()
-    ctx = services.context
 
     try:
         organization_id = require_organization_id(services.context)
@@ -52,7 +51,6 @@ def handle_remove_organization_user(args):
         actor_user_id=actor_user_id,
         target_user_id=user.id,
     )
-
-    services.remove_organization_user.execute(cmd)
+    services.action_bus.execute(action=cmd,handler=services.remove_organization_user)
 
     print("User removed from organization")

@@ -2,74 +2,90 @@ import pytest
 
 
 from contract_costs.common.ids import new_uuid
+from contract_costs.model.contract import ContractType
+from contract_costs.model.contract_node import ContractNodeInput
 from tests.helpers.contract_commands import make_contract_command
 
 from tests.helpers.contracts_helpers import FakeValidator, FakeContractNodeTreeBuilder, make_contract_node
 from contract_costs.services.contracts.create_contract_service import (
     CreateContractService)
 
-def test_create_contract_without_nodes(contract_repo, contract_node_repo):
+def test_create_contract_without_nodes(contract_repo, contract_node_repo, uow):
     builder = FakeContractNodeTreeBuilder(nodes_to_return=[])
     validator = FakeValidator()
 
     service = CreateContractService(
-        contract_repository=contract_repo,
-        contract_node_repository=contract_node_repo,
         contract_node_tree_builder=builder,
         contract_node_tree_validator=validator,
     )
 
-    cmd = make_contract_command()
+    cmd = make_contract_command(contract_node_input=[])
 
-    service.init(cmd)
-    service.execute()
+    contract = service.execute(action=cmd, uow=uow)
 
-    assert contract_repo.list_contracts(cmd.organization_id)
-    assert contract_node_repo.list_nodes(organization_id=cmd.organization_id) == []
-    assert not validator.called
-
-def test_create_contract_with_nodes(contract_repo, contract_node_repo):
-
-    builder = FakeContractNodeTreeBuilder(nodes_to_return=[])
-    validator = FakeValidator()
-
-    service = CreateContractService(
-        contract_repository=contract_repo,
-        contract_node_repository=contract_node_repo,
-        contract_node_tree_builder=builder,
-        contract_node_tree_validator=validator,
-    )
-    cmd = make_contract_command()
-    service.init(cmd)
-
-    contract_id = service._contract.id
-
-    node = make_contract_node(
+    contracts = contract_repo.list_contracts(
         organization_id=cmd.organization_id,
-        contract_id=contract_id,
+        contract_type=ContractType.PROJECT,
     )
 
-    builder.nodes_to_return = [node]
+    assert len(contracts) == 1
+    assert contracts[0].id == contract.id
 
-    service.add_contract_node_tree([])
-    service.execute()
+    nodes = contract_node_repo.list_nodes(
+        organization_id=cmd.organization_id
+    )
 
-    assert validator.called
+    assert nodes == []
+    assert not validator.called
+    assert not builder.called
+
+
+def test_create_contract_with_nodes(contract_repo, contract_node_repo, uow):
+
+    node_input = [{
+        "code": "A",
+        "name": "Test",
+        "budget": None,
+        "quantity": None,
+        "unit": None,
+        "children": [],
+        "is_active": True,
+    }]
+
+    fake_node = make_contract_node(
+        organization_id=None,  # builder nadpisze
+        contract_id=None,
+    )
+
+    builder = FakeContractNodeTreeBuilder(nodes_to_return=[fake_node])
+    validator = FakeValidator()
+
+    service = CreateContractService(
+        contract_node_tree_builder=builder,
+        contract_node_tree_validator=validator,
+    )
+
+    cmd = make_contract_command(contract_node_input=node_input)
+
+    contract = service.execute(action=cmd, uow=uow)
+
     assert builder.called
+    assert validator.called
 
     nodes = contract_node_repo.list_nodes(
         organization_id=cmd.organization_id
     )
 
     assert len(nodes) == 1
-    saved = contract_repo.list_contracts(cmd.organization_id)[0]
-    assert saved.code == cmd.code
-    assert saved.name == cmd.name
+    assert nodes[0].contract_id == contract.id
+
+
 
 
 def test_validator_failure_prevents_persist(
     contract_repo,
     contract_node_repo,
+    uow,
 ):
     node = make_contract_node(
         organization_id=new_uuid(),
@@ -80,55 +96,27 @@ def test_validator_failure_prevents_persist(
     validator = FakeValidator(should_fail=True)
 
     service = CreateContractService(
-        contract_repository=contract_repo,
-        contract_node_repository=contract_node_repo,
         contract_node_tree_builder=builder,
         contract_node_tree_validator=validator,
     )
 
-    cmd = make_contract_command()
+    node_input: list[ContractNodeInput] = [{
+        "code": "X",
+        "name": "Test",
+        "budget": None,
+        "quantity": None,
+        "unit": None,
+        "children": [],
+        "is_active": True,
+    }]
 
-    service.init(cmd)
-    service.add_contract_node_tree([])
+    cmd = make_contract_command(node_input)
 
     with pytest.raises(ValueError):
-        service.execute()
+        service.execute(action=cmd, uow=uow)
 
-    assert contract_repo.list_contracts(cmd.organization_id) == []
+    assert contract_repo.list_contracts(cmd.organization_id,contract_type=ContractType.PROJECT) == []
     assert contract_node_repo.list_nodes(organization_id=cmd.organization_id) == []
 
 
-def test_add_nodes_without_init_raises(
-    contract_repo,
-    contract_node_repo,
-):
-    builder = FakeContractNodeTreeBuilder([])
-    validator = FakeValidator()
 
-    service = CreateContractService(
-        contract_repository=contract_repo,
-        contract_node_repository=contract_node_repo,
-        contract_node_tree_builder=builder,
-        contract_node_tree_validator=validator,
-    )
-
-    with pytest.raises(RuntimeError):
-        service.add_contract_node_tree([])
-
-
-def test_execute_without_init_raises(
-    contract_repo,
-    contract_node_repo,
-):
-    builder = FakeContractNodeTreeBuilder([])
-    validator = FakeValidator()
-
-    service = CreateContractService(
-        contract_repository=contract_repo,
-        contract_node_repository=contract_node_repo,
-        contract_node_tree_builder=builder,
-        contract_node_tree_validator=validator,
-    )
-
-    with pytest.raises(RuntimeError):
-        service.execute()

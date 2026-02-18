@@ -1,3 +1,4 @@
+import re
 from enum import Enum
 from uuid import UUID
 
@@ -8,10 +9,6 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from contract_costs.infrastructure.excel.excel_common_methods import ExcelCommonMethods
 from contract_costs.model.amount import AmountInputType
-from contract_costs.model.contract import ContractType
-from contract_costs.repository.contract_repository import ContractRepository
-from contract_costs.repository.contract_node_repository import ContractNodeRepository
-from contract_costs.repository.value_type_repository import ValueTypeRepository
 from contract_costs.services.financial_records.assigment.apply.commands.invoice_command import InvoiceCommand
 from contract_costs.services.financial_records.assigment.prepare.dto.assignment_export_bundle import FinancialRecordAssignmentExportBundle
 from contract_costs.services.financial_records.assigment.prepare.export.invoice_assignment_exporter import InvoiceAssignmentExporter
@@ -22,13 +19,6 @@ from pathlib import Path
 work_dir = cfg.WORK_DIR.resolve().as_posix()
 
 class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
-    def __init__(self,
-                 contract_repository: ContractRepository,
-                 contract_node_repository: ContractNodeRepository,
-                 cost_type_repository:ValueTypeRepository):
-        self._contract_repository = contract_repository
-        self._cost_node_repository = contract_node_repository
-        self._cost_type_repository = cost_type_repository
 
     def export(
             self,
@@ -39,38 +29,74 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
     ) -> None:
         wb = Workbook()
 
-        invoices_ws = self._write_invoices(wb, bundle.records,organization_id=organization_id)
-        lines_ws = self._write_invoice_lines(wb,organization_id, bundle.record_lines)
+        invoices_ws = self._write_invoices(wb, bundle.records, organization_id)
+        lines_ws = self._write_invoice_lines(wb, bundle.record_lines)
+
         buyers_ws = self._write_buyers(wb, bundle.buyers)
         sellers_ws = self._write_sellers(wb, bundle.sellers)
-        contracts_ws = self._write_contracts(wb, bundle.contracts)
-        cost_nodes_ws = self._write_cost_nodes(wb, bundle.cost_nodes)
-        cost_types_ws = self._write_cost_types(wb, bundle.cost_types)
-        amount_input_type_ws = self._write_dictionary(wb,bundle.amount_input_types,cfg.DICTS_AMOUNT_INPUT_TYPES)
-        tax_treatment_ws = self._write_dictionary(wb, bundle.amount_types, cfg.DICTS_TAX_TREATMENTS)
-        payment_method_ws = self._write_dictionary(wb, bundle.payment_methods, cfg.DICTS_PAYMENT_METHODS)
-        payment_status_ws = self._write_dictionary(wb, bundle.payment_status, cfg.DICTS_PAYMENT_STATUS)
-        units_ws = self._write_dictionary(wb, bundle.units, cfg.DICTS_UNITS)
-        vat_rates_ws = self._write_dictionary(wb, bundle.vat_rates, cfg.DICTS_VAT_RATES)
-        actions_ws = self._write_dictionary(wb, bundle.actions, cfg.DICTS_ACTIONS)
 
-        self._define_cost_node_named_ranges(wb, cost_nodes_ws)
+        project_contracts_ws = self._write_contracts(
+            wb, bundle.project_contracts, cfg.DICTS_PROJECT_CONTRACTS
+        )
+        project_nodes_ws = self._write_cost_nodes(
+            wb, bundle.project_contract_nodes, cfg.DICTS_PROJECT_COST_NODES
+        )
+        agreement_contracts_ws = self._write_contracts(
+            wb, bundle.agreement_contracts, cfg.DICTS_AGREEMENT_CONTRACTS
+        )
+        agreement_nodes_ws = self._write_cost_nodes(
+            wb, bundle.agreement_contract_nodes, cfg.DICTS_AGREEMENT_COST_NODES
+        )
+
+        cost_types_ws = self._write_value_types(wb, bundle.value_types)
+
+        amount_input_type_ws = self._write_dictionary(
+            wb, bundle.amount_input_types, cfg.DICTS_AMOUNT_INPUT_TYPES
+        )
+
+        tax_treatment_ws = self._write_dictionary(
+            wb, bundle.amount_types, cfg.DICTS_TAX_TREATMENTS
+        )
+
+        payment_method_ws = self._write_dictionary(
+            wb, bundle.payment_methods, cfg.DICTS_PAYMENT_METHODS
+        )
+
+        payment_status_ws = self._write_dictionary(
+            wb, bundle.payment_status, cfg.DICTS_PAYMENT_STATUS
+        )
+
+        units_ws = self._write_dictionary(
+            wb, bundle.units, cfg.DICTS_UNITS
+        )
+
+        vat_rates_ws = self._write_dictionary(
+            wb, bundle.vat_rates, cfg.DICTS_VAT_RATES
+        )
+
+        actions_ws = self._write_dictionary(
+            wb, bundle.actions, cfg.DICTS_ACTIONS
+        )
+
+        # Named ranges
+        self._define_named_ranges(wb, project_nodes_ws)
+        self._define_named_ranges(wb, agreement_nodes_ws)
 
         self._apply_dropdowns(
             invoices_ws=invoices_ws,
             lines_ws=lines_ws,
             buyers_ws=buyers_ws,
             sellers_ws=sellers_ws,
-            contracts_ws=contracts_ws,
-            # cost_nodes_ws=cost_nodes_ws,
+            project_contracts_ws=project_contracts_ws,
+            agreement_contracts_ws=agreement_contracts_ws,
             cost_types_ws=cost_types_ws,
-            amount_input_type_ws= amount_input_type_ws,
+            amount_input_type_ws=amount_input_type_ws,
             tax_treatments_ws=tax_treatment_ws,
             payment_method_ws=payment_method_ws,
             payment_status_ws=payment_status_ws,
             units_ws=units_ws,
             vat_rates_ws=vat_rates_ws,
-            actions_ws=actions_ws
+            actions_ws=actions_ws,
         )
 
         DATA_SHEETS = {
@@ -160,13 +186,13 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
         ws.column_dimensions["D"].hidden = True
         ws.column_dimensions["O"].hidden = True  # scan_filename
         return ws
-
-    def _write_invoice_lines(self, wb: Workbook,organization_id, lines) -> Worksheet:
+    @staticmethod
+    def _write_invoice_lines( wb: Workbook, lines) -> Worksheet:
         ws = wb.create_sheet(cfg.FINANCIAL_RECORD_ITEMS_SHEET_NAME)
 
         headers = [
             "id",
-            "invoice_number",
+            "record_reference",
             "item_name",
             "description",
             "quantity",
@@ -176,54 +202,32 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
             "amount_type",
             "tax_treatment",
             "contract_code",
-            "cost_node_code",
-            "cost_type_code",
+            "contract_node_code",
+            "value_type_code",
+            "agreement_code",
+            "agreement_node_code"
         ]
         ws.append(headers)
-
-        projects = self._contract_repository.list_contracts(
-            organization_id=organization_id,
-            contract_type=ContractType.PROJECT,
-        )
-
-        systems = self._contract_repository.list_contracts(
-            organization_id=organization_id,
-            contract_type=ContractType.SYSTEM,
-        )
-
-        all_contracts = projects + systems
-
-        contracts = {
-            c.id: c.code
-            for c in all_contracts
-        }
-
-        cost_nodes = {
-            n.id: n.code
-            for n in self._cost_node_repository.list_nodes(organization_id=organization_id)
-        }
-
-        cost_types = {
-            t.id: t.code
-            for t in self._cost_type_repository.list_all(organization_id=organization_id)
-        }
 
         for l in lines:
             ws.append([
                 str(l.id),
-                str(l.record_reference) if l.record_reference else None,
+                l.record_reference,
                 l.item_name,
                 l.description,
                 l.quantity,
-                l.unit.value,
+                l.unit.value if l.unit else None,
                 l.net,
                 l.vat_rate.name if isinstance(l.vat_rate, Enum) else l.vat_rate,
                 AmountInputType.NET.value,
                 l.tax_treatment.value,
-                contracts.get(l.contract_id),
-                cost_nodes.get(l.contract_node_id),
-                cost_types.get(l.value_type_id),
+                l.contract_code,
+                l.contract_node_code,
+                l.value_type_code,
+                l.agreement_code,
+                l.agreement_node_code,
             ])
+
         ws.column_dimensions["A"].hidden = True
         return ws
 
@@ -236,7 +240,8 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
         ws.column_dimensions["C"].hidden = True
         return ws
 
-    def _write_sellers(self, wb: Workbook, sellers) -> Worksheet:
+    @staticmethod
+    def _write_sellers(wb: Workbook, sellers) -> Worksheet:
         ws = wb.create_sheet(cfg.DICTS_SELLERS)
         ws.append(["tax_number","name","id" ])
 
@@ -245,8 +250,8 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
         ws.column_dimensions["C"].hidden = True
         return ws
     @staticmethod
-    def _write_contracts( wb: Workbook, contracts) -> Worksheet:
-        ws = wb.create_sheet(cfg.DICTS_CONTRACTS)
+    def _write_contracts( wb: Workbook, contracts,sheet_name: str) -> Worksheet:
+        ws = wb.create_sheet(sheet_name)
         ws.append(["code",  "name","id"])
 
         for c in contracts:
@@ -254,8 +259,9 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
         ws.column_dimensions["C"].hidden = True
         return ws
 
-    def _write_cost_nodes(self, wb: Workbook, cost_nodes) -> Worksheet:
-        ws = wb.create_sheet(cfg.DICTS_COST_NODES)
+    @staticmethod
+    def _write_cost_nodes(wb: Workbook, cost_nodes,sheet_name: str) -> Worksheet:
+        ws = wb.create_sheet(sheet_name)
         ws.append([
             "contract_code",
             "code",
@@ -275,50 +281,32 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
                 n.name,
                 n.budget,
                 str(n.id),
-                str(n.contract_id),
+                str(n.contract_code),
                 str(n.parent_id) if n.parent_id else None
             ])
         ws.column_dimensions["D"].hidden = True  # id
         ws.column_dimensions["E"].hidden = True  # contract_id
         ws.column_dimensions["F"].hidden = True  # parent_id
         return ws
-
-    # def _write_cost_nodes_helper(
-    #         self,
-    #         wb: Workbook,
-    #         cost_nodes: list[CostNodeExport],
-    #         contracts: list[ContractExport],
-    # ) -> Worksheet:
-    #     ws = wb.create_sheet("_HELPER_COST_NODES")
-    #
-    #     ws.append(["contract_code", "cost_node_code"])
-    #
-    #     contract_code_by_id = {
-    #         c.id: c.code for c in contracts
-    #     }
-    #
-    #     for n in cost_nodes:
-    #         contract_code = contract_code_by_id.get(n.contract_id)
-    #         if not contract_code:
-    #             continue
-    #
-    #         ws.append([
-    #             contract_code,
-    #             n.code,
-    #         ])
-    #
-    #     return ws
-
     @staticmethod
-    def _define_cost_node_named_ranges(
-            wb: Workbook,
-            cost_nodes_ws: Worksheet,
+    def _to_excel_safe_name(name: str) -> str:
+        safe = re.sub(r"[^A-Za-z0-9_]", "_", name)
+        if safe[0].isdigit():
+            safe = f"X_{safe}"
+        return safe
+
+    def _define_named_ranges(
+        self,
+        wb: Workbook,
+        cost_nodes_ws: Worksheet,
+        prefix: str| None = None,
     ) -> None:
+
         rows = list(cost_nodes_ws.iter_rows(min_row=2, values_only=True))
         by_contract: dict[str, list[int]] = {}
 
         for idx, row in enumerate(rows, start=2):
-            contract_code = row[0]  # kolumna A
+            contract_code = row[0]
             if not isinstance(contract_code, str):
                 continue
             by_contract.setdefault(contract_code, []).append(idx)
@@ -326,15 +314,16 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
         for contract_code, row_numbers in by_contract.items():
             start = row_numbers[0]
             end = row_numbers[-1]
-
+            name_prefix = prefix or ""
+            name = f"{name_prefix}{self._to_excel_safe_name(contract_code)}"
             formula = f"'{cost_nodes_ws.title}'!$B${start}:$B${end}"
 
-            wb.defined_names[contract_code] = DefinedName(
-                name=contract_code,
+            wb.defined_names[name] = DefinedName(
+                name=name,
                 attr_text=formula,
             )
 
-    def _write_cost_types(self, wb: Workbook, cost_types) -> Worksheet:
+    def _write_value_types(self, wb: Workbook, cost_types) -> Worksheet:
         ws = wb.create_sheet(cfg.DICTS_COST_TYPES)
         ws.append(["code", "name","id"])
 
@@ -354,24 +343,26 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
 
         return ws
 
+        # ============================================================
+        # DROPDOWNS
+        # ============================================================
+    @staticmethod
     def _apply_dropdowns(
-        self,
-        *,
-        invoices_ws:Worksheet,
-        lines_ws: Worksheet,
-        buyers_ws: Worksheet,
-        sellers_ws: Worksheet,
-        contracts_ws: Worksheet,
-        # cost_nodes_ws: Worksheet,
-        amount_input_type_ws:Worksheet,
-        cost_types_ws: Worksheet,
-        tax_treatments_ws: Worksheet,
-        payment_method_ws: Worksheet,
-        payment_status_ws: Worksheet,
-        units_ws: Worksheet,
-        vat_rates_ws: Worksheet,
-        actions_ws: Worksheet,
-
+            *,
+            invoices_ws: Worksheet,
+            lines_ws: Worksheet,
+            buyers_ws: Worksheet,
+            sellers_ws: Worksheet,
+            project_contracts_ws: Worksheet,
+            agreement_contracts_ws: Worksheet,
+            cost_types_ws: Worksheet,
+            amount_input_type_ws: Worksheet,
+            tax_treatments_ws: Worksheet,
+            payment_method_ws: Worksheet,
+            payment_status_ws: Worksheet,
+            units_ws: Worksheet,
+            vat_rates_ws: Worksheet,
+            actions_ws: Worksheet,
     ) -> None:
 
         max_rows = 2000  # bezpieczny limit
@@ -450,19 +441,12 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
 
         ExcelCommonMethods.apply_one_dropdown(
             max_rows,
-            contracts_ws,
-            cfg.DICTS_CONTRACTS,
+            project_contracts_ws,
+            cfg.DICTS_PROJECT_CONTRACTS,
             lines_ws,
             "K"
         )
 
-        # ExcelCommonMethods.apply_one_dropdown(
-        #     max_rows,
-        #     cost_nodes_ws,
-        #     cfg.DICTS_COST_NODES,
-        #     lines_ws,
-        #     "K"
-        # )
 
         ExcelCommonMethods.apply_formula_dropdown(
             source_ws=lines_ws,
@@ -478,99 +462,18 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
             lines_ws,
             "M"
         )
+        ExcelCommonMethods.apply_one_dropdown(
+            max_rows,
+            agreement_contracts_ws,
+            cfg.DICTS_AGREEMENT_CONTRACTS,
+            lines_ws,
+            "N"
+        )
 
+        ExcelCommonMethods.apply_formula_dropdown(
+            source_ws=lines_ws,
+            target_column="O",
+            formula="=INDIRECT($N2)",
+            max_rows=2000,
+        )
 
-    # @staticmethod
-    # def _apply_one_dropdown(max_rows: int,
-    #                         dict_ws: Worksheet,
-    #                         dict_ws_name: str,
-    #                         source_ws: Worksheet,
-    #                         target_column: str,
-    #                         source_column: str = "A"
-    #                         ) -> None:
-    #     data_range = f"{dict_ws_name}!${source_column}$2:${source_column}${dict_ws.max_row}"
-    #     dv = DataValidation(
-    #         type="list",
-    #         formula1=f"={data_range}",
-    #         allow_blank=True,
-    #     )
-    #     source_ws.add_data_validation(dv)
-    #     dv.add(f"{target_column}2:{target_column}{max_rows}")
-
-    # @staticmethod
-    # def autosize_columns(ws: Worksheet, max_width: int = 50) -> None:
-    #     for idx, col in enumerate(ws.columns, start=1):
-    #         max_length = 0
-    #         col_letter = get_column_letter(idx)
-    #
-    #         for cell in col:
-    #             if cell.value:
-    #                 max_length = max(max_length, len(str(cell.value)))
-    #
-    #         ws.column_dimensions[col_letter].width = min(max_length + 4, max_width + 1)
-    #
-    #
-    # @staticmethod
-    # def style_header(
-    #         ws: Worksheet,
-    #         header_row: int = 1,
-    #         bg_color: str = "1F4E79",  # ciemny niebieski
-    #         font_color: str = "FFFFFF",
-    # ) -> None:
-    #     header_font = Font(bold=True, color=font_color)
-    #     header_fill = PatternFill(
-    #         fill_type="solid",
-    #         start_color=bg_color,
-    #         end_color=bg_color,
-    #     )
-    #     header_alignment = Alignment(
-    #         horizontal="left",
-    #         vertical="center",
-    #         wrap_text=True,
-    #     )
-    #
-    #     for cell in ws[header_row]:
-    #         cell.font = header_font
-    #         cell.fill = header_fill
-    #         cell.alignment = header_alignment
-    #
-    #
-    # @staticmethod
-    # def zebra_rows(
-    #         ws: Worksheet,
-    #         start_row: int = 2,  # od pierwszego wiersza danych
-    #         bg_color: str = "EAF2FB"  # bardzo jasny niebieski
-    # ) -> None:
-    #
-    #     if ws.max_row < start_row:
-    #         return
-    #
-    #     fill = PatternFill(
-    #         fill_type="solid",
-    #         start_color=bg_color,
-    #         end_color=bg_color,
-    #     )
-    #
-    #     rule = FormulaRule(
-    #         formula=[f"MOD(ROW(),2)=0"],
-    #         fill=fill,
-    #     )
-    #
-    #     end_col = get_column_letter(ws.max_column)
-    #
-    #     ws.conditional_formatting.add(
-    #         f"A{start_row}:{end_col}{ws.max_row}",
-    #         rule,
-    #     )
-    #
-    # @staticmethod
-    # def freeze_header(ws: Worksheet) -> None:
-    #     ws.freeze_panes = "A2"
-    #
-    # @staticmethod
-    # def apply_autofilter(ws: Worksheet) -> None:
-    #     if ws.max_row < 2:
-    #         return  # brak danych
-    #
-    #     end_col = get_column_letter(ws.max_column)
-    #     ws.auto_filter.ref = f"A1:{end_col}{ws.max_row}"

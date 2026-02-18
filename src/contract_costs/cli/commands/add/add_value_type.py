@@ -39,6 +39,7 @@ def handle_add_value_type(args=None) -> None:
         organization_id=organization_id,
         actor_user_id=actor_user_id,
         create_value_type_service=services.create_value_type,
+        action_bus=services.action_bus
     )
 
     logger.info("\nCost type added successfully.")

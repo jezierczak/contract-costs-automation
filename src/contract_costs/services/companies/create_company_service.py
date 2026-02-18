@@ -6,81 +6,69 @@ from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.common.ids import new_uuid
 from contract_costs.common.time import utc_now
 from contract_costs.model.company import Company, CompanyType
-from contract_costs.repository.company_repository import CompanyRepository
+
 from contract_costs.services.common.resolve_utils import normalize_required_tax_number
-from contract_costs.services.companies.dto.create_company_command import CreateCompanyCommand
-from contract_costs.services.contracts.system_contract.create_system_contract_orchestrator import \
-    CreateSystemContractOrchestrator
+from contract_costs.services.companies.dto.create_company_command import BaseCreateCompanyCommand
+from contract_costs.services.contracts.system_contract.create_system_contract_orchestrator import (
+    CreateSystemContractOrchestrator,
+)
+from contract_costs.unit_of_work import UnitOfWork
 
 
-# @handles(CreateCompanyCommand)
-class CreateCompanyService(ActionHandler[CreateCompanyCommand, Company]):
+class CreateCompanyService(ActionHandler[BaseCreateCompanyCommand, Company]):
 
     def __init__(
         self,
-        company_repository: CompanyRepository,
+        # company_repository: CompanyRepository,
         create_system_contract: CreateSystemContractOrchestrator,
         id_generator: Callable[[], UUID] = new_uuid,
         clock: Callable[[], datetime] = utc_now,
     ) -> None:
-        self._companies = company_repository
+        # self._companies = company_repository
         self._create_system_contract = create_system_contract
         self._clock = clock
         self._id_generator = id_generator
 
-    def execute(self, cmd: CreateCompanyCommand) -> Company:
-        normalized_tax = normalize_required_tax_number(cmd.tax_number)
-
-        # 1️⃣ uniqueness in org
-        if self._companies.get_by_tax_number(
-                normalized_tax,
-                organization_id=cmd.organization_id,
+    def execute(self, *, action: BaseCreateCompanyCommand, uow: UnitOfWork) -> Company:
+        normalized_tax = normalize_required_tax_number(action.tax_number)
+        repo = uow.companies
+        if repo.get_by_tax_number(
+            normalized_tax,
+            organization_id=action.organization_id,
         ):
             raise ValueError("Company with this tax number already exists in organization")
 
-        # 2️⃣ OWN uniqueness
-        if cmd.role == CompanyType.OWN:
-            if self._companies.exists_owner(cmd.organization_id):
-                raise ValueError("Organization already has OWN company")
+        if action.role == CompanyType.OWN and repo.exists_owner(action.organization_id):
+            raise ValueError("Organization already has OWN company")
 
         now = self._clock()
 
         company = Company(
             id=self._id_generator(),
-            organization_id=cmd.organization_id,
-
-            name=cmd.name,
-            description=cmd.description,
+            organization_id=action.organization_id,
+            name=action.name,
+            description=action.description,
             tax_number=normalized_tax,
-
-            address=cmd.address,
-            contact=cmd.contact,
-            bank_account=cmd.bank_account,
-
-            role=cmd.role,
-            tags=cmd.tags or set(),
+            address=action.address,
+            contact=action.contact,
+            bank_account=action.bank_account,
+            role=action.role,
+            tags=action.tags or set(),
             is_active=True,
-
             created_at=now,
-            created_by_user_id=cmd.actor_user_id,
-
+            created_by_user_id=action.actor_user_id,
             updated_at=None,
             updated_by_user_id=None,
         )
 
+        repo.add(company)
 
-        self._companies.add(company)
-
-        # AUTO CREATE SYSTEM CONTRACT
         if company.role == CompanyType.OWN:
             self._create_system_contract.execute(
-                organization_id=cmd.organization_id,
-                actor_user_id=cmd.actor_user_id,
+                organization_id=action.organization_id,
+                actor_user_id=action.actor_user_id,
                 owner=company,
+                uow=uow
             )
 
         return company
-
-
-
-

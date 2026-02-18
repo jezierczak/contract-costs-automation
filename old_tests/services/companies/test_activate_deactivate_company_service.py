@@ -10,11 +10,11 @@ from contract_costs.services.companies.deactivate_company_service import (
 from contract_costs.services.companies.activate_company_service import (
     ActivateCompanyService,
 )
-from contract_costs.services.companies.dto.activate_company_command import ActivateCompanyCommand
+from contract_costs.services.companies.dto.activate_company_command import BaseActivateCompanyCommand
 from datetime import datetime
 from uuid import uuid4
 
-from contract_costs.services.companies.dto.deactivate_company_command import DeactivateCompanyCommand
+from contract_costs.services.companies.dto.deactivate_company_command import BaseDeactivateCompanyCommand
 
 NOW = datetime(2024, 1, 1)
 
@@ -52,7 +52,7 @@ def test_deactivate_active_company():
 
     service = DeactivateCompanyService(repo)
 
-    cmd = DeactivateCompanyCommand(
+    cmd = BaseDeactivateCompanyCommand(
         organization_id=TEST_ORG_ID,
         company_id=company.id,
         actor_user_id=TEST_USER_ID,
@@ -71,7 +71,7 @@ def test_deactivate_is_idempotent():
 
     service = DeactivateCompanyService(repo)
 
-    cmd = DeactivateCompanyCommand(
+    cmd = BaseDeactivateCompanyCommand(
         organization_id=TEST_ORG_ID,
         company_id=company.id,
         actor_user_id=TEST_USER_ID,
@@ -87,7 +87,7 @@ def test_deactivate_non_existing_company_raises():
     repo = InMemoryCompanyRepository()
     service = DeactivateCompanyService(repo)
 
-    cmd = DeactivateCompanyCommand(
+    cmd = BaseDeactivateCompanyCommand(
         organization_id=TEST_ORG_ID,
         company_id=uuid4(),
         actor_user_id=TEST_USER_ID,
@@ -105,7 +105,7 @@ def test_activate_inactive_company():
 
     service = ActivateCompanyService(repo)
 
-    cmd = ActivateCompanyCommand(
+    cmd = BaseActivateCompanyCommand(
         organization_id=TEST_ORG_ID,
         company_id=company.id,
         actor_user_id=TEST_USER_ID,
@@ -124,7 +124,7 @@ def test_activate_is_idempotent():
 
     service = ActivateCompanyService(repo)
 
-    cmd = ActivateCompanyCommand(
+    cmd = BaseActivateCompanyCommand(
         organization_id=TEST_ORG_ID,
         company_id=company.id,
         actor_user_id=TEST_USER_ID,
@@ -140,7 +140,7 @@ def test_activate_non_existing_company_raises():
     repo = InMemoryCompanyRepository()
     service = ActivateCompanyService(repo)
 
-    cmd = ActivateCompanyCommand(
+    cmd = BaseActivateCompanyCommand(
         organization_id=TEST_ORG_ID,
         company_id=uuid4(),
         actor_user_id=TEST_USER_ID,

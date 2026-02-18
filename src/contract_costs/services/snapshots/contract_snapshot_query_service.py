@@ -2,44 +2,43 @@ from collections import defaultdict
 from decimal import Decimal
 from uuid import UUID
 
+from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.model.snapshot.contract_snapshot import ContractSnapshot
 from contract_costs.model.value_direction import ValueDirection
-from contract_costs.repository.contract_node_repository import ContractNodeRepository
-from contract_costs.repository.contract_repository import ContractRepository
-from contract_costs.repository.snapshot.contract_node_snapshot_repository import ContractNodeSnapshotRepository
-from contract_costs.repository.snapshot.contract_node_value_snapshot_repository import \
-    ContractNodeValueSnapshotRepository
 from contract_costs.repository.snapshot.contract_snapshot_repository import ContractSnapshotRepository
-from contract_costs.repository.value_type_repository import ValueTypeRepository
 from contract_costs.services.snapshots.dto.contract_snapshot_dto import ContractSnapshotDTO, ContractNodeSnapshotDTO
 from contract_costs.services.snapshots.dto.contract_snapshot_list_dto import ContractSnapshotListDTO
+from contract_costs.services.snapshots.dto.contract_snapshot_query import BaseContractSnapshotQuery, \
+    ListContractSnapshotsQuery, GetContractSnapshotQuery
+from contract_costs.unit_of_work import UnitOfWork
 
-class ContractSnapshotQueryService:
 
-    def __init__(
-        self,
-        *,
-        contract_repo: ContractRepository,
-        contract_node_repo: ContractNodeRepository,
-        value_type_repo: ValueTypeRepository,
-        snapshot_repo: ContractSnapshotRepository,
-        node_snapshot_repo: ContractNodeSnapshotRepository,
-        value_snapshot_repo:ContractNodeValueSnapshotRepository,
-    ) -> None:
-        self._contract_repo = contract_repo
-        self._node_repo = contract_node_repo
-        self._value_type_repo = value_type_repo
-        self._snapshot_repo = snapshot_repo
-        self._node_snapshot_repo = node_snapshot_repo
-        self._value_snapshot_repo = value_snapshot_repo
+class ContractSnapshotQueryService(
+    ActionHandler[BaseContractSnapshotQuery, object]
+):
 
-    def list_snapshots(
-            self,
-            *,
-            organization_id: UUID,
-            contract_id: UUID | None = None,
+    def execute(self, *, action:BaseContractSnapshotQuery, uow:UnitOfWork):
+
+        if isinstance(action, ListContractSnapshotsQuery):
+            return self._handle_list(action, uow)
+
+        if isinstance(action, GetContractSnapshotQuery):
+            return self._handle_get(action, uow)
+
+        raise ValueError(f"Unsupported query type: {type(action)}")
+
+    @staticmethod
+    def _handle_list(
+            action_list:ListContractSnapshotsQuery,
+            uow:UnitOfWork,
     ) -> list[ContractSnapshotListDTO]:
-        value_types = self._value_type_repo.list_all(organization_id=organization_id)
+        snapshot_repo = uow.contract_snapshots
+        contract_repo = uow.contracts
+        node_snapshot_repo = uow.contract_node_snapshots
+        value_snapshot_repo = uow.contract_node_value_snapshots
+        value_type_repo = uow.value_types
+
+        value_types = value_type_repo.list_all(organization_id=action_list.organization_id)
 
         value_type_by_id = {
             vt.id: vt
@@ -47,31 +46,31 @@ class ContractSnapshotQueryService:
         }
 
         snapshots = (
-            self._snapshot_repo.list_by_contract(
-                organization_id=organization_id,
-                contract_id=contract_id)
-            if contract_id
-            else self._snapshot_repo.list_all(organization_id=organization_id)
+            snapshot_repo.list_by_contract(
+                organization_id=action_list.organization_id,
+                contract_id=action_list.contract_id)
+            if action_list.contract_id
+            else snapshot_repo.list_all(organization_id=action_list.organization_id)
         )
 
         result: list[ContractSnapshotListDTO] = []
 
         for s in snapshots:
-            contract = self._contract_repo.get(
-                organization_id=organization_id,
+            contract = contract_repo.get(
+                organization_id=action_list.organization_id,
                 contract_id=s.contract_id)
             if not contract:
                 continue
 
             # --- ROOT node snapshot ---
             root_node_snapshot = (
-                self._node_snapshot_repo.get_root_by_snapshot(s.id)
+                node_snapshot_repo.get_root_by_snapshot(s.id)
             )
             if not root_node_snapshot:
                 continue
 
             # --- VALUES for ROOT ---
-            values = self._value_snapshot_repo.list_by_node_snapshot(
+            values = value_snapshot_repo.list_by_node_snapshot(
                 root_node_snapshot.id
             )
 
@@ -114,36 +113,41 @@ class ContractSnapshotQueryService:
 
         return result
 
-    def get_snapshot(
+    def _handle_get(
             self,
-            *,
-            organization_id: UUID,
-            snapshot_id: UUID,
+            action_get:GetContractSnapshotQuery,
+            uow:UnitOfWork
     ) -> ContractSnapshotDTO:
+        snapshot_repo = uow.contract_snapshots
+        node_snapshot_repo = uow.contract_node_snapshots
+        value_snapshot_repo = uow.contract_node_value_snapshots
+        contract_repo = uow.contracts
+        node_repo = uow.contract_nodes
+        value_type_repo = uow.value_types
 
         snapshot = self.resolve_snapshot(
-            organization_id=organization_id,
-            prefix=str(snapshot_id),
-            repo=self._snapshot_repo,
+            organization_id=action_get.organization_id,
+            prefix=str(action_get.snapshot_id_prefix),
+            repo=snapshot_repo,
         )
         if not snapshot:
             raise ValueError("Snapshot not found")
         snapshot_id = snapshot.id
 
-        contract = self._contract_repo.get(
-            organization_id=organization_id,
+        contract = contract_repo.get(
+            organization_id=action_get.organization_id,
             contract_id=snapshot.contract_id)
-        nodes = self._node_repo.list_by_contract(
-            organization_id=organization_id,
+        nodes = node_repo.list_by_contract(
+            organization_id=action_get.organization_id,
             contract_id=snapshot.contract_id)
 
-        node_snapshots = self._node_snapshot_repo.list_by_snapshot(snapshot_id)
-        value_snapshots = self._value_snapshot_repo.list_by_snapshot(snapshot_id)
+        node_snapshots = node_snapshot_repo.list_by_snapshot(snapshot_id)
+        value_snapshots = value_snapshot_repo.list_by_snapshot(snapshot_id)
 
         nodes_by_id = {n.id: n for n in nodes}
         values_by_node_snapshot = defaultdict(list)
 
-        value_types = self._value_type_repo.list_all(organization_id=organization_id)
+        value_types = value_type_repo.list_all(organization_id=action_get.organization_id)
         value_type_by_id = {vt.id: vt for vt in value_types}
 
         for v in value_snapshots:

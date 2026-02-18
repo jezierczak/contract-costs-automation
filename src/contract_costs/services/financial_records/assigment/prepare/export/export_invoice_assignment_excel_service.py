@@ -13,7 +13,7 @@ class ExportFinancialRecordAssignmentExcelService:
                  ) -> None:
         self._exporter = exporter
 
-    def execute(
+    def export(
             self,
             *,
             organization_id:UUID,

@@ -21,7 +21,7 @@ class FakeCandidateProvider(CompanyCandidateProvider):
     def set_candidates(self, items):
         self._candidates = items
 
-    def find_candidates(self, *, organization_id, input_):
+    def find_candidates(self, *, uow, organization_id, input_):
         return self._candidates
 
 
@@ -57,12 +57,11 @@ def build_input(
 # ============================================================
 
 
-def test_creates_company_when_no_candidates(company_repo):
+def test_creates_company_when_no_candidates(uow):
     provider = FakeCandidateProvider()
     provider.set_candidates([])
 
     orchestrator = CompanyEvaluateOrchestrator(
-        company_repo,
         provider,
         llm_company_resolver=None,
     )
@@ -70,6 +69,7 @@ def test_creates_company_when_no_candidates(company_repo):
     org_id = new_uuid()
 
     result = orchestrator.evaluate(
+        uow=uow,
         organization_id=org_id,
         actor_user_id=new_uuid(),
         input_=build_input(),
@@ -80,18 +80,18 @@ def test_creates_company_when_no_candidates(company_repo):
     assert result.is_active is True
 
 
-def test_no_create_mode_raises(company_repo):
+def test_no_create_mode_raises(uow):
     provider = FakeCandidateProvider()
     provider.set_candidates([])
 
     orchestrator = CompanyEvaluateOrchestrator(
-        company_repo,
         provider,
         llm_company_resolver=None,
     )
 
     with pytest.raises(RuntimeError):
         orchestrator.evaluate(
+            uow=uow,
             organization_id=new_uuid(),
             actor_user_id=new_uuid(),
             input_=build_input(),
@@ -99,7 +99,7 @@ def test_no_create_mode_raises(company_repo):
         )
 
 
-def test_prefers_active_own_candidate(company_repo):
+def test_prefers_active_own_candidate(company_repo, uow):
     org_id = new_uuid()
 
     own = (
@@ -123,12 +123,12 @@ def test_prefers_active_own_candidate(company_repo):
     provider.set_candidates([supplier, own])
 
     orchestrator = CompanyEvaluateOrchestrator(
-        company_repo,
         provider,
         llm_company_resolver=None,
     )
 
     result = orchestrator.evaluate(
+        uow=uow,
         organization_id=org_id,
         actor_user_id=new_uuid(),
         input_=build_input(),
@@ -137,7 +137,7 @@ def test_prefers_active_own_candidate(company_repo):
     assert result.id == own.id
 
 
-def test_soft_update_updates_missing_email(company_repo):
+def test_soft_update_updates_missing_email(company_repo, uow):
     org_id = new_uuid()
 
     company = (
@@ -152,7 +152,6 @@ def test_soft_update_updates_missing_email(company_repo):
     provider.set_candidates([company])
 
     orchestrator = CompanyEvaluateOrchestrator(
-        company_repo,
         provider,
         llm_company_resolver=None,
     )
@@ -160,6 +159,7 @@ def test_soft_update_updates_missing_email(company_repo):
     input_ = build_input(email="new@email.com")
 
     updated = orchestrator.evaluate(
+        uow=uow,
         organization_id=org_id,
         actor_user_id=new_uuid(),
         input_=input_,
@@ -168,7 +168,7 @@ def test_soft_update_updates_missing_email(company_repo):
     assert updated.contact.email == "new@email.com"
 
 
-def test_authoritative_mode_forces_update(company_repo):
+def test_authoritative_mode_forces_update(company_repo, uow):
     org_id = new_uuid()
 
     company = (
@@ -184,7 +184,6 @@ def test_authoritative_mode_forces_update(company_repo):
     provider.set_candidates([company])
 
     orchestrator = CompanyEvaluateOrchestrator(
-        company_repo,
         provider,
         llm_company_resolver=None,
     )
@@ -192,6 +191,7 @@ def test_authoritative_mode_forces_update(company_repo):
     input_ = build_input(name="NEW NAME")
 
     updated = orchestrator.evaluate(
+        uow=uow,
         organization_id=org_id,
         actor_user_id=new_uuid(),
         input_=input_,
@@ -202,7 +202,7 @@ def test_authoritative_mode_forces_update(company_repo):
     assert updated.updated_at is not None
 
 
-def test_no_change_does_not_update_timestamp(company_repo):
+def test_no_change_does_not_update_timestamp(company_repo, uow):
     org_id = new_uuid()
 
     company = (
@@ -218,7 +218,6 @@ def test_no_change_does_not_update_timestamp(company_repo):
     provider.set_candidates([company])
 
     orchestrator = CompanyEvaluateOrchestrator(
-        company_repo,
         provider,
         llm_company_resolver=None,
     )
@@ -226,6 +225,7 @@ def test_no_change_does_not_update_timestamp(company_repo):
     input_ = build_input(name="ACME")
 
     updated = orchestrator.evaluate(
+        uow=uow,
         organization_id=org_id,
         actor_user_id=new_uuid(),
         input_=input_,

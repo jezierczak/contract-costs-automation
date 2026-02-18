@@ -5,11 +5,10 @@ from uuid import UUID
 
 from contract_costs.model.company import CompanyType
 from contract_costs.model.financial_record import FinancialRecord, FinancialRecordStatus
-from contract_costs.repository.company_repository import CompanyRepository
-from contract_costs.repository.document_repository import DocumentRepository
 from contract_costs.services.catalogues.record_file_organizer import RecordFileOrganizer
 
 import contract_costs.config as cfg
+from contract_costs.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
 
@@ -17,13 +16,13 @@ class RecordFileWorkflowService:
 
     def __init__(
         self,
-        company_repository: CompanyRepository,
+        # company_repository: CompanyRepository,
         file_organizer: RecordFileOrganizer,
-        document_repository: DocumentRepository,
+        # document_repository: DocumentRepository,
     ) -> None:
-        self._company_repository = company_repository
+        # self._company_repository = company_repository
         self._file_organizer = file_organizer
-        self._document_repository = document_repository
+        # self._document_repository = document_repository
 
     # ============================================================
     # SYNC
@@ -34,6 +33,7 @@ class RecordFileWorkflowService:
         *,
         organization_id: UUID,
         record: FinancialRecord,
+        uow:UnitOfWork,
     ) -> None:
 
         if not record.documents:
@@ -42,7 +42,7 @@ class RecordFileWorkflowService:
         org_root = cfg.WORK_DIR / str(organization_id)
 
         buyer = (
-            self._company_repository.get(
+            uow.companies.get(
                 organization_id=organization_id,
                 company_id=record.buyer_id,
             )
@@ -50,7 +50,7 @@ class RecordFileWorkflowService:
         )
 
         seller = (
-            self._company_repository.get(
+            uow.companies.get(
                 organization_id=organization_id,
                 company_id=record.seller_id,
             )
@@ -145,7 +145,7 @@ class RecordFileWorkflowService:
                 filename=new_filename,
             )
 
-            self._document_repository.update(updated)
+            uow.documents.update(updated)
 
             record.documents[idx] = updated
 

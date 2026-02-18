@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from uuid import UUID
 
 from contract_costs.model.identity.organization_user import OrganizationUser
+from contract_costs.services.identity.query.dto.organization_list_item_dto import OrganizationListItemDTO
+from contract_costs.services.identity.query.dto.organization_user_view import OrganizationUserView
 
 
 class OrganizationUserRepository(ABC):
@@ -52,4 +54,31 @@ class OrganizationUserRepository(ABC):
         organization_id: UUID,
         user_id: UUID,
     ) -> bool:
+        ...
+
+    @abstractmethod
+    def list_organizations_for_user(
+            self,
+            *,
+            user_id: UUID,
+            active_only: bool = True,
+    ) -> list[OrganizationListItemDTO]:
+        """
+        Query-side projection.
+        Powinno wykonać JOIN organization_users + organizations
+        i zwrócić gotowe DTO bez ładowania agregatów domenowych.
+        """
+        ...
+
+    @abstractmethod
+    def list_users_for_organization(
+            self,
+            *,
+            organization_id: UUID,
+            active_only: bool = False,
+    ) -> list[OrganizationUserView]:
+        """
+        Query-side projection.
+        JOIN organization_users + users.
+        """
         ...

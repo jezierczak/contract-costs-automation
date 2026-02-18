@@ -25,10 +25,12 @@ def handle_system_backfill(args):
         actor_user_id = require_user_id(services.context)
     except ContextError:
         return
-
-    services.backfill_system_contracts.execute(
-        organization_id=organization_id,
-        actor_user_id=actor_user_id,
+    services.action_bus.execute(
+        action=BackfillSystemContractsCommand(
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
+        ),
+        handler=services.backfill_system_contracts,
     )
 
     print(f"System contracts ensured for organization {organization_id}")

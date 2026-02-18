@@ -4,7 +4,8 @@ from pathlib import Path
 from uuid import uuid4
 
 from contract_costs.model.company import CompanyType
-from contract_costs.model.contract import ContractStatus
+from contract_costs.model.contract import ContractStatus, ContractType
+from contract_costs.model.contract_node import ContractNodeInput
 from contract_costs.services.contracts.apply.command.update_contract_structure_command import \
     UpdateContractStructureCommand
 from contract_costs.services.contracts.dto.create_contract_command import CreateContractCommand
@@ -12,7 +13,7 @@ from tests.builders.company_builder import CompanyBuilder
 from tests.helpers.contracts_helpers import make_node_input
 
 
-def make_contract_command():
+def make_contract_command(contract_node_input: list[ContractNodeInput]):
     return CreateContractCommand(
         organization_id=uuid4(),
         actor_user_id=uuid4(),
@@ -26,6 +27,8 @@ def make_contract_command():
         budget=Decimal("1000"),
         path=None,
         status=ContractStatus.ACTIVE,
+        contract_type=ContractType.PROJECT,
+        contract_node_input=contract_node_input,
     )
 
 

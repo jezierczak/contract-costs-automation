@@ -2,68 +2,62 @@ from dataclasses import replace
 import logging
 from datetime import datetime
 from typing import Callable
-from uuid import UUID
 
+from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.common.time import utc_now
 from contract_costs.model.company import CompanyType
 from contract_costs.model.contract import ContractType
 from contract_costs.model.financial_record import FinancialRecordStatus, FinancialRecord
-from contract_costs.repository.financial_record_repository import FinancialRecordRepository
-from contract_costs.repository.financial_record_line_repository import FinancialRecordLineRepository
-from contract_costs.repository.company_repository import CompanyRepository
-from contract_costs.repository.contract_repository import ContractRepository
-from contract_costs.repository.contract_node_repository import ContractNodeRepository
-from contract_costs.repository.value_type_repository import ValueTypeRepository
 from contract_costs.services.documents.document_selector import DocumentSelector
 from contract_costs.services.financial_records.assigment.apply.commands.invoice_command import InvoiceCommand
 
 from contract_costs.services.financial_records.assigment.prepare.dto.assignment_export_bundle import (
     FinancialRecordAssignmentExportBundle,
 )
+from contract_costs.services.financial_records.assigment.prepare.dto.generatr_financial_redcord_assignment_bundle_command import \
+    GenerateFinancialRecordAssignmentBundleCommand
 from contract_costs.services.financial_records.assigment.prepare.dto.invoice_export import FinancialRecordExport
 from contract_costs.services.financial_records.assigment.prepare.dto.invoice_line_export import FinancialRecordLineExport
 from contract_costs.services.financial_records.assigment.prepare.dto.company_export import CompanyExport
 from contract_costs.services.financial_records.assigment.prepare.dto.contract_export import ContractExport
-from contract_costs.services.financial_records.assigment.prepare.dto.cost_node_export import CostNodeExport
-from contract_costs.services.financial_records.assigment.prepare.dto.cost_type_export import CostTypeExport
+from contract_costs.services.financial_records.assigment.prepare.dto.cost_node_export import ContractNodeExport
+from contract_costs.services.financial_records.assigment.prepare.dto.cost_type_export import ValueTypeExport
+from contract_costs.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
 
 
-class GenerateFinancialRecordAssignmentBundleService:
+class GenerateFinancialRecordAssignmentBundleService(
+    ActionHandler[GenerateFinancialRecordAssignmentBundleCommand,
+                  FinancialRecordAssignmentExportBundle]
+):
 
     def __init__(
         self,
-        record_repository: FinancialRecordRepository,
-        record_line_repository: FinancialRecordLineRepository,
-        company_repository: CompanyRepository,
-        contract_repository: ContractRepository,
-        contract_node_repository: ContractNodeRepository,
-        value_type_repository: ValueTypeRepository,
         clock: Callable[[], datetime] = utc_now,
         # exporter: InvoiceAssignmentExporter,
     ) -> None:
-        self._record_repo = record_repository
-        self._record_line_repo = record_line_repository
-        self._company_repo = company_repository
-        self._contract_repo = contract_repository
-        self._contract_node_repo = contract_node_repository
-        self._value_type_repo = value_type_repository
         self._clock = clock
         # self._exporter = exporter
 
-    def execute(self,
-                *,
-                organization_id: UUID,
-                actor_user_id: UUID,
-                invoice_status: FinancialRecordStatus | list[FinancialRecordStatus]
-                ) -> FinancialRecordAssignmentExportBundle:
+    def execute(
+            self,
+            *,
+            action: GenerateFinancialRecordAssignmentBundleCommand,
+            uow: UnitOfWork,
+    ) -> FinancialRecordAssignmentExportBundle:
+        record_repo = uow.financial_records
+        record_line_repo = uow.financial_record_lines
+        company_repo = uow.companies
+        contract_repo = uow.contracts
+        contract_node_repo = uow.contract_nodes
+        value_type_repo = uow.value_types
         #  Dane główne
 
         # invoice_status = InvoiceStatus(status)
-        financial_records: list[FinancialRecord] = self._record_repo.get_for_assignment(
-            organization_id=organization_id,
-            status=invoice_status)
+        financial_records: list[FinancialRecord] = record_repo.get_for_assignment(
+            organization_id=action.organization_id,
+            status=action.invoice_status)
 
         record_ids = [i.id for i in financial_records]
 
@@ -76,17 +70,17 @@ class GenerateFinancialRecordAssignmentBundleService:
                 updated = replace(record,
                                   status=FinancialRecordStatus.IN_PROGRESS,
                                   updated_at = self._clock(),
-                                  updated_by_user_id=actor_user_id
+                                  updated_by_user_id=action.actor_user_id
                                   )
-                self._record_repo.update(updated)
+                record_repo.update(updated)
                 updated_records.append(updated)
             else:
                 updated_records.append(record)
 
-        record_lines = self._record_line_repo.list_by_financial_record_ids(
-            organization_id=organization_id,
+        record_lines = record_line_repo.list_by_financial_record_ids(
+            organization_id=action.organization_id,
             financial_records_ids=record_ids)
-        record_lines.extend(self._record_line_repo.list_unassigned(organization_id=organization_id))
+        record_lines.extend(record_line_repo.list_unassigned(organization_id=action.organization_id))
 
 
         #  Companies (buyer + seller)
@@ -113,7 +107,7 @@ class GenerateFinancialRecordAssignmentBundleService:
                 name=c.name,
                 tax_number=c.tax_number,
             )
-            for c in self._company_repo.get_owners(organization_id=organization_id)
+            for c in company_repo.get_owners(organization_id=action.organization_id)
         ]
 
         sellers = [
@@ -122,75 +116,114 @@ class GenerateFinancialRecordAssignmentBundleService:
                 name=c.name,
                 tax_number=c.tax_number,
             )
-            for c in self._company_repo.list_all(organization_id=organization_id)
+            for c in company_repo.list_all(organization_id=action.organization_id)
             # for c in (self._company_repo.get(cid) for cid in company_sellers)
             if c is not None and c.role != CompanyType.OWN
         ]
 
         #  Contracts
-        projects = self._contract_repo.list_contracts(
-            organization_id=organization_id,
+        projects = contract_repo.list_contracts(
+            organization_id=action.organization_id,
             contract_type=ContractType.PROJECT,
         )
 
-        systems = self._contract_repo.list_contracts(
-            organization_id=organization_id,
+        systems = contract_repo.list_contracts(
+            organization_id=action.organization_id,
             contract_type=ContractType.SYSTEM,
         )
 
-        all_contracts = projects + systems
+        contracts = projects+systems
 
-        contracts = [
+        agreements = contract_repo.list_contracts(
+            organization_id=action.organization_id,
+            contract_type=ContractType.AGREEMENT,
+        )
+
+        project_contracts = [
             ContractExport(
                 id=c.id,
                 name=c.name,
                 code=c.code,
             )
-            for c in all_contracts
+            for c in contracts
         ]
 
+        agreements_contracts = [
+            ContractExport(
+                id=c.id,
+                name=c.name,
+                code=c.code,
+            )
+            for c in agreements
+        ]
+
+        all_contracts = agreements_contracts+project_contracts
         #  Cost nodes
         contract_code_by_id = {
             c.id: c.code
-            for c in contracts
+            for c in all_contracts
         }
 
-        cost_nodes = []
+        # project_contract_ids = {c.id for c in projects}
+        # system_contract_ids = {c.id for c in systems}
 
-        for n in self._contract_node_repo.list_leaf_nodes_for_active_contracts(organization_id=organization_id):
+        project_contract_nodes = []
+        agreement_contract_nodes = []
+
+        project_contract_ids = {c.id for c in contracts}
+        agreement_contract_ids = {c.id for c in agreements}
+
+        for n in contract_node_repo.list_leaf_nodes_for_active_contracts(
+                organization_id=action.organization_id
+        ):
+
             contract_code = contract_code_by_id.get(n.contract_id)
             if contract_code is None:
                 raise RuntimeError(
                     f"Missing contract code for contract_id={n.contract_id}"
                 )
 
-            cost_nodes.append(
-                CostNodeExport(
-                    id=n.id,
-                    contract_id=n.contract_id,
-                    parent_id=n.parent_id,
-                    code=n.code,
-                    name=n.name,
-                    budget=n.budget,
-                    contract_code=contract_code,
+            if n.contract_id in project_contract_ids:
+                project_contract_nodes.append(
+                    ContractNodeExport(
+                        id=n.id,
+                        contract_id=n.contract_id,
+                        parent_id=n.parent_id,
+                        code=n.code,
+                        name=n.name,
+                        budget=n.budget,
+                        contract_code=contract_code,
+                    )
                 )
-            )
+
+            elif n.contract_id in agreement_contract_ids:
+                agreement_contract_nodes.append(
+                    ContractNodeExport(
+                        id=n.id,
+                        contract_id=n.contract_id,
+                        parent_id=n.parent_id,
+                        code=n.code,
+                        name=n.name,
+                        budget=n.budget,
+                        contract_code=contract_code,
+                    )
+                )
 
         #  Cost types
-        cost_types = [
-            CostTypeExport(
+        value_types = [
+            ValueTypeExport(
                 id=ct.id,
                 code=ct.code,
                 name=ct.name,
             )
-            for ct in self._value_type_repo.list_all(organization_id=organization_id)
+            for ct in value_type_repo.list_all(organization_id=action.organization_id)
         ]
 
         #  Mapowanie faktur
         records_exports = []
         for i in updated_records:
-            buyer = self._company_repo.get(organization_id=organization_id,company_id=i.buyer_id) if i.buyer_id else None
-            seller = self._company_repo.get(organization_id=organization_id,company_id=i.seller_id) if i.seller_id else None
+            buyer = company_repo.get(organization_id=action.organization_id,company_id=i.buyer_id) if i.buyer_id else None
+            seller = company_repo.get(organization_id=action.organization_id,company_id=i.seller_id) if i.seller_id else None
 
             records_exports.append(
                 FinancialRecordExport(
@@ -211,7 +244,15 @@ class GenerateFinancialRecordAssignmentBundleService:
                     tags =i.tags
                 )
             )
+        node_code_by_id = {
+            n.id: n.code
+            for n in project_contract_nodes + agreement_contract_nodes
+        }
 
+        value_type_code_by_id = {
+            vt.id: vt.code
+            for vt in value_types
+        }
         # ⃣Mapowanie linii
         if record_lines is not None and len(record_lines) > 0:
             # for ll in invoice_lines:
@@ -227,9 +268,11 @@ class GenerateFinancialRecordAssignmentBundleService:
                     net=l.amount.value,
                     vat_rate=l.amount.vat_rate,
                     tax_treatment=l.amount.tax_treatment,
-                    contract_id=l.contract_id,
-                    contract_node_id=l.contract_node_id,
-                    value_type_id=l.value_type_id,
+                    contract_code=contract_code_by_id.get(l.contract_id) if l.contract_id else None,
+                    contract_node_code=node_code_by_id.get(l.contract_node_id) if l.contract_node_id else None,
+                    value_type_code=value_type_code_by_id.get(l.value_type_id) if l.value_type_id else None,
+                    agreement_code=contract_code_by_id.get(l.agreement_id) if l.agreement_id else None,
+                    agreement_node_code=node_code_by_id.get(l.agreement_node_id) if l.agreement_node_id else None
                 )
                 for l in record_lines
             ]
@@ -241,9 +284,11 @@ class GenerateFinancialRecordAssignmentBundleService:
             record_lines=line_exports,
             buyers=buyers,
             sellers=sellers,
-            contracts=contracts,
-            cost_nodes=cost_nodes,
-            cost_types=cost_types,
+            project_contracts=project_contracts,
+            agreement_contracts=agreements_contracts,
+            project_contract_nodes=project_contract_nodes,
+            agreement_contract_nodes=agreement_contract_nodes,
+            value_types=value_types,
         )
 
 

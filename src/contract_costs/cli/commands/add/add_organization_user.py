@@ -48,7 +48,6 @@ def handle_add_organization_user(args):
         target_user_id=user.id,
         role=data["role"],
     )
-
-    services.add_organization_user.execute(cmd)
+    services.action_bus.execute(action=cmd,handler=services.add_organization_user)
 
     print("User added to organization")

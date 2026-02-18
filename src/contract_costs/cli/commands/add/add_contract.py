@@ -71,9 +71,10 @@ def handle_add_contract(args=None) -> None:
     # service.init(command)
     # service.execute()
 
+
     services.action_bus.execute(
         action=command,
-        handler=services.create_contract
+        handler=services.create_contract,
     )
 
     logger.info("\nContract created successfully.")

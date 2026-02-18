@@ -46,8 +46,8 @@ def test_ingest_from_pdf_creates_invoice_and_lines_without_finalization(
                 quantity=Decimal("1"),
                 unit=UnitOfMeasure.PIECE,
                 amount=Amount(Decimal("100"), VatRate.VAT_23),
-                contract_id=None,
-                contract_node_id=None,
+                contract_code=None,
+                contract_node_code=None,
                 value_type_code=None,
             )
         ],
@@ -96,8 +96,8 @@ def test_ingest_from_excel_finalizes_invoice_when_lines_fully_assigned(
                 quantity=Decimal("1"),
                 unit=UnitOfMeasure.PIECE,
                 amount=Amount(Decimal("100"), VatRate.VAT_23),
-                contract_id="C1",
-                contract_node_id="N1",
+                contract_code="C1",
+                contract_node_code="N1",
                 value_type_code="MATERIAL",
             )
         ],
@@ -146,8 +146,8 @@ def test_ingest_from_excel_does_not_finalize_when_lines_incomplete(
                 quantity=Decimal("1"),
                 unit=UnitOfMeasure.PIECE,
                 amount=Amount(Decimal("100"), VatRate.VAT_23),
-                contract_id="C1",
-                contract_node_id=None,   # ❌ brak
+                contract_code="C1",
+                contract_node_code=None,   # ❌ brak
                 value_type_code="MATERIAL",
             )
         ],
@@ -330,8 +330,8 @@ def test_ingest_from_excel_changes_invoice_number_and_deletes_old(
                 quantity=Decimal("2"),
                 unit=UnitOfMeasure.PIECE,
                 amount=Amount(Decimal("200"), VatRate.VAT_23),
-                contract_id=None,
-                contract_node_id=None,
+                contract_code=None,
+                contract_node_code=None,
                 value_type_code=None,
             )
         ],

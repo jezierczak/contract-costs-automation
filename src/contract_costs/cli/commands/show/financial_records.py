@@ -5,7 +5,7 @@ from contract_costs.cli.commands.header_builder.invoice_report_header_builder im
 from contract_costs.cli.printers.table_printer.cmd_printer import CmdPrinter
 from contract_costs.cli.printers.table_printer.table_printer import TablePrinter
 from contract_costs.cli.printers.table_printer.excel_printer import ExcelPrinter
-from contract_costs.cli.utils.context_helpers import require_organization_id
+from contract_costs.cli.utils.context_helpers import require_organization_id, require_user_id
 from contract_costs.common.context.exceptions import ContextError
 from contract_costs.infrastructure.filesystem.show_file_manager import  FinancialRecordsShowFileManager
 
@@ -97,6 +97,7 @@ def handle_show_financial_records(args) -> None:
     services = get_services()
     try:
         organization_id = require_organization_id(services.context)
+        actor_user_id = require_user_id(services.context)
     except ContextError:
         return None
 
@@ -145,20 +146,23 @@ def handle_show_financial_records(args) -> None:
             ValueDirection[args.direction]
             if args.direction
             else None
-        )
+        ),
+        organization_id = organization_id,
+        actor_user_id=actor_user_id,
+        limit = args.last,
     )
 
     header = FinancialRecordReportHeaderBuilder.from_args(args)
 
-    result_records = query_service.list_for_review(
-        organization_id=organization_id,
-        review_query=review_query)
+    result_records = services.action_bus.execute(
+        action=review_query,
+        handler=query_service)
     if not result_records:
         print("No financial records found.")
         return None
 
-    if args.last:
-        result_records = result_records[:args.last]
+    # if args.last:
+    #     result_records = result_records[:args.last]
 
     columns = financial_record_list_columns()
     columns_excel = financial_record_list_columns_excel()
@@ -170,7 +174,7 @@ def handle_show_financial_records(args) -> None:
         output_path = fm.create_output_file()
         printer: TablePrinter = ExcelPrinter(output_path=output_path)
         printer.print(
-            organization_id=organization_id,
+            organization_id=str(organization_id),
             items=result_records,
             columns=columns_excel,
             header=header,
@@ -180,7 +184,7 @@ def handle_show_financial_records(args) -> None:
 
     printer = CmdPrinter()
     printer.print(
-        organization_id=organization_id,
+        organization_id=str(organization_id),
         items=result_records,
         columns=columns,
         header=header,

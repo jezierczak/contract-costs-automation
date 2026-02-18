@@ -5,6 +5,7 @@ from contract_costs.repository.company_repository import CompanyRepository
 from contract_costs.services.common.resolve_utils import normalize_tax_number
 from contract_costs.services.companies.providers.candidate_provider import CompanyCandidateProvider
 from contract_costs.services.financial_records.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
+from contract_costs.unit_of_work import UnitOfWork
 
 
 class ExactNipCandidateProvider(CompanyCandidateProvider):
@@ -15,12 +16,13 @@ class ExactNipCandidateProvider(CompanyCandidateProvider):
     - NIE ocenia
     """
 
-    def __init__(self, company_repository: CompanyRepository) -> None:
-        self._repo = company_repository
+    # def __init__(self, company_repository: CompanyRepository) -> None:
+    #     self._repo = company_repository
 
     def find_candidates(
         self,
         *,
+        uow: UnitOfWork,
         organization_id: UUID,
         input_: CompanyInput,
     ) -> list[Company]:
@@ -31,7 +33,7 @@ class ExactNipCandidateProvider(CompanyCandidateProvider):
         # --- normalny NIP ---
         normalized = normalize_tax_number(input_.tax_number)
         if normalized:
-            company = self._repo.get_by_tax_number(
+            company = uow.companies.get_by_tax_number(
                 tax_number=normalized,
                 organization_id=organization_id,
             )
@@ -40,7 +42,7 @@ class ExactNipCandidateProvider(CompanyCandidateProvider):
 
         # --- fallback tylko dla placeholderów ---
         if input_.tax_number.startswith(("TMP-", "AI-")):
-            company_dirty = self._repo.get_by_tax_number(
+            company_dirty = uow.companies.get_by_tax_number(
                 tax_number=input_.tax_number,
                 organization_id=organization_id,
             )

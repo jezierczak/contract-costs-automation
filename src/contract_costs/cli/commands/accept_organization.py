@@ -30,9 +30,14 @@ def handle_accept_organization(args):
 
     cmd = AcceptOrganizationInviteCommand(
         organization_id=org_id,
-        user_id=user_id,
+        actor_user_id=user_id,
     )
 
     services.accept_organization_invite.execute(cmd)
+
+    services.action_bus.execute(
+        action=cmd,
+        handler=services.accept_organization_invite,
+    )
 
     print("✅ Organization invitation accepted")

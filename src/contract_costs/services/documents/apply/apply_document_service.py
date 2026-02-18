@@ -3,12 +3,12 @@ from dataclasses import replace
 from typing import Callable
 from uuid import UUID
 
+from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.common.ids import new_uuid
 from contract_costs.common.time import utc_now
 from contract_costs.model.company import CompanyType
 from contract_costs.model.document import Document, DocumentType
 from contract_costs.repository.document_repository import DocumentRepository
-from contract_costs.repository.financial_record_repository import FinancialRecordRepository
 from contract_costs.services.catalogues.document_file_organizer import DocumentFileOrganizer
 from contract_costs.services.catalogues.record_file_workworkflow_service import RecordFileWorkflowService
 from contract_costs.services.companies.company_evaluate_orchestrator import CompanyEvaluateOrchestrator, EvaluateMode
@@ -16,13 +16,17 @@ from contract_costs.services.documents.apply.dto.apply_document_command import A
 from contract_costs.services.financial_records.assigment.invoice_sources.document.create_record_from_document_service import \
     CreateRecordFromDocumentService
 import contract_costs.config as cfg
+from contract_costs.services.financial_records.assigment.invoice_sources.document.dto.create_record_from_document_command import \
+    CreateRecordFromDocumentCommand
+from contract_costs.unit_of_work import UnitOfWork
 
-class ApplyDocumentService:
+
+class ApplyDocumentService(ActionHandler[ApplyDocumentCommand,None]):
 
     def __init__(
         self,
-        document_repo: DocumentRepository,
-        record_repo: FinancialRecordRepository,
+        # document_repo: DocumentRepository,
+        # record_repo: FinancialRecordRepository,
         company_evaluator: CompanyEvaluateOrchestrator,
         create_record_service: CreateRecordFromDocumentService,
         file_organizer: DocumentFileOrganizer,
@@ -30,8 +34,8 @@ class ApplyDocumentService:
         clock: Callable[[], datetime] = utc_now,
         id_generator: Callable[[], UUID] = new_uuid,
     ) -> None:
-        self._documents = document_repo
-        self._records = record_repo
+        # self._documents = document_repo
+        # self._records = record_repo
         self._company_eval = company_evaluator
         self._create_record_service = create_record_service
         self._files = file_organizer
@@ -43,11 +47,12 @@ class ApplyDocumentService:
     # ENTRY POINT
     # ============================================================
 
-    def execute(self, cmd: ApplyDocumentCommand) -> None:
+    def execute(self, *, action: ApplyDocumentCommand, uow:UnitOfWork) -> None:
+        doc_repo = uow.documents
 
-        document = self._documents.get(
-            organization_id=cmd.organization_id,
-            document_id=cmd.document_id,
+        document = doc_repo.get(
+            organization_id=action.organization_id,
+            document_id=action.document_id,
         )
 
 
@@ -65,27 +70,27 @@ class ApplyDocumentService:
         # 1️⃣ APPLY OVERRIDES
         # --------------------------------------------------------
 
-        document = self._apply_overrides(document, cmd)
+        document = self._apply_overrides(document, action)
 
-        self._documents.update(document)
+        doc_repo.update(document)
 
         # --------------------------------------------------------
         # 2️⃣ SWITCH ACTION
         # --------------------------------------------------------
 
-        match cmd.action:
+        match action.action:
 
             case DocumentApplyAction.CREATE_NEW:
-                self._create_new(cmd, document)
+                self._create_new(uow, action, document)
 
             case DocumentApplyAction.ADD_TO_EXISTING:
-                self._attach_existing(cmd, document)
+                self._attach_existing(uow,action, document)
 
             case DocumentApplyAction.SKIP:
-                self._skip(document)
+                self._skip(doc_repo,document)
 
             case DocumentApplyAction.DELETE:
-                self._delete(document)
+                self._delete(doc_repo,document)
 
             case _:
                 raise RuntimeError("Unknown action")
@@ -113,21 +118,30 @@ class ApplyDocumentService:
 
     def _create_new(
         self,
+        uow:UnitOfWork,
         cmd: ApplyDocumentCommand,
         document: Document,
     ) -> None:
 
         record_id = self._create_record_service.execute(
+            action=CreateRecordFromDocumentCommand(
             organization_id=cmd.organization_id,
             actor_user_id=cmd.actor_user_id,
             document=document,
             override_reference=cmd.override_document_number,
             override_seller_nip=cmd.override_seller_nip,
-            override_document_type=DocumentType(cmd.override_document_type),
+            override_document_type=(
+                DocumentType(cmd.override_document_type)
+                if cmd.override_document_type
+                else None
+            )
+            ),
+            uow=uow
         )
 
     def _attach_existing(
             self,
+            uow:UnitOfWork,
             cmd: ApplyDocumentCommand,
             document: Document,
     ) -> None:
@@ -135,7 +149,7 @@ class ApplyDocumentService:
         if not cmd.target_record_id:
             raise RuntimeError("Missing target record")
 
-        record = self._records.get(
+        record = uow.financial_records.get(
             organization_id=cmd.organization_id,
             record_id=cmd.target_record_id,
         )
@@ -151,6 +165,7 @@ class ApplyDocumentService:
                 input_tax_number=document.seller_nip,
                 role=CompanyType.SELLER,
                 mode=EvaluateMode.NO_CREATE,
+                uow=uow,
             )
 
             if record.seller_id != seller.id:
@@ -172,13 +187,13 @@ class ApplyDocumentService:
             file_path=raw_relative.as_posix(),
         )
 
-        self._documents.update(updated_doc)
+        uow.documents.update(updated_doc)
 
         # ============================================================
         # 2️⃣ ATTACH
         # ============================================================
 
-        self._documents.attach_to_record(
+        uow.documents.attach_to_record(
             organization_id=cmd.organization_id,
             document_id=document.id,
             record_id=record.id,
@@ -188,7 +203,7 @@ class ApplyDocumentService:
         # 3️⃣ SYNC (business location)
         # ============================================================
 
-        refreshed_record = self._records.get(
+        refreshed_record = uow.financial_records.get(
             organization_id=cmd.organization_id,
             record_id=record.id,
         )
@@ -196,9 +211,10 @@ class ApplyDocumentService:
             self._file_workflow_service.sync(
                 organization_id=cmd.organization_id,
                 record=refreshed_record,
+                uow=uow,
             )
 
-    def _skip(self, document: Document) -> None:
+    def _skip(self,doc_repo:DocumentRepository, document: Document) -> None:
         org_root = cfg.WORK_DIR / str(document.organization_id)
 
         target_relative =self._files.move_to_skipped(
@@ -210,20 +226,20 @@ class ApplyDocumentService:
             document,
             file_path=target_relative.as_posix(),
         )
-        self._documents.update(updated)
+        doc_repo.update(updated)
 
 
-    def _delete(self, document: Document) -> None:
+    def _delete(self,doc_repo:DocumentRepository, document: Document) -> None:
 
         org_root = cfg.WORK_DIR / str(document.organization_id)
-
-        self._documents.delete(
-            organization_id=document.organization_id,
-            document_id=document.id,
-        )
 
         self._files.move_to_trash(
             root=org_root,
             file_path=org_root / document.file_path,
+        )
+
+        doc_repo.delete(
+            organization_id=document.organization_id,
+            document_id=document.id,
         )
 

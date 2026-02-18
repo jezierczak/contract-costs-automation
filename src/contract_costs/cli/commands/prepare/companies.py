@@ -1,6 +1,6 @@
 from contract_costs.cli.context import get_services
 from contract_costs.cli.registry import REGISTRY
-from contract_costs.cli.utils.context_helpers import require_organization_id
+from contract_costs.cli.utils.context_helpers import require_organization_id, require_user_id
 from contract_costs.common.context.exceptions import ContextError
 from contract_costs.infrastructure.excel.base_excel_exporter import BaseExcelExporter
 from contract_costs.infrastructure.filesystem.excel_domain_file_manager import InputsCompaniesAssignmentFileManager
@@ -38,6 +38,7 @@ def handle_prepare_companies(args) -> None:
 
     try:
         organization_id = require_organization_id(services.context)
+        actor_user_id = require_user_id(services.context)
     except ContextError:
         return
 
@@ -57,14 +58,14 @@ def handle_prepare_companies(args) -> None:
     # =====================
     query = CompanyQuery(
         organization_id=organization_id,
+        actor_user_id=actor_user_id,
         tax_number=args.nip,
         own_only=args.own,
         include_inactive=args.inactive,
         search=args.search,
         role=role,
     )
-
-    companies = services.company_query_service.execute(query)
+    companies = services.action_bus.execute(action=query,handler=services.company_query_service)
 
     if not companies:
         print("No companies found to prepare.")

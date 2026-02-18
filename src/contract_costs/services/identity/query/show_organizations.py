@@ -1,42 +1,45 @@
-from uuid import UUID
-
-from contract_costs.repository.identity.organization_repository import OrganizationRepository
-from contract_costs.repository.identity.organization_user_repository import OrganizationUserRepository
+from contract_costs.action_bus.action_handler import ActionHandler
+from contract_costs.services.identity.query.dto.list_user_organizations_query import ListUserOrganizationsQuery
 from contract_costs.services.identity.query.dto.organization_list_item_dto import OrganizationListItemDTO
+from contract_costs.unit_of_work import UnitOfWork
 
 
-class ShowOrganizationsQueryService:
+class ListUserOrganizationsQueryService(
+    ActionHandler[ListUserOrganizationsQuery, list[OrganizationListItemDTO]]
+):
 
-    def __init__(
+    def execute(
         self,
         *,
-        organization_repo: OrganizationRepository,
-        organization_user_repo: OrganizationUserRepository,
-    ) -> None:
-        self._organization_repo = organization_repo
-        self._organization_user_repo = organization_user_repo
+        action: ListUserOrganizationsQuery,
+        uow: UnitOfWork,
+    ) -> list[OrganizationListItemDTO]:
 
-    def list_for_user(self, *, user_id: UUID) -> list[OrganizationListItemDTO]:
-        memberships = self._organization_user_repo.list_by_user(
-            user_id,
-            active_only=True,
+        # Query side – bez domeny, bez replace
+        return uow.organization_users.list_organizations_for_user(
+            user_id=action.actor_user_id
         )
-
-        result: list[OrganizationListItemDTO] = []
-
-        for m in memberships:
-            org = self._organization_repo.get(m.organization_id)
-            if not org:
-                continue
-
-            result.append(
-                OrganizationListItemDTO(
-                    id=org.id,
-                    code=org.code,
-                    name=org.name,
-                    is_active=org.is_active,
-                    role=m.role.value,
-                )
-            )
-
-        return result
+    # def list_for_user(self, *, user_id: UUID) -> list[OrganizationListItemDTO]:
+    #     memberships = self._organization_user_repo.list_by_user(
+    #         user_id,
+    #         active_only=True,
+    #     )
+    #
+    #     result: list[OrganizationListItemDTO] = []
+    #
+    #     for m in memberships:
+    #         org = self._organization_repo.get(m.organization_id)
+    #         if not org:
+    #             continue
+    #
+    #         result.append(
+    #             OrganizationListItemDTO(
+    #                 id=org.id,
+    #                 code=org.code,
+    #                 name=org.name,
+    #                 is_active=org.is_active,
+    #                 role=m.role.value,
+    #             )
+    #         )
+    #
+    #     return result

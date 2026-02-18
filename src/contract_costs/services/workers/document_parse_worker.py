@@ -27,17 +27,15 @@ def process_document_in_subprocess(
 
     try:
         services = get_services()
-
         services.action_bus.execute(
             action=ProcessDocumentCommand(
                 organization_id=organization_id,
                 actor_user_id=actor_id,
                 document_id=document_id,
             ),
-            handler=services.process_document_service
+
+            handler=services.process_document_service,
         )
-
-
     except DocumentFatalError:
         logger.exception("Fatal parse error")
         exit(100)  # specjalny exitcode
@@ -87,6 +85,13 @@ class DocumentParseWorker:
 
             finally:
                 document_queue.task_done()
+                remaining = document_queue.qsize()
+                logger.info(
+                    "Documents left in queue: %s",
+                    remaining,
+                )
+                if remaining == 0:
+                    logger.info("Queue empty - processed all documents")
 
                 if self._running:
                     from contract_costs.cli.context import get_services
@@ -170,3 +175,4 @@ class DocumentParseWorker:
     def stop(self) -> None:
         logger.info("Stopping document parse worker")
         self._running = False
+

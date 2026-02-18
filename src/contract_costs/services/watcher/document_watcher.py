@@ -46,13 +46,14 @@ class DocumentWatcherService:
             file_path,
             self._organization_id,
         )
+
         self._services.action_bus.execute(
-            action = UploadDocumentCommand(
+            action=UploadDocumentCommand(
                 organization_id=self._organization_id,
                 actor_user_id=self._actor_user_id,
                 file_path=file_path,
             ),
-            handler= self._services.upload_document_service
+            handler=self._services.upload_document_service,
         )
 
     @staticmethod
@@ -68,3 +69,4 @@ class DocumentWatcherService:
             except PermissionError:
                 time.sleep(delay)
         return False
+

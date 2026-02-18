@@ -56,7 +56,7 @@ class BaseExcelExporterV2[T]:
     def add_sheet(
         self,
         *,
-        organization_id:UUID,
+        organization_id:str,
         items: list[T],
         columns: list[ExcelColumn[T]],
         sheet_name: str,
@@ -316,7 +316,7 @@ class BaseExcelExporterV2[T]:
     @staticmethod
     def export(
         *,
-        organization_id: UUID,
+        organization_id: str,
         items: list[T],
         columns: list[ExcelColumn[T]],
         output_path: Path,
@@ -341,7 +341,7 @@ class BaseExcelExporterV2[T]:
     def export_many(
         self,
         *,
-        organization_id: UUID,
+        organization_id: str,
         sheets: list[tuple[str, list[T], list[ExcelColumn[T]]]],
         output_path: Path,
     ) -> None:
@@ -434,7 +434,7 @@ class BaseExcelExporterV2[T]:
     def _write_flat_rows(
             self,
             *,
-            organization_id: UUID,
+            organization_id: str,
             ws,
             items: list[T],
             columns: list[ExcelColumn[T]],

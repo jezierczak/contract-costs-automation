@@ -1,32 +1,39 @@
 from dataclasses import replace
 import logging
-from uuid import UUID
 
+from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.model.company import CompanyType
-from contract_costs.repository.company_repository import CompanyRepository
 from contract_costs.services.companies.create_company_service import CreateCompanyService
-from contract_costs.services.companies.dto.create_company_command import CreateCompanyCommand
-from contract_costs.services.companies.normalize.normalize_service import CompanyNormalizeService
-from contract_costs.services.financial_records.assigment.prepare.dto.company_export import CompanyExport
 
+from contract_costs.services.companies.dto.create_company_command import (
+    CreateCounterpartyCompanyCommand,
+)
+from contract_costs.services.companies.normalize.normalize_service import CompanyNormalizeService
+from contract_costs.services.financial_records.assigment.apply.commands.apply_company_excel_batch_command import \
+    ApplyCompanyExcelBatchCommand
+
+from contract_costs.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
 
 
-class ApplyCompanyExcelBatchService:
-    def __init__(self, company_repository: CompanyRepository, create_company_service: CreateCompanyService):
-        self._repo = company_repository
+class ApplyCompanyExcelBatchService(
+    ActionHandler[ApplyCompanyExcelBatchCommand, None]
+):
+    def __init__(self, create_company_service: CreateCompanyService):
         self._create_company_service = create_company_service
         self._normalizator= CompanyNormalizeService()
 
-    def apply(self,
-              *,
-              organization_id: UUID,
-              actor_user_id: UUID,
-              companies: list[CompanyExport]) -> None:
-        for c in companies:
-            existing = self._repo.get(
-                organization_id=organization_id,
+    def execute(
+        self,
+        *,
+        action: ApplyCompanyExcelBatchCommand,
+        uow: UnitOfWork,
+    ) -> None:
+        company_repo = uow.companies
+        for c in action.companies:
+            existing = company_repo.get(
+                organization_id=action.organization_id,
                 company_id=c.id,
             )
 
@@ -36,8 +43,8 @@ class ApplyCompanyExcelBatchService:
                     f"Company from Excel must have valid tax_number. "
                     f"id={c.id}, name='{c.name}', tax_number='{c.tax_number}'"
                 )
-            nip_owner = self._repo.get_by_tax_number(
-                organization_id=organization_id,
+            nip_owner = company_repo.get_by_tax_number(
+                organization_id=action.organization_id,
                 tax_number=normalized_tax,
             )
             # case 1: „nie ma w repo takiego ID i nie ma tax number”
@@ -47,14 +54,16 @@ class ApplyCompanyExcelBatchService:
                     c.name,
                     c.tax_number,
                 )
+
                 self._create_company_service.execute(
-                    CreateCompanyCommand(
-                        organization_id=organization_id,
-                        actor_user_id=actor_user_id,
+                    action=CreateCounterpartyCompanyCommand(
+                        organization_id=action.organization_id,
+                        actor_user_id=action.actor_user_id,
                         name=c.name,
                         tax_number=normalized_tax,
                         role=CompanyType.CLIENT,
-                    )
+                    ),
+                    uow=uow
                 )
                 continue  # albo raise – decyzja biznesowa
 
@@ -72,15 +81,15 @@ class ApplyCompanyExcelBatchService:
                 logger.warning(
                     "Company NIP conflict (org=%s). "
                     "Merging: delete=%s keep=%s tax=%s",
-                    organization_id,
+                    action.organization_id,
                     existing.id,
                     nip_owner.id,
                     normalized_tax,
                 )
                 #  usuwamy "złą" firmę (tą aktualizowaną)
 
-                self._repo.delete(
-                    organization_id=organization_id,
+                company_repo.delete(
+                    organization_id=action.organization_id,
                     company_id=existing.id,
                 )
 
@@ -90,7 +99,7 @@ class ApplyCompanyExcelBatchService:
                     name=c.name,
                     # inne pola OK do nadpisania
                 )
-                self._repo.update(merged)
+                company_repo.update(merged)
 
             # CASE 2: Excel zmienia NIP, brak konfliktu → UPDATE
             else:
@@ -108,4 +117,4 @@ class ApplyCompanyExcelBatchService:
                         tax_number=normalized_tax,
                     )
                     # print(updated)
-                    self._repo.update(updated)
+                    company_repo.update(updated)

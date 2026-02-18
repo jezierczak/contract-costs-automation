@@ -9,6 +9,8 @@ from contract_costs.cli.utils.context_helpers import require_organization_id, re
 from contract_costs.common.context.exceptions import ContextError
 from contract_costs.infrastructure.filesystem.excel_domain_file_manager import FinancialRecordInvoiceAssignmentFileManager
 from contract_costs.model.financial_record import FinancialRecordStatus
+from contract_costs.services.financial_records.assigment.prepare.dto.generatr_financial_redcord_assignment_bundle_command import \
+    GenerateFinancialRecordAssignmentBundleCommand
 
 logger = logging.getLogger(__name__)
 
@@ -92,13 +94,20 @@ def handle_prepare_financial_records(args) -> None:
     file_manager = FinancialRecordInvoiceAssignmentFileManager(organization_id=organization_id)
     output_path = file_manager.prepare_target()
 
-    bundle = services.generate_financial_record_assignment_bundle.execute(
-        organization_id=organization_id,
-        actor_user_id=actor_user_id,
-        invoice_status=statuses,
-        # contract_ref=args.contract,
-    )
-    services.export_financial_record_assignment_excel_service.execute(
+    # bundle = services.generate_financial_record_assignment_bundle.execute(
+    #     organization_id=organization_id,
+    #     actor_user_id=actor_user_id,
+    #     invoice_status=statuses,
+    #     # contract_ref=args.contract,
+    # )
+    bundle = services.action_bus.execute(
+        action=GenerateFinancialRecordAssignmentBundleCommand(
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
+            invoice_status=statuses,
+        ),
+        handler=services.generate_financial_record_assignment_bundle)
+    services.export_financial_record_assignment_excel_service.export(
         organization_id=organization_id,
         bundle=bundle,
         output_path=output_path )

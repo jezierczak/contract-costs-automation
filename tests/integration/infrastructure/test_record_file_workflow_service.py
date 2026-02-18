@@ -7,8 +7,9 @@ from contract_costs.model.company import CompanyType
 
 
 
-def test_deleted_record_moves_to_trash(tmp_path, workflow_service):
-    service, company_repo, document_repo = workflow_service
+def test_deleted_record_moves_to_trash(tmp_path, workflow_service, uow):
+    service = workflow_service
+    document_repo = uow.documents
 
     import contract_costs.config as cfg
     cfg.WORK_DIR = tmp_path
@@ -41,13 +42,16 @@ def test_deleted_record_moves_to_trash(tmp_path, workflow_service):
     service.sync(
         organization_id=org_id,
         record=record,
+        uow=uow,
     )
 
     assert not source.exists()
 
 
-def test_cost_record_moves_to_owner_directory(tmp_path, workflow_service):
-    service, company_repo, document_repo = workflow_service
+def test_cost_record_moves_to_owner_directory(tmp_path, workflow_service, uow):
+    service = workflow_service
+    company_repo = uow.companies
+    document_repo = uow.documents
 
     import contract_costs.config as cfg
     cfg.WORK_DIR = tmp_path
@@ -100,6 +104,7 @@ def test_cost_record_moves_to_owner_directory(tmp_path, workflow_service):
     service.sync(
         organization_id=org_id,
         record=record,
+        uow=uow,
     )
 
     # plik powinien być przeniesiony
@@ -114,8 +119,9 @@ def test_cost_record_moves_to_owner_directory(tmp_path, workflow_service):
     assert "costs" in updated_doc.file_path
 
 
-def test_missing_parties_goes_to_draft(tmp_path, workflow_service):
-    service, company_repo, document_repo = workflow_service
+def test_missing_parties_goes_to_draft(tmp_path, workflow_service, uow):
+    service = workflow_service
+    document_repo = uow.documents
 
     import contract_costs.config as cfg
     cfg.WORK_DIR = tmp_path
@@ -148,6 +154,7 @@ def test_missing_parties_goes_to_draft(tmp_path, workflow_service):
     service.sync(
         organization_id=org_id,
         record=record,
+        uow=uow,
     )
 
     updated = document_repo.get(

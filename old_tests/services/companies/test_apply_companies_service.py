@@ -6,8 +6,8 @@ from unittest.mock import MagicMock
 from contract_costs.model.company import CompanyType
 from contract_costs.services.companies.apply.apply_companies_from_excel_service import ApplyCompaniesFromExcelService
 from contract_costs.services.companies.apply.command import ApplyCompanyCommand, CompanyActionType
-from contract_costs.services.companies.dto.activate_company_command import ActivateCompanyCommand
-from contract_costs.services.companies.dto.deactivate_company_command import DeactivateCompanyCommand
+from contract_costs.services.companies.dto.activate_company_command import BaseActivateCompanyCommand
+from contract_costs.services.companies.dto.deactivate_company_command import BaseDeactivateCompanyCommand
 
 
 @pytest.fixture
@@ -84,7 +84,7 @@ def test_apply_activate_calls_activate(apply_service: MagicMock, base_command: A
 
     called_cmd = apply_service._activate.execute.call_args.args[0]
 
-    assert isinstance(called_cmd, ActivateCompanyCommand)
+    assert isinstance(called_cmd, BaseActivateCompanyCommand)
     assert called_cmd.company_id == cmd.company_id
     assert called_cmd.organization_id == org_id
     assert called_cmd.actor_user_id == user_id
@@ -106,7 +106,7 @@ def test_apply_deactivate_calls_deactivate(apply_service: MagicMock, base_comman
 
     called_cmd = apply_service._deactivate.execute.call_args.args[0]
 
-    assert isinstance(called_cmd, DeactivateCompanyCommand)
+    assert isinstance(called_cmd, BaseDeactivateCompanyCommand)
     assert called_cmd.company_id == cmd.company_id
     assert called_cmd.organization_id == org_id
     assert called_cmd.actor_user_id == user_id

@@ -3,30 +3,31 @@ from uuid import UUID
 from contract_costs.model.company import Company
 from contract_costs.model.contract import ContractStatus, ContractType
 from contract_costs.model.contract_node import ContractNodeInput
-from contract_costs.repository.contract_repository import ContractRepository
 from contract_costs.services.contracts.create_contract_service import CreateContractService
 from contract_costs.services.contracts.dto.create_contract_command import CreateContractCommand
+from contract_costs.unit_of_work import UnitOfWork
 
 
 class CreateSystemContractOrchestrator:
 
     def __init__(
         self,
-        contract_repository: ContractRepository,
+        # contract_repository: ContractRepository,
         create_contract_service: CreateContractService,
     ) -> None:
-        self._repo = contract_repository
+        # self._repo = contract_repository
         self._create = create_contract_service
 
     def execute(
         self,
         *,
+        uow:UnitOfWork,
         organization_id: UUID,
         actor_user_id: UUID,
         owner: Company,
     ) -> None:
-
-        existing = self._repo.get_system_contract(
+        repo = uow.contracts
+        existing = repo.get_system_contract(
             organization_id=organization_id,
             owner_id=owner.id,
         )
@@ -51,7 +52,7 @@ class CreateSystemContractOrchestrator:
             contract_node_input= self._default_system_tree()
         )
 
-        self._create.execute(command=command)
+        self._create.execute(action=command,uow=uow)
 
     @staticmethod
     def _node( code: str, name: str) -> ContractNodeInput:

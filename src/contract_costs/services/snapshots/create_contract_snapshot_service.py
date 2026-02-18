@@ -5,6 +5,7 @@ from decimal import Decimal
 from collections import defaultdict
 from typing import Dict, Callable
 
+from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.common.ids import new_uuid
 from contract_costs.common.time import utc_now
 from contract_costs.model.snapshot.contract_snapshot import ContractSnapshot
@@ -16,30 +17,19 @@ from contract_costs.services.contracts.prepare.contract_node_tree_index import (
     ContractNodeTreeIndex,
 )
 from contract_costs.services.snapshots.dto.create_contract_snapshot_command import CreateContractSnapshotCommand
+from contract_costs.unit_of_work import UnitOfWork
 
 
-class CreateContractSnapshotService:
+class CreateContractSnapshotService(
+    ActionHandler[CreateContractSnapshotCommand, tuple[ContractSnapshot, bool]]
+):
 
     def __init__(
-        self,
-        *,
-        contract_repo,
-        contract_node_repo,
-        invoice_line_repo,
-        snapshot_repo,
-        node_snapshot_repo,
-        value_snapshot_repo,
-        id_generator: Callable[[], UUID] = new_uuid,
-        clock:  Callable[[],datetime] = utc_now
-    ) -> None:
-        self._contract_repo = contract_repo
-        self._node_repo = contract_node_repo
-        self._invoice_repo = invoice_line_repo
-
-        self._snapshot_repo = snapshot_repo
-        self._node_snapshot_repo = node_snapshot_repo
-        self._value_snapshot_repo = value_snapshot_repo
-
+            self,
+            *,
+            id_generator: Callable[[], UUID] = new_uuid,
+            clock: Callable[[], datetime] = utc_now,
+    ):
         self._id_generator = id_generator
         self._clock = clock
 
@@ -48,51 +38,56 @@ class CreateContractSnapshotService:
     # =====================================================
 
     def execute(
-        self,
-        cmd: CreateContractSnapshotCommand,
+            self,
+            *,
+            action: CreateContractSnapshotCommand,
+            uow: UnitOfWork,
     ) -> tuple[ContractSnapshot, bool]:
-
+        snapshot_repo = uow.contract_snapshots
+        node_snapshot_repo = uow.contract_node_snapshots
+        value_snapshot_repo = uow.contract_node_value_snapshots
+        contract_repo = uow.contracts
+        contract_node_repo = uow.contract_nodes
+        line_record_repo = uow.financial_record_lines
         # ---------- idempotency ----------
-        existing = self._snapshot_repo.get_by_contract_and_date(
-            organization_id=cmd.organization_id,
-            contract_id=cmd.contract_id,
-            snapshot_date=cmd.snapshot_date,
+        existing = snapshot_repo.get_by_contract_and_date(
+            organization_id=action.organization_id,
+            contract_id=action.contract_id,
+            snapshot_date=action.snapshot_date,
         )
         if existing:
             return existing, False
 
         # ---------- load contract ----------
-        contract = self._contract_repo.get(
-            organization_id=cmd.organization_id,
-            contract_id=cmd.contract_id,
+        contract = contract_repo.get(
+            organization_id=action.organization_id,
+            contract_id=action.contract_id,
         )
         if not contract:
-            raise ValueError(f"Contract {cmd.contract_id} not found")
+            raise ValueError(f"Contract {action.contract_id} not found")
 
         # ---------- load nodes ----------
-        nodes = self._node_repo.list_by_contract(
-            organization_id=cmd.organization_id,
-            contract_id=cmd.contract_id,
+        nodes = contract_node_repo.list_by_contract(
+            organization_id=action.organization_id,
+            contract_id=action.contract_id,
         )
         tree = ContractNodeTreeIndex(nodes)
 
         # ---------- load invoice lines ----------
-        invoice_lines = self._invoice_repo.list_by_contract_until(
-            organization_id=cmd.organization_id,
-            contract_id=cmd.contract_id,
-            snapshot_date=cmd.snapshot_date,
+        invoice_lines = line_record_repo.list_by_contract_until(
+            organization_id=action.organization_id,
+            contract_id=action.contract_id,
+            snapshot_date=action.snapshot_date,
         )
 
         # ---------- create snapshot root ----------
         snapshot = ContractSnapshot(
             id=self._id_generator(),
-            organization_id=cmd.organization_id,
-            contract_id=cmd.contract_id,
-            snapshot_date=cmd.snapshot_date,
+            organization_id=action.organization_id,
+            contract_id=action.contract_id,
+            snapshot_date=action.snapshot_date,
             created_at=self._clock(),
-            created_by_user_id=cmd.actor_user_id,
-            # updated_at=None,
-            # updated_by_user_id=None,
+            created_by_user_id=action.actor_user_id,
         )
 
         # ==================================================
@@ -126,7 +121,7 @@ class CreateContractSnapshotService:
         for node in tree.leaves():
             planned_budget[node.id] = node.budget or Decimal("0")
 
-            p = node.progress_at(cmd.snapshot_date)
+            p = node.progress_at(action.snapshot_date)
             progress[node.id] = p if p is not None else Decimal("0")
 
         # ==================================================
@@ -234,8 +229,8 @@ class CreateContractSnapshotService:
         # PERSIST (TRANSACTIONAL – infra)
         # ==================================================
 
-        self._snapshot_repo.add(snapshot)
-        self._node_snapshot_repo.add_many(node_snapshots)
-        self._value_snapshot_repo.add_many(value_snapshots)
+        snapshot_repo.add(snapshot)
+        node_snapshot_repo.add_many(node_snapshots)
+        value_snapshot_repo.add_many(value_snapshots)
 
         return snapshot, True

@@ -1,157 +1,153 @@
-from datetime import datetime, date
+from datetime import date, datetime
 from decimal import Decimal
+from typing import Sequence
 from uuid import UUID
 
+from contract_costs.infrastructure.db.mysql_connection import get_connection
+from contract_costs.model.amount import Amount, TaxTreatment, VatRate
 from contract_costs.model.financial_record_line import FinancialRecordLine
-from contract_costs.model.amount import Amount, VatRate, TaxTreatment
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 from contract_costs.repository.financial_record_line_repository import FinancialRecordLineRepository
-from contract_costs.infrastructure.db.mysql_connection import get_connection
 
 
 class MySQLFinancialRecordLineRepository(FinancialRecordLineRepository):
+    def __init__(self, connection=None) -> None:
+        self._connection = connection
 
-    def add(
-        self,
-        *,
-        organization_id: UUID,
-        line: FinancialRecordLine,
-    ) -> None:
+    def _get_connection(self):
+        return self._connection or get_connection()
+
+    def _maybe_commit(self, conn) -> None:
+        if self._connection is None:
+            conn.commit()
+
+    def _maybe_rollback(self, conn) -> None:
+        if self._connection is None:
+            conn.rollback()
+
+    def _maybe_close(self, conn) -> None:
+        if self._connection is None:
+            conn.close()
+
+    def add(self, *, organization_id: UUID, line: FinancialRecordLine) -> None:
         sql = """
         INSERT INTO financial_record_lines (
-            id,
-            organization_id,
-            financial_record_id,
-            contract_id,
-            contract_node_id,
-            value_type_id,
-            item_name,
-            quantity,
-            unit,
-            amount_value,
-            vat_rate,
-            tax_treatment,
-            description,
-            created_at,
-            created_by_user_id,
-            updated_at,
-            updated_by_user_id
+            id, organization_id, financial_record_id, contract_id, contract_node_id,
+            value_type_id, item_name, quantity, unit, amount_value, vat_rate,
+            tax_treatment, description, created_at, created_by_user_id,
+            updated_at, updated_by_user_id,agreement_id,agreement_node_id
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s,%s)
         """
 
-        conn = get_connection()
-        with conn.cursor() as cur:
-            cur.execute(
-                sql,
-                (
-                    str(line.id),
-                    str(organization_id),
-                    str(line.financial_record_id) if line.financial_record_id else None,
-                    str(line.contract_id) if line.contract_id else None,
-                    str(line.contract_node_id) if line.contract_node_id else None,
-                    str(line.value_type_id) if line.value_type_id else None,
-                    line.item_name,
-                    line.quantity,
-                    line.unit.value if line.unit else None,
-                    line.amount.value,
-                    line.amount.vat_rate.value,
-                    line.amount.tax_treatment.value,
-                    line.description,
-                    line.created_at,
-                    str(line.created_by_user_id) if line.created_by_user_id else None,
-                    line.updated_at,
-                    str(line.updated_by_user_id) if line.updated_by_user_id else None,
-                ),
-            )
-        conn.commit()
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    sql,
+                    (
+                        str(line.id),
+                        str(organization_id),
+                        str(line.financial_record_id) if line.financial_record_id else None,
+                        str(line.contract_id) if line.contract_id else None,
+                        str(line.contract_node_id) if line.contract_node_id else None,
+                        str(line.value_type_id) if line.value_type_id else None,
+                        line.item_name,
+                        line.quantity,
+                        line.unit.value if line.unit else None,
+                        line.amount.value,
+                        line.amount.vat_rate.value,
+                        line.amount.tax_treatment.value,
+                        line.description,
+                        line.created_at,
+                        str(line.created_by_user_id) if line.created_by_user_id else None,
+                        line.updated_at,
+                        str(line.updated_by_user_id) if line.updated_by_user_id else None,
+                        str(line.agreement_id) if line.agreement_id else None,
+                        str(line.agreement_node_id) if line.agreement_node_id else None,
+                    ),
+                )
+            self._maybe_commit(conn)
+        except Exception:
+            self._maybe_rollback(conn)
+            raise
+        finally:
+            self._maybe_close(conn)
 
-    def get(
-            self,
-            *,
-            organization_id: UUID,
-            line_id: UUID,
-    ) -> FinancialRecordLine | None:
+    def get(self, *, organization_id: UUID, line_id: UUID) -> FinancialRecordLine | None:
         sql = """
               SELECT *
               FROM financial_record_lines
               WHERE id = %s
-                AND organization_id = %s 
+                AND organization_id = %s
               """
 
-        conn = get_connection()
-        with conn.cursor(dictionary=True) as cur:
-            cur.execute(sql, (str(line_id), str(organization_id)))
-            row = cur.fetchone()
+        conn = self._get_connection()
+        try:
+            with conn.cursor(dictionary=True) as cur:
+                cur.execute(sql, (str(line_id), str(organization_id)))
+                row = cur.fetchone()
+            return self._map_row(row) if row else None
+        finally:
+            self._maybe_close(conn)
 
-        return self._map_row(row) if row else None
-
-    def exists(
-            self,
-            *,
-            organization_id: UUID,
-            line_id: UUID,
-    ) -> bool:
+    def exists(self, *, organization_id: UUID, line_id: UUID) -> bool:
         sql = """
               SELECT 1
               FROM financial_record_lines
               WHERE id = %s
                 AND organization_id = %s
-              LIMIT 1 
+              LIMIT 1
               """
 
-        conn = get_connection()
-        with conn.cursor() as cur:
-            cur.execute(sql, (str(line_id), str(organization_id)))
-            return cur.fetchone() is not None
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(sql, (str(line_id), str(organization_id)))
+                return cur.fetchone() is not None
+        finally:
+            self._maybe_close(conn)
 
-    def list_all(self,*, organization_id: UUID) -> list[FinancialRecordLine]:
+    def list_all(self, *, organization_id: UUID) -> list[FinancialRecordLine]:
         sql = "SELECT * FROM financial_record_lines where organization_id = %s"
+        conn = self._get_connection()
+        try:
+            with conn.cursor(dictionary=True) as cur:
+                cur.execute(sql, (str(organization_id),))
+                rows = cur.fetchall()
+            return [self._map_row(r) for r in rows]
+        finally:
+            self._maybe_close(conn)
 
-        conn = get_connection()
-        with conn.cursor(dictionary=True) as cur:
-            cur.execute(sql,(str(organization_id),))
-            rows = cur.fetchall()
-
-        return [self._map_row(r) for r in rows]
-
-    def list_by_contract(self,*, organization_id: UUID, contract_id: UUID) -> list[FinancialRecordLine]:
+    def list_by_contract(self, *, organization_id: UUID, contract_id: UUID) -> list[FinancialRecordLine]:
         sql = "SELECT * FROM financial_record_lines WHERE contract_id = %s AND organization_id = %s"
+        conn = self._get_connection()
+        try:
+            with conn.cursor(dictionary=True) as cur:
+                cur.execute(sql, (str(contract_id), str(organization_id)))
+                rows = cur.fetchall()
+            return [self._map_row(r) for r in rows]
+        finally:
+            self._maybe_close(conn)
 
-        conn = get_connection()
-        with conn.cursor(dictionary=True) as cur:
-            cur.execute(sql, (str(contract_id),str(organization_id)))
-            rows = cur.fetchall()
-
-        return [self._map_row(r) for r in rows]
-
-    def list_by_financial_record(
-            self,
-            *,
-            organization_id: UUID,
-            financial_record_id: UUID,
-    ) -> list[FinancialRecordLine]:
+    def list_by_financial_record(self, *, organization_id: UUID, financial_record_id: UUID) -> list[FinancialRecordLine]:
         sql = """
               SELECT *
               FROM financial_record_lines
               WHERE organization_id = %s
-                AND financial_record_id = %s 
+                AND financial_record_id = %s
               """
 
-        conn = get_connection()
-        with conn.cursor(dictionary=True) as cur:
-            cur.execute(sql, (str(organization_id), str(financial_record_id)))
-            rows = cur.fetchall()
+        conn = self._get_connection()
+        try:
+            with conn.cursor(dictionary=True) as cur:
+                cur.execute(sql, (str(organization_id), str(financial_record_id)))
+                rows = cur.fetchall()
+            return [self._map_row(r) for r in rows]
+        finally:
+            self._maybe_close(conn)
 
-        return [self._map_row(r) for r in rows]
-
-    def list_by_financial_record_ids(
-            self,
-            *,
-            organization_id: UUID,
-            financial_records_ids: list[UUID]
-    ) -> list[FinancialRecordLine]:
-
+    def list_by_financial_record_ids(self, *, organization_id: UUID, financial_records_ids: list[UUID]) -> list[FinancialRecordLine]:
         if not financial_records_ids:
             return []
 
@@ -162,32 +158,29 @@ class MySQLFinancialRecordLineRepository(FinancialRecordLineRepository):
             WHERE organization_id = %s
               AND financial_record_id IN ({placeholders})
         """
-
         params = [str(organization_id), *map(str, financial_records_ids)]
 
-        conn = get_connection()
-        with conn.cursor(dictionary=True) as cur:
-            cur.execute(sql, params)
-            rows = cur.fetchall()
+        conn = self._get_connection()
+        try:
+            with conn.cursor(dictionary=True) as cur:
+                cur.execute(sql, params)
+                rows = cur.fetchall()
+            return [self._map_row(r) for r in rows]
+        finally:
+            self._maybe_close(conn)
 
-        return [self._map_row(r) for r in rows]
-
-    def list_by_null_invoice(self,*, organization_id: UUID) -> list[FinancialRecordLine]:
+    def list_by_null_invoice(self, *, organization_id: UUID) -> list[FinancialRecordLine]:
         sql = "SELECT * FROM financial_record_lines WHERE financial_record_id is NULL and organization_id = %s"
+        conn = self._get_connection()
+        try:
+            with conn.cursor(dictionary=True) as cur:
+                cur.execute(sql, (str(organization_id),))
+                rows = cur.fetchall()
+            return [self._map_row(r) for r in rows]
+        finally:
+            self._maybe_close(conn)
 
-        conn = get_connection()
-        with conn.cursor(dictionary=True) as cur:
-            cur.execute(sql,(str(organization_id),))
-            rows = cur.fetchall()
-
-        return [self._map_row(r) for r in rows]
-
-    def update(
-            self,
-            *,
-            organization_id: UUID,
-            line: FinancialRecordLine,
-    ) -> None:
+    def update(self, *, organization_id: UUID, line: FinancialRecordLine) -> None:
         sql = """
               UPDATE financial_record_lines
               SET financial_record_id = %s,
@@ -202,41 +195,46 @@ class MySQLFinancialRecordLineRepository(FinancialRecordLineRepository):
                   tax_treatment       = %s,
                   description         = %s,
                   updated_at          = %s,
-                  updated_by_user_id  = %s
+                  updated_by_user_id  = %s,
+                  agreement_id        = %s,
+                  agreement_node_id    = %s
               WHERE id = %s
-                AND organization_id = %s \
+                AND organization_id = %s
               """
 
-        conn = get_connection()
-        with conn.cursor() as cur:
-            cur.execute(
-                sql,
-                (
-                    str(line.financial_record_id) if line.financial_record_id else None,
-                    str(line.contract_id) if line.contract_id else None,
-                    str(line.contract_node_id) if line.contract_node_id else None,
-                    str(line.value_type_id) if line.value_type_id else None,
-                    line.item_name,
-                    line.quantity,
-                    line.unit.value if line.unit else None,
-                    line.amount.value,
-                    line.amount.vat_rate.value,
-                    line.amount.tax_treatment.value,
-                    line.description,
-                    line.updated_at,
-                    str(line.updated_by_user_id) if line.updated_by_user_id else None,
-                    str(line.id),
-                    str(organization_id),
-                ),
-            )
-        conn.commit()
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    sql,
+                    (
+                        str(line.financial_record_id) if line.financial_record_id else None,
+                        str(line.contract_id) if line.contract_id else None,
+                        str(line.contract_node_id) if line.contract_node_id else None,
+                        str(line.value_type_id) if line.value_type_id else None,
+                        line.item_name,
+                        line.quantity,
+                        line.unit.value if line.unit else None,
+                        line.amount.value,
+                        line.amount.vat_rate.value,
+                        line.amount.tax_treatment.value,
+                        line.description,
+                        line.updated_at,
+                        str(line.updated_by_user_id) if line.updated_by_user_id else None,
+                        str(line.agreement_id) if line.agreement_id else None,
+                        str(line.agreement_node_id) if line.agreement_node_id else None,
+                        str(line.id),
+                        str(organization_id),
+                    ),
+                )
+            self._maybe_commit(conn)
+        except Exception:
+            self._maybe_rollback(conn)
+            raise
+        finally:
+            self._maybe_close(conn)
 
-
-    def list_unassigned(
-        self,
-        *,
-        organization_id: UUID,
-    ) -> list[FinancialRecordLine]:
+    def list_unassigned(self, *, organization_id: UUID) -> list[FinancialRecordLine]:
         sql = """
         SELECT *
         FROM financial_record_lines
@@ -244,24 +242,20 @@ class MySQLFinancialRecordLineRepository(FinancialRecordLineRepository):
           AND financial_record_id IS NULL
         """
 
-        conn = get_connection()
-        with conn.cursor(dictionary=True) as cur:
-            cur.execute(sql, (str(organization_id),))
-            rows = cur.fetchall()
+        conn = self._get_connection()
+        try:
+            with conn.cursor(dictionary=True) as cur:
+                cur.execute(sql, (str(organization_id),))
+                rows = cur.fetchall()
+            return [self._map_row(r) for r in rows]
+        finally:
+            self._maybe_close(conn)
 
-        return [self._map_row(r) for r in rows]
-
-    def delete_not_in_ids(
-            self,
-            *,
-            organization_id: UUID,
-            financial_record_id: UUID,
-            keep_ids: set[UUID],
-    ) -> int:
-
+    def delete_not_in_ids(self, *, organization_id: UUID, financial_record_id: UUID, keep_ids: set[UUID]) -> int:
+        params: Sequence[str]
         if not keep_ids:
             sql = "DELETE FROM financial_record_lines WHERE financial_record_id = %s and organization_id = %s"
-            params = (str(financial_record_id),str(organization_id))
+            params = (str(financial_record_id), str(organization_id))
         else:
             placeholders = ", ".join(["%s"] * len(keep_ids))
             sql = f"""
@@ -269,16 +263,22 @@ class MySQLFinancialRecordLineRepository(FinancialRecordLineRepository):
                 WHERE financial_record_id = %s and organization_id = %s
                 AND id NOT IN ({placeholders})
             """
-            params = (str(financial_record_id),str(organization_id), *map(str, keep_ids)) #type: ignore
+            params = (str(financial_record_id), str(organization_id), *map(str, keep_ids))
 
-        conn = get_connection()
-        with conn.cursor() as cur:
-            cur.execute(sql, params)
-            conn.commit()
-            return cur.rowcount
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(sql, params)
+                affected = cur.rowcount
+            self._maybe_commit(conn)
+            return affected
+        except Exception:
+            self._maybe_rollback(conn)
+            raise
+        finally:
+            self._maybe_close(conn)
 
-
-    def get_for_assignment(self,*,organization_id: UUID) -> list[FinancialRecordLine]:
+    def get_for_assignment(self, *, organization_id: UUID) -> list[FinancialRecordLine]:
         sql = """
         SELECT *
         FROM financial_record_lines
@@ -289,42 +289,34 @@ class MySQLFinancialRecordLineRepository(FinancialRecordLineRepository):
                 )
         """
 
-        conn = get_connection()
-        with conn.cursor(dictionary=True) as cur:
-            cur.execute(sql,(str(organization_id),))
-            rows = cur.fetchall()
+        conn = self._get_connection()
+        try:
+            with conn.cursor(dictionary=True) as cur:
+                cur.execute(sql, (str(organization_id),))
+                rows = cur.fetchall()
+            return [self._map_row(r) for r in rows]
+        finally:
+            self._maybe_close(conn)
 
-        return [self._map_row(r) for r in rows]
-
-    def list_by_contract_until(
-            self,
-            *,
-            organization_id: UUID,
-            contract_id: UUID,
-            snapshot_date: date,
-    ) -> list[FinancialRecordLine]:
-
+    def list_by_contract_until(self, *, organization_id: UUID, contract_id: UUID, snapshot_date: date) -> list[FinancialRecordLine]:
         cutoff = datetime.combine(snapshot_date, datetime.max.time())
-
         sql = """
               SELECT *
               FROM financial_record_lines
               WHERE organization_id = %s
                 AND contract_id = %s
-                AND created_at <= %s 
+                AND created_at <= %s
               """
 
-        conn = get_connection()
-        with conn.cursor(dictionary=True) as cur:
-            cur.execute(
-                sql,
-                (str(organization_id), str(contract_id), cutoff),
-            )
-            rows = cur.fetchall()
+        conn = self._get_connection()
+        try:
+            with conn.cursor(dictionary=True) as cur:
+                cur.execute(sql, (str(organization_id), str(contract_id), cutoff))
+                rows = cur.fetchall()
+            return [self._map_row(r) for r in rows]
+        finally:
+            self._maybe_close(conn)
 
-        return [self._map_row(r) for r in rows]
-
-    # ---------- mapping ----------
     @staticmethod
     def _map_row(row: dict) -> FinancialRecordLine:
         return FinancialRecordLine(
@@ -347,5 +339,6 @@ class MySQLFinancialRecordLineRepository(FinancialRecordLineRepository):
             created_by_user_id=UUID(row["created_by_user_id"]) if row["created_by_user_id"] else None,
             updated_at=row["updated_at"],
             updated_by_user_id=UUID(row["updated_by_user_id"]) if row["updated_by_user_id"] else None,
+            agreement_id=UUID(row["agreement_id"]) if row["agreement_id"] else None,
+            agreement_node_id=UUID(row["agreement_node_id"]) if row["agreement_node_id"] else None,
         )
-

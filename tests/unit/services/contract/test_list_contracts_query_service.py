@@ -5,6 +5,7 @@ from uuid import uuid4
 from contract_costs.common.ids import new_uuid
 from contract_costs.common.time import utc_now
 from contract_costs.model.amount import Amount, VatRate
+from contract_costs.model.contract import ContractType
 from contract_costs.model.contract_node import ContractNode
 from contract_costs.model.value_direction import ValueDirection
 from contract_costs.services.contracts.query.list_contracts.list_contracts_query_command import ListContractsQuery
@@ -20,19 +21,17 @@ def test_returns_empty_list_when_no_contracts(
     contract_node_repo,
     line_repo,
     value_type_repo,
+    uow,
 ):
-    service = ListContractsQueryService(
-        contract_repo=contract_repo,
-        contract_node_repo=contract_node_repo,
-        record_line_repo=line_repo,
-        value_type_repo=value_type_repo,
-    )
+    service = ListContractsQueryService()
 
     result = service.execute(
-        ListContractsQuery(
+        action=ListContractsQuery(
             organization_id=uuid4(),
-            actor_user_id=uuid4()
-        )
+            actor_user_id=uuid4(),
+            contract_type=ContractType.PROJECT,
+        ),
+        uow=uow,
     )
 
     assert result == []
@@ -42,6 +41,7 @@ def test_planned_budget_and_progress_calculation(
     contract_node_repo,
     line_repo,
     value_type_repo,
+    uow,
 ):
     organization_id = uuid4()
 
@@ -108,18 +108,15 @@ def test_planned_budget_and_progress_calculation(
 
     contract_node_repo.add_all([root, leaf_a, leaf_b])
 
-    service = ListContractsQueryService(
-        contract_repo=contract_repo,
-        contract_node_repo=contract_node_repo,
-        record_line_repo=line_repo,
-        value_type_repo=value_type_repo,
-    )
+    service = ListContractsQueryService()
 
     result = service.execute(
-        ListContractsQuery(
+        action=ListContractsQuery(
             organization_id=organization_id,
             actor_user_id=uuid4(),
-        )
+            contract_type=ContractType.PROJECT,
+        ),
+        uow=uow,
     )
 
     dto = result[0]
@@ -133,6 +130,7 @@ def test_financial_aggregation(
     contract_node_repo,
     line_repo,
     value_type_repo,
+    uow,
 ):
     organization_id = uuid4()
 
@@ -206,18 +204,15 @@ def test_financial_aggregation(
         ),
     )
 
-    service = ListContractsQueryService(
-        contract_repo=contract_repo,
-        contract_node_repo=contract_node_repo,
-        record_line_repo=line_repo,
-        value_type_repo=value_type_repo,
-    )
+    service = ListContractsQueryService()
 
     result = service.execute(
-        ListContractsQuery(
+        action=ListContractsQuery(
             organization_id=organization_id,
             actor_user_id=uuid4(),
-        )
+            contract_type=ContractType.PROJECT,
+        ),
+        uow=uow,
     )
 
     dto = result[0]
@@ -232,6 +227,7 @@ def test_contract_without_nodes_is_skipped(
     contract_node_repo,
     line_repo,
     value_type_repo,
+    uow,
 ):
     organization_id = uuid4()
 
@@ -242,18 +238,15 @@ def test_contract_without_nodes_is_skipped(
     )
     contract_repo.add(contract)
 
-    service = ListContractsQueryService(
-        contract_repo=contract_repo,
-        contract_node_repo=contract_node_repo,
-        record_line_repo=line_repo,
-        value_type_repo=value_type_repo,
-    )
+    service = ListContractsQueryService()
 
     result = service.execute(
-        ListContractsQuery(
+        action=ListContractsQuery(
             organization_id=organization_id,
             actor_user_id=uuid4(),
-        )
+            contract_type=ContractType.PROJECT,
+        ),
+        uow=uow,
     )
 
     assert result == []

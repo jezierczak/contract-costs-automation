@@ -1,4 +1,5 @@
 import logging
+from dataclasses import replace
 
 from contract_costs.cli.context import get_services
 from contract_costs.cli.utils.context_helpers import require_organization_id, require_user_id
@@ -34,24 +35,27 @@ def handle_apply_financial_records_paid(args):
         query=FinancialRecordReviewQuery(
             statuses=[FinancialRecordStatus.PROCESSED, FinancialRecordStatus.SENT_TO_ACCOUNTANT],
             payment_statuses=[PaymentStatus.UNPAID, PaymentStatus.PARTIALLY_PAID, PaymentStatus.UNKNOWN],
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
         ),
     )
     path = file_manager.get_active_file()
 
     commands = services.financial_record_action_excel_loader.load(path, context=FinancialRecordExcelContext.UNPAID)
 
+    errors = 0
 
     for cmd in commands:
-        services.financial_record_action_service.execute(
-            organization_id=organization_id,
-            actor_user_id=actor_user_id,
-            cmd=cmd,
-        )
+        try:
+            new_cmd=replace(cmd,organization_id=organization_id,actor_user_id=actor_user_id)
+            services.action_bus.execute(action=new_cmd,handler=services.financial_record_action_service)
+        except Exception:
+            errors += 1
+            logger.exception("Failed to apply paid status")
 
-    file_manager.mark_processed()
-    logger.info(
-        "Records set paid: %d",
-        len(commands),
-    )
+    if errors == 0:
+        file_manager.mark_processed()
+        print(f"✔{len(commands)} financial records mark PAID")
+    else:
+        logger.error("Errors detected. File NOT marked processed.")
 
-    print(f"✔ Set paid: {len(commands)} invoices")

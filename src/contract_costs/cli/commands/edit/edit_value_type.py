@@ -29,18 +29,24 @@ def handle_edit_value_type(args=None) -> None:
     repo = services.value_type_repository
 
     code = input("Type value type code:\n-> ").strip()
-    value_type = repo.get_by_code(code)
+    value_type = repo.get_by_code(organization_id=organization_id,code=code)
 
     if value_type is None:
         print("Value type not found.")
         return
 
     if args.deactivate:
+
+        if not value_type.is_active:
+            print("Already inactive.")
+            return
+
         deactivate_value_type_from_cli(
             value_type=value_type,
             organization_id=organization_id,
             actor_user_id=actor_user_id,
             deactivate_value_type_service=services.deactivate_value_type_service,
+            action_bus=services.action_bus,
         )
         print("Value type deactivated.")
         return
@@ -75,6 +81,7 @@ def handle_edit_value_type(args=None) -> None:
         organization_id = organization_id,
         actor_user_id = actor_user_id,
         update_value_type_service=services.update_value_type_service,
+        action_bus=services.action_bus,
     )
 
     print("Value type updated.")

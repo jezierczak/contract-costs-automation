@@ -31,25 +31,29 @@ def handle_apply_financial_records_to_accountant(args):
     file_manager = FinancialRecordExcelPrepareFileManager(
         organization_id=organization_id,
         view=FinancialRecordExcelView.FOR_ACCOUNTANT,
-        query=FinancialRecordReviewQuery(only_ready_for_accountant=True)
+        query=FinancialRecordReviewQuery(
+            only_ready_for_accountant=True,
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
+        )
     )
     path= file_manager.get_active_file()
 
     commands = services.financial_record_action_excel_loader.load(path, context=FinancialRecordExcelContext.ACCOUNTANT)
 
+    errors = 0
+
     for cmd in commands:
-        services.financial_record_action_service.execute(
-            organization_id=organization_id,
-            actor_user_id=actor_user_id,
-            cmd=cmd
-        )
+        try:
+            services.action_bus.execute(action=cmd, handler=services.financial_record_action_service)
+        except Exception:
+            errors += 1
+            logger.exception("Failed to apply paid status")
+
+    if errors == 0:
+        file_manager.mark_processed()
+        print(f"✔ Sent to accountant: {len(commands)} financial records")
+    else:
+        logger.error("Errors detected. File NOT marked processed.")
 
 
-    file_manager.mark_processed()
-    logger.info(
-        "Financial records sent to accountant: %d (org=%s)",
-        len(commands),
-        organization_id
-    )
-
-    print(f"✔ Sent to accountant: {len(commands)} financial records")

@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Callable
 
+from contract_costs.action_bus.action_bus import ActionBus
 from contract_costs.common.time import utc_now
 from contract_costs.model.value_direction import ValueDirection
 from contract_costs.model.value_type import ValueType
@@ -20,6 +21,7 @@ def create_value_type_from_cli(
     organization_id,
     actor_user_id,
     create_value_type_service: CreateValueTypeService,
+    action_bus:ActionBus,
 ) -> None:
     raw = data.get("direction")
     if not raw:
@@ -45,7 +47,10 @@ def create_value_type_from_cli(
         is_active=data["is_active"],
     )
 
-    create_value_type_service.execute(cmd)
+    action_bus.execute(action=cmd,handler=create_value_type_service)
+
+
+
 def update_value_type_from_cli(
     *,
     value_type: ValueType,
@@ -53,6 +58,7 @@ def update_value_type_from_cli(
     organization_id,
     actor_user_id,
     update_value_type_service: UpdateValueTypeService,
+    action_bus:ActionBus,
 ) -> None:
     cmd = UpdateValueTypeCommand(
         organization_id=organization_id,
@@ -62,7 +68,7 @@ def update_value_type_from_cli(
         description=data.get("description"),
     )
 
-    update_value_type_service.execute(cmd)
+    action_bus.execute(action=cmd, handler=update_value_type_service)
 
 
 def deactivate_value_type_from_cli(
@@ -71,11 +77,11 @@ def deactivate_value_type_from_cli(
     organization_id,
     actor_user_id,
     deactivate_value_type_service: DeactivateValueTypeService,
+    action_bus:ActionBus,
 ) -> None:
     cmd = DeactivateValueTypeCommand(
         organization_id=organization_id,
         actor_user_id=actor_user_id,
         value_type_id=value_type.id,
     )
-
-    deactivate_value_type_service.execute(cmd)
+    action_bus.execute(action=cmd, handler=deactivate_value_type_service)

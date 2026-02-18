@@ -2,14 +2,18 @@ import logging
 from dataclasses import replace
 from uuid import UUID
 
+from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.model.company import CompanyType
-from contract_costs.model.document import Document, DocumentType
 from contract_costs.model.financial_record import FinancialRecordStatus
-from contract_costs.repository.financial_record_repository import FinancialRecordRepository
 
 from contract_costs.services.catalogues.record_file_organizer import RecordFileOrganizer
 from contract_costs.services.catalogues.record_file_workworkflow_service import RecordFileWorkflowService
 from contract_costs.services.companies.company_evaluate_orchestrator import CompanyEvaluateOrchestrator
+from contract_costs.services.financial_records.assigment.invoice_sources.document.dto.create_record_from_document_command import \
+    CreateRecordFromDocumentCommand
+
+from contract_costs.services.financial_records.assigment.ingest.dto.financial_record_ingest_command import \
+    IngestFinancialRecordFromDocumentCommand
 from contract_costs.services.financial_records.assigment.invoice_sources.dto.common import (
     ResolvedFinancialRecordUpdate,
     RecordIngestBatch,
@@ -20,16 +24,15 @@ from contract_costs.services.financial_records.assigment.invoice_sources.normali
 from contract_costs.services.financial_records.assigment.ingest.financial_record_ingest_orchestrator import (
     FinancialRecordIngestOrchestrator,
 )
-from contract_costs.repository.document_repository import DocumentRepository
 
-import contract_costs.config as cfg
 from contract_costs.services.financial_records.assigment.invoice_sources.pdf.parsers.dto.parse import \
     DocumentParseResult
+from contract_costs.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
 
 
-class CreateRecordFromDocumentService:
+class CreateRecordFromDocumentService(ActionHandler[CreateRecordFromDocumentCommand,UUID]):
     """
     Rebuild financial record from already parsed Document.
 
@@ -44,21 +47,17 @@ class CreateRecordFromDocumentService:
     """
 
     def __init__(
-        self,
-        company_evaluate: CompanyEvaluateOrchestrator,
-        normalizer: DocumentParseNormalizer,
-        ingest_orchestrator: FinancialRecordIngestOrchestrator,
-        record_file_organizer: RecordFileOrganizer,
-        document_repository: DocumentRepository,
-        record_repository: FinancialRecordRepository,
-        file_workflow: RecordFileWorkflowService
+            self,
+            company_evaluate: CompanyEvaluateOrchestrator,
+            normalizer: DocumentParseNormalizer,
+            ingest_orchestrator: FinancialRecordIngestOrchestrator,
+            record_file_organizer: RecordFileOrganizer,
+            file_workflow: RecordFileWorkflowService
     ) -> None:
         self._company_evaluate = company_evaluate
         self._normalizer = normalizer
         self._ingest = ingest_orchestrator
         self._file_organizer = record_file_organizer
-        self._documents = document_repository
-        self._record_repository = record_repository
         self._file_workflow = file_workflow
 
     # ============================================================
@@ -66,14 +65,10 @@ class CreateRecordFromDocumentService:
     # ============================================================
 
     def execute(
-        self,
-        *,
-        organization_id: UUID,
-        actor_user_id: UUID,
-        document: Document,
-        override_reference: str | None = None,
-        override_seller_nip: str | None = None,
-        override_document_type: DocumentType | None = None,
+            self,
+            *,
+            action: CreateRecordFromDocumentCommand,
+            uow: UnitOfWork,
     ) -> UUID:
         """
         Creates new FinancialRecord from existing Document payload.
@@ -81,6 +76,18 @@ class CreateRecordFromDocumentService:
         Returns:
             newly created record_id
         """
+
+
+        document_repo = uow.documents
+        record_repo = uow.financial_records
+
+        document = uow.documents.get(
+            organization_id=action.organization_id,
+            document_id=action.document.id,
+        )
+
+        if not document:
+            raise RuntimeError("Document not found")
 
         if not document.parsed_payload:
             raise RuntimeError("Document has no parsed payload")
@@ -105,28 +112,28 @@ class CreateRecordFromDocumentService:
         # 2️⃣ APPLY USER OVERRIDES
         # ============================================================
 
-        if override_reference:
+        if action.override_reference:
             parse_result = replace(
                 parse_result,
                 record=replace(
                     parse_result.record,
-                    reference=override_reference,
+                    reference=action.override_reference,
                 ),
             )
 
-        if override_seller_nip:
+        if action.override_seller_nip:
             parse_result = replace(
                 parse_result,
                 seller=replace(
                     parse_result.seller,
-                    tax_number=override_seller_nip,
+                    tax_number=action.override_seller_nip,
                 ),
             )
 
-        if override_document_type:
+        if action.override_document_type:
             parse_result = replace(
                 parse_result,
-                document_type=override_document_type,
+                document_type=action.override_document_type,
             )
 
         # ============================================================
@@ -134,15 +141,17 @@ class CreateRecordFromDocumentService:
         # ============================================================
 
         buyer = self._company_evaluate.evaluate(
-            organization_id=organization_id,
-            actor_user_id=actor_user_id,
+            organization_id=action.organization_id,
+            actor_user_id=action.actor_user_id,
             input_=parse_result.buyer,
+            uow=uow
         )
 
         seller = self._company_evaluate.evaluate(
-            organization_id=organization_id,
-            actor_user_id=actor_user_id,
+            organization_id=action.organization_id,
+            actor_user_id=action.actor_user_id,
             input_=parse_result.seller,
+            uow=uow
         )
 
         # ============================================================
@@ -207,30 +216,34 @@ class CreateRecordFromDocumentService:
         # 7️⃣ INGEST
         # ============================================================
 
-        new_record_id = self._ingest.ingest_from_document(
-            organization_id=organization_id,
-            actor_user_id=actor_user_id,
-            batch=batch,
+        new_record_id = self._ingest.execute(
+            action = IngestFinancialRecordFromDocumentCommand(
+                organization_id=action.organization_id,
+                actor_user_id=action.actor_user_id,
+                batch=batch,
+            ),
+            uow=uow
         )
 
         # ============================================================
         # 8️⃣ ATTACH DOCUMENT
         # ============================================================
 
-        self._documents.attach_to_record(
-            organization_id=organization_id,
+        document_repo.attach_to_record(
+            organization_id=action.organization_id,
             document_id=document.id,
             record_id=new_record_id,
         )
 
-        record = self._record_repository.get(
-            organization_id=organization_id,
+        record = record_repo.get(
+            organization_id=action.organization_id,
             record_id=new_record_id,
         )
         if record:
             self._file_workflow.sync(
-                organization_id=organization_id,
+                organization_id=action.organization_id,
                 record=record,
+                uow=uow
             )
 
         # # zapisz zmiany file_path dokumentów

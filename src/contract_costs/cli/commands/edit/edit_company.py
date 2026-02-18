@@ -12,8 +12,8 @@ from contract_costs.cli.utils.context_helpers import require_organization_id, re
 from contract_costs.common.context.exceptions import ContextError
 from contract_costs.model.company import Company
 from contract_costs.services.common.resolve_utils import normalize_required_tax_number
-from contract_costs.services.companies.dto.activate_company_command import ActivateCompanyCommand
-from contract_costs.services.companies.dto.deactivate_company_command import DeactivateCompanyCommand
+from contract_costs.services.companies.dto.activate_company_command import BaseActivateCompanyCommand
+from contract_costs.services.companies.dto.deactivate_company_command import BaseDeactivateCompanyCommand
 
 logger = logging.getLogger(__name__)
 
@@ -124,10 +124,11 @@ def _prefill_company_fields(company: Company) -> list[dict]:
 
 def _handle_company_status_change(args) -> None:
     services = get_services()
-
-    organization_id = require_organization_id(services.context)
-    actor_user_id = require_user_id(services.context)
-
+    try:
+        organization_id = require_organization_id(services.context)
+        actor_user_id = require_user_id(services.context)
+    except ContextError:
+        return
     if args.activate and args.deactivate:
         print("Cannot activate and deactivate at the same time")
         return
@@ -145,20 +146,26 @@ def _handle_company_status_change(args) -> None:
 
 
     if args.activate:
-        activate_cmd = ActivateCompanyCommand(
+        activate_cmd = BaseActivateCompanyCommand(
             organization_id=organization_id,
             company_id=company_id,
             actor_user_id=actor_user_id,
         )
 
-        services.activate_company_service.execute(activate_cmd)
+        services.action_bus.execute(
+            action=activate_cmd,
+            handler=services.activate_company_service,
+        )
         print("Company activated")
     else:
-        deactivate_cmd = DeactivateCompanyCommand(
+        deactivate_cmd = BaseDeactivateCompanyCommand(
             organization_id=organization_id,
             company_id=company_id,
             actor_user_id=actor_user_id,
         )
 
-        services.deactivate_company_service.execute(deactivate_cmd)
+        services.action_bus.execute(
+            action=deactivate_cmd,
+            handler=services.deactivate_company_service,
+        )
         print("Company deactivated")

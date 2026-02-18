@@ -9,7 +9,6 @@ from contract_costs.common.ids import new_uuid
 from contract_costs.common.time import utc_now
 from contract_costs.infrastructure.openai_invoice_client import OpenAIInvoiceClient
 from contract_costs.model.company import Company, CompanyType, BankAccount, Contact, Address
-from contract_costs.repository.company_repository import CompanyRepository
 
 from contract_costs.services.companies.confidence.fields import CompanyField
 from contract_costs.services.companies.confidence.quality_default import DefaultCompanyQuality
@@ -17,6 +16,7 @@ from contract_costs.services.companies.normalize.normalize_service import Compan
 
 from contract_costs.services.companies.providers.candidate_provider import CompanyCandidateProvider
 from contract_costs.services.financial_records.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
+from contract_costs.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
 
@@ -31,20 +31,21 @@ class CompanyEvaluateOrchestrator:
 
     def __init__(
         self,
-        company_repo: CompanyRepository,
+        # company_repo: CompanyRepository,
         candidate_provider: CompanyCandidateProvider,
         llm_company_resolver: OpenAIInvoiceClient,
         clock: Callable[[], datetime] = utc_now,
 
     ) -> None:
         self._llm_company_resolver = llm_company_resolver
-        self._company_repo = company_repo
+        # self._company_repo = company_repo
         self._candidate_provider = candidate_provider
         self._normalizator = CompanyNormalizeService()
         self._clock = clock
 
     def evaluate_from_tax(   self,
                     *,
+                    uow: UnitOfWork,
                     organization_id: UUID,
                     actor_user_id: UUID,
                     input_tax_number: str | None,
@@ -54,6 +55,7 @@ class CompanyEvaluateOrchestrator:
         if not input_tax_number:
             raise ValueError("No tax number provided, unable to evaluate company")
         return self.evaluate(
+            uow=uow,
             organization_id=organization_id,
             actor_user_id=actor_user_id,
             input_= CompanyInput(
@@ -75,6 +77,7 @@ class CompanyEvaluateOrchestrator:
     def evaluate(
             self,
             *,
+            uow:UnitOfWork,
             organization_id: UUID,
             actor_user_id: UUID,
             input_: CompanyInput,
@@ -90,7 +93,7 @@ class CompanyEvaluateOrchestrator:
         4. Update best candidate with better incoming data
         """
 
-        candidates = self._candidate_provider.find_candidates(organization_id=organization_id, input_=input_)
+        candidates = self._candidate_provider.find_candidates(uow=uow,organization_id=organization_id, input_=input_)
         logger.info(f"Evaluating company {input_.name}")
 
         for candidate in candidates:
@@ -101,6 +104,7 @@ class CompanyEvaluateOrchestrator:
                 raise RuntimeError(f"({mode.value} mode) No candidates found for NIP: {input_.tax_number}")
             logger.info("No candidates found → creating new company")
             return self._create_company(
+                uow=uow,
                 organization_id=organization_id,
                 actor_user_id=actor_user_id,
                 input_=input_)
@@ -119,6 +123,7 @@ class CompanyEvaluateOrchestrator:
         )
 
         return self._maybe_update(
+            uow=uow,
             organization_id= organization_id,
             actor_user_id= actor_user_id,
             company=best,
@@ -129,6 +134,7 @@ class CompanyEvaluateOrchestrator:
 
     def _create_company( self,
                         *,
+                        uow:UnitOfWork,
                         organization_id: UUID,
                         actor_user_id: UUID,
                         input_: CompanyInput,
@@ -173,7 +179,7 @@ class CompanyEvaluateOrchestrator:
             updated_by_user_id=None,
         )
 
-        self._company_repo.add(company)
+        uow.companies.add(company)
 
         logger.info(
             "Created SELLER from invoice: tax=%s, name=%s",
@@ -244,6 +250,7 @@ class CompanyEvaluateOrchestrator:
 
     def _maybe_update(self,
                             *,
+                            uow: UnitOfWork,
                             organization_id: UUID,
                             actor_user_id: UUID,
                             company: Company,
@@ -326,7 +333,7 @@ class CompanyEvaluateOrchestrator:
                 updated_at=self._clock(),
                 updated_by_user_id=actor_user_id,
             )
-            self._company_repo.update(updated_company)
+            uow.companies.update(updated_company)
             return updated_company
         return company
 

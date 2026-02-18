@@ -1,10 +1,11 @@
 from contract_costs.cli.context import get_services
-from contract_costs.cli.utils.context_helpers import require_organization_id
+from contract_costs.cli.utils.context_helpers import require_organization_id, require_user_id
 from contract_costs.common.context.exceptions import ContextError
 from contract_costs.config import REPORTS_DIR
 from contract_costs.services.reports.contract_cost_report_runner import (
     ContractCostReportRunner,
 )
+from contract_costs.services.reports.dto.generate_contract_cost_report_query import GenerateContractCostReportQuery
 from contract_costs.services.reports.renders.cli import render_stdout
 from contract_costs.services.reports.renders.excel import ExcelReportRenderer
 from uuid import UUID
@@ -25,19 +26,18 @@ def build_report_costs(subparsers):
 
 def resolve_contract_ref(repo,organization_id: UUID, ref: str):
 
-
-
     try:
         return repo.get(organization_id=organization_id,contract_id=UUID(ref))
     except (ValueError, TypeError):
         return repo.get_by_code(organization_id=organization_id,contract_code=ref)
 
 
-def handle_report_costs(args):
+def handle_report_costs(args) -> None:
     services = get_services()
 
     try:
         organization_id = require_organization_id(services.context)
+        actor_user_id = require_user_id(services.context)
     except ContextError:
         return None
 
@@ -50,8 +50,17 @@ def handle_report_costs(args):
     if contract is None:
         raise ValueError(f"Contract '{args.contract_ref}' not found")
 
+    rows = services.action_bus.execute(
+        action=GenerateContractCostReportQuery(
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
+            contract_id=contract.id,
+        ),
+        handler=services.contract_cost_report,
+    )
+
     runner = ContractCostReportRunner(
-        services.contract_cost_report
+        rows
     )
 
     df = runner.run(
@@ -66,7 +75,9 @@ def handle_report_costs(args):
         path = REPORTS_DIR / f"contract_costs_{contract.code}.xlsx"
         ExcelReportRenderer().render(df, output_path=path)
         print(f"Report saved to {path}")
+        return None
     else:
         render_stdout(df)
+        return None
 
 REGISTRY.register_group("report", build_report_costs)

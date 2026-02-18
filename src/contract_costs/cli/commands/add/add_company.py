@@ -37,6 +37,7 @@ def _run_add_company_interactive() -> None:
     except ContextError:
         return
 
+
     create_company_from_cli(
         data=data,
         organization_id=organization_id,

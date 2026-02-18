@@ -4,12 +4,12 @@ from contract_costs.cli.context import get_services
 from contract_costs.cli.printers.table_printer.cmd_printer import CmdPrinter
 from contract_costs.cli.printers.table_printer.excel_printer import ExcelPrinter
 from contract_costs.cli.registry import REGISTRY
-from contract_costs.cli.utils.context_helpers import require_organization_id
+from contract_costs.cli.utils.context_helpers import require_organization_id, require_user_id
 from contract_costs.cli.utils.contract_resolver import resolve_contract
 from contract_costs.common.context.exceptions import ContextError
 from contract_costs.infrastructure.filesystem.show_file_manager import SnapshotsShowFileManager
 from contract_costs.reports.snapshots.snapshot_list_columns import snapshot_list_columns
-
+from contract_costs.services.snapshots.dto.contract_snapshot_query import ListContractSnapshotsQuery
 
 
 # =========================================================
@@ -49,21 +49,27 @@ def handle_show_snapshots(args):
 
     try:
         organization_id = require_organization_id(services.context)
+        actor_user_id = require_user_id(services.context)
     except ContextError:
         return
 
     if args.ref:
         contract = resolve_contract(args.ref, organization_id, services)
-
-        rows = query.list_snapshots(
-            organization_id=organization_id,
-            contract_id=contract.id,
-        )
+        rows = services.action_bus.execute(
+            action=ListContractSnapshotsQuery(
+                organization_id=organization_id,
+                actor_user_id=actor_user_id,
+                contract_id=contract.id
+            ),
+            handler=query)
         contract_code = contract.code
     else:
-        rows = query.list_snapshots(
-            organization_id=organization_id,
-        )
+        rows = services.action_bus.execute(
+            action=ListContractSnapshotsQuery(
+                organization_id=organization_id,
+                actor_user_id=actor_user_id,
+            ),
+            handler=query)
         contract_code = None
 
     columns = snapshot_list_columns()

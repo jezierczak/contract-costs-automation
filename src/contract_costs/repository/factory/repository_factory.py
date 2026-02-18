@@ -23,6 +23,9 @@ from contract_costs.repository.snapshot.contract_node_snapshot_repository import
 from contract_costs.repository.snapshot.contract_node_value_snapshot_repository import \
     ContractNodeValueSnapshotRepository
 from contract_costs.repository.snapshot.contract_snapshot_repository import ContractSnapshotRepository
+from contract_costs.unit_of_work.inmemory_unit_of_work import InMemoryUnitOfWork
+from contract_costs.unit_of_work.mysql_unit_of_work import MySQLUnitOfWork
+from contract_costs.unit_of_work.unit_of_work import UnitOfWork
 
 
 
@@ -160,4 +163,11 @@ class RepositoryFactory:
             MySQLNumberSequenceRepository()
             if self.backend == RepoBackend.MYSQL
             else InMemoryNumberSequenceRepository()
+        )
+
+    def unit_of_work(self) -> UnitOfWork:
+        return (
+            MySQLUnitOfWork()
+            if self.backend == RepoBackend.MYSQL
+            else InMemoryUnitOfWork()
         )

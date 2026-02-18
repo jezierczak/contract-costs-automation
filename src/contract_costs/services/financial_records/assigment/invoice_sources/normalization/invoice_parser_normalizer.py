@@ -2,7 +2,9 @@ from dataclasses import replace
 from decimal import Decimal, InvalidOperation
 from datetime import date
 from typing import Any
+from uuid import uuid4
 
+from contract_costs.model.company import CompanyType
 from contract_costs.model.document import DocumentType
 from contract_costs.services.financial_records.assigment.apply.commands.invoice_command import InvoiceCommand
 from contract_costs.services.financial_records.assigment.invoice_sources.dto.common import FinancialRecordUpdate, \
@@ -42,20 +44,33 @@ class DocumentParseNormalizer:
     """
 
     def normalize_payload(self, payload: dict) -> DocumentParseResult:
-        record_data = payload.get("record", {})
-        buyer_data = payload.get("buyer", {})
-        seller_data = payload.get("seller", {})
-        lines_data = payload.get("lines", [])
+        payload_data = payload if isinstance(payload, dict) else {}
+        record_data = self._as_dict(payload_data.get("record"))
+        buyer_data = self._as_dict(payload_data.get("buyer"))
+        seller_data = self._as_dict(payload_data.get("seller"))
+        lines_data = payload_data.get("lines", [])
+        if not isinstance(lines_data, list):
+            lines_data = []
 
         record = self._build_record_update(record_data)
-        lines = [self._build_line_update(l) for l in lines_data]
+        lines = [
+            self._build_line_update(line)
+            for line in lines_data
+            if isinstance(line, dict)
+        ]
 
         return DocumentParseResult(
-            document_type=self._resolve_document_type(payload.get("document_type")),
+            document_type=self._resolve_document_type(payload_data.get("document_type")),
             record=record,
             lines=lines,
-            buyer=self._build_company_input(buyer_data),
-            seller=self._build_company_input(seller_data),
+            buyer=self._build_company_input(
+                buyer_data,
+                default_role=CompanyType.BUYER,
+            ),
+            seller=self._build_company_input(
+                seller_data,
+                default_role=CompanyType.SELLER,
+            ),
         )
 
     # def normalize(self, payload: dict) -> DocumentParseResult:
@@ -101,7 +116,7 @@ class DocumentParseNormalizer:
             amount=replace(
                 line.amount,
                 value=value,
-                vat_rate=self._vat_rate(line.amount.vat_rate),
+                vat_rate=self._parse_vat(line.amount.vat_rate),
             ),
         )
     @staticmethod
@@ -116,19 +131,32 @@ class DocumentParseNormalizer:
             "h": UnitOfMeasure.HOUR,
         }.get(str(value).lower(), UnitOfMeasure.PIECE)
 
+    # @staticmethod
+    # def _vat_rate(value) -> VatRate:
+    #     return {
+    #         "23": VatRate.VAT_23,
+    #         "8": VatRate.VAT_8,
+    #         "5": VatRate.VAT_5,
+    #         "0": VatRate.VAT_0,
+    #         "zw": VatRate.VAT_ZW,
+    #         "oo": VatRate.VAT_ZW,
+    #         "np": VatRate.VAT_ZW,
+    #     }.get(str(value).lower(), VatRate.VAT_ZW)
+
     @staticmethod
-    def _vat_rate(value) -> VatRate:
-        return {
-            "23": VatRate.VAT_23,
-            "8": VatRate.VAT_8,
-            "5": VatRate.VAT_5,
-            "0": VatRate.VAT_0,
-        }.get(str(value), VatRate.VAT_23)
+    def _parse_vat(value: str | None) -> VatRate:
+        if not value:
+            return VatRate.VAT_23
+
+        try:
+            return VatRate(Decimal(str(value)))
+        except Exception:
+            return VatRate.VAT_23
 
     def _build_record_update(self, data: dict[str,Any]) -> FinancialRecordUpdate:
         reference = str(data.get("reference") or "").strip()
         if not reference:
-            raise ValueError("Missing invoice reference from parsed payload")
+            reference = f"AI-{uuid4().hex[:12]}"
 
         return FinancialRecordUpdate(
             command=InvoiceCommand.APPLY,
@@ -156,6 +184,8 @@ class DocumentParseNormalizer:
 
     def _build_line_update(self, data: dict[str,Any]) -> FinancialRecordLineUpdate:
         amount_data = data.get("amount", {})
+        if not isinstance(amount_data, dict):
+            amount_data = {}
 
         return FinancialRecordLineUpdate(
             record_line_id=None,
@@ -169,17 +199,28 @@ class DocumentParseNormalizer:
 
             amount=Amount(
                 value=_safe_decimal(amount_data.get("value"), Decimal("0.00")),
-                vat_rate=self._vat_rate(amount_data.get("vat_rate")),
+                vat_rate=self._parse_vat(amount_data.get("vat_rate")),
                 tax_treatment=TaxTreatment.TAX_DEDUCTIBLE,
             ),
 
-            contract_id=data.get("contract_id"),
-            contract_node_id=data.get("contract_node_id"),
+            contract_code=data.get("contract_code"),
+            contract_node_code=data.get("contract_node_code"),
             value_type_code=data.get("value_type_code"),
+            agreement_code=data.get("agreement_code"),
+            agreement_node_code=data.get("agreement_node_code"),
+
         )
 
     @staticmethod
-    def _build_company_input(data: dict[str,Any]) -> CompanyInput:
+    def _build_company_input(
+        data: dict[str,Any],
+        *,
+        default_role: CompanyType,
+    ) -> CompanyInput:
+        role = str(data.get("role") or "").strip()
+        if role not in {company_type.value for company_type in CompanyType}:
+            role = default_role.value
+
         return CompanyInput(
             name=data.get("name"),
             tax_number=data.get("tax_number"),
@@ -191,8 +232,12 @@ class DocumentParseNormalizer:
             phone_number=data.get("phone_number"),
             email=data.get("email"),
             bank_account=data.get("bank_account"),
-            role=str(data.get("role") or "").strip(),
+            role=role,
         )
+
+    @staticmethod
+    def _as_dict(value: Any) -> dict[str, Any]:
+        return value if isinstance(value, dict) else {}
 
     @staticmethod
     def _payment_method(value) -> PaymentMethod:
@@ -201,6 +246,9 @@ class DocumentParseNormalizer:
             "cash": PaymentMethod.CASH,
             "card": PaymentMethod.CARD,
             "blik": PaymentMethod.BLIK,
+            "bon": PaymentMethod.BON,
+            "check": PaymentMethod.CHECK,
+            "credit": PaymentMethod.CREDIT,
         }.get(str(value).lower(), PaymentMethod.UNKNOWN)
 
     @staticmethod

@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from uuid import UUID
 
+from contract_costs.action_bus.action_type import ActionType, action_type
+from contract_costs.action_bus.query import Query
 from contract_costs.model.company import CompanyType
 
 
@@ -9,10 +11,9 @@ from dataclasses import dataclass
 from contract_costs.model.company import CompanyType
 
 
-@dataclass(frozen=True)
-class CompanyQuery:
-    organization_id: UUID
-
+@dataclass(frozen=True,slots=True)
+@action_type(ActionType.COMPANY_MANAGEMENT)
+class CompanyQuery(Query):
     # =====================
     # IDENTYFIKATORY (STRICT)
     # =====================

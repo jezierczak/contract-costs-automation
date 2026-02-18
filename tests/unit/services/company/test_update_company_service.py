@@ -2,16 +2,18 @@ from datetime import datetime
 from uuid import uuid4
 
 from contract_costs.services.companies.update_company_service import UpdateCompanyService
-from contract_costs.services.companies.dto.update_company_command import UpdateCompanyCommand
+from contract_costs.services.companies.dto.update_company_command import (
+    UpdateCounterpartyCompanyCommand,
+    UpdateOwnerCompanyCommand,
+)
 from contract_costs.model.company import CompanyType
 from tests.builders.company_builder import CompanyBuilder
 
 
-def test_update_company_success(company_repo):
+def test_update_company_success(company_repo, uow):
     fixed_time = datetime(2024, 1, 1)
 
     service = UpdateCompanyService(
-        company_repository=company_repo,
         clock=lambda: fixed_time,
     )
 
@@ -28,7 +30,7 @@ def test_update_company_success(company_repo):
 
     company_repo.add(company)
 
-    cmd = UpdateCompanyCommand(
+    cmd = UpdateCounterpartyCompanyCommand(
         organization_id=org_id,
         company_id=company.id,
         actor_user_id=actor_id,
@@ -42,7 +44,7 @@ def test_update_company_success(company_repo):
         tags={"a", "b"},
     )
 
-    service.execute(cmd)
+    service.execute(action=cmd, uow=uow)
 
     updated = company_repo.get(company.id, org_id)
 
@@ -55,10 +57,10 @@ def test_update_company_success(company_repo):
 import pytest
 
 
-def test_update_company_not_exists_raises(company_repo):
-    service = UpdateCompanyService(company_repo)
+def test_update_company_not_exists_raises(uow):
+    service = UpdateCompanyService()
 
-    cmd = UpdateCompanyCommand(
+    cmd = UpdateCounterpartyCompanyCommand(
         organization_id=uuid4(),
         company_id=uuid4(),
         actor_user_id=uuid4(),
@@ -73,11 +75,11 @@ def test_update_company_not_exists_raises(company_repo):
     )
 
     with pytest.raises(ValueError):
-        service.execute(cmd)
+        service.execute(action=cmd, uow=uow)
 
 
-def test_update_company_duplicate_tax_number_raises(company_repo):
-    service = UpdateCompanyService(company_repo)
+def test_update_company_duplicate_tax_number_raises(company_repo, uow):
+    service = UpdateCompanyService()
 
     org_id = uuid4()
 
@@ -98,7 +100,7 @@ def test_update_company_duplicate_tax_number_raises(company_repo):
     company_repo.add(c1)
     company_repo.add(c2)
 
-    cmd = UpdateCompanyCommand(
+    cmd = UpdateCounterpartyCompanyCommand(
         organization_id=org_id,
         company_id=c2.id,
         actor_user_id=uuid4(),
@@ -114,11 +116,11 @@ def test_update_company_duplicate_tax_number_raises(company_repo):
 
     import pytest
     with pytest.raises(ValueError):
-        service.execute(cmd)
+        service.execute(action=cmd, uow=uow)
 
 
-def test_update_company_keeps_tax_number_if_none(company_repo):
-    service = UpdateCompanyService(company_repo)
+def test_update_company_keeps_tax_number_if_none(company_repo, uow):
+    service = UpdateCompanyService()
 
     org_id = uuid4()
 
@@ -131,7 +133,13 @@ def test_update_company_keeps_tax_number_if_none(company_repo):
 
     company_repo.add(company)
 
-    cmd = UpdateCompanyCommand(
+    update_cmd_type = (
+        UpdateOwnerCompanyCommand
+        if company.role == CompanyType.OWN
+        else UpdateCounterpartyCompanyCommand
+    )
+
+    cmd = update_cmd_type(
         organization_id=org_id,
         company_id=company.id,
         actor_user_id=uuid4(),
@@ -145,7 +153,7 @@ def test_update_company_keeps_tax_number_if_none(company_repo):
         tags=None,
     )
 
-    service.execute(cmd)
+    service.execute(action=cmd, uow=uow)
 
     updated = company_repo.get(company.id, org_id)
 

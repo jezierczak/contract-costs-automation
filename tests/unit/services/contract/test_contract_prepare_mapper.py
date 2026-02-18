@@ -3,7 +3,7 @@ from datetime import date, datetime
 from uuid import uuid4
 from decimal import Decimal
 
-from contract_costs.model.contract import Contract, ContractStatus
+from contract_costs.model.contract import Contract, ContractStatus, ContractType
 from contract_costs.services.contracts.prepare.mappers.contract_prepare_mapper import (
     ContractPrepareMapper,
 )
@@ -39,6 +39,7 @@ def make_contract(
         created_by_user_id=None,
         updated_at=None,
         updated_by_user_id=None,
+        contract_type=ContractType.PROJECT,
     )
 
 

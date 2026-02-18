@@ -1,12 +1,19 @@
 from uuid import UUID
 
 from contract_costs.action_bus.action_bus import ActionBus
-from contract_costs.model.company import Address, Company, Contact
+from contract_costs.model.company import Address, Company, Contact, CompanyType
 from contract_costs.model.company import BankAccount
-from contract_costs.services.companies.dto.create_company_command import CreateCompanyCommand
-from contract_costs.services.companies.dto.update_company_command import UpdateCompanyCommand
+from contract_costs.services.companies.dto.create_company_command import (
+    CreateCounterpartyCompanyCommand,
+    CreateOwnerCompanyCommand,
+)
+from contract_costs.services.companies.dto.update_company_command import (
+    UpdateCounterpartyCompanyCommand,
+    UpdateOwnerCompanyCommand,
+)
 from contract_costs.services.companies.update_company_service import UpdateCompanyService
 from contract_costs.services.companies.create_company_service import CreateCompanyService
+from contract_costs.unit_of_work import UnitOfWork
 
 
 def create_company_from_cli(
@@ -38,7 +45,13 @@ def create_company_from_cli(
         else None
     )
 
-    cmd = CreateCompanyCommand(
+    create_cmd_type = (
+        CreateOwnerCompanyCommand
+        if data["role"] == CompanyType.OWN
+        else CreateCounterpartyCompanyCommand
+    )
+
+    cmd = create_cmd_type(
         organization_id=organization_id,
         actor_user_id=actor_user_id,
 
@@ -52,7 +65,7 @@ def create_company_from_cli(
         bank_account=bank_account,
         tags=None,
     )
-    action_bus.execute(action=cmd,handler=create_company_service)
+    action_bus.execute(action=cmd, handler=create_company_service)
     # create_company_service.execute(cmd)
 
 def update_company_from_cli(
@@ -85,7 +98,13 @@ def update_company_from_cli(
         else None
     )
 
-    cmd = UpdateCompanyCommand(
+    update_cmd_type = (
+        UpdateOwnerCompanyCommand
+        if data["role"] == CompanyType.OWN
+        else UpdateCounterpartyCompanyCommand
+    )
+
+    cmd = update_cmd_type(
         organization_id=organization_id,
         company_id=company.id,
         actor_user_id=actor_user_id,
@@ -102,7 +121,6 @@ def update_company_from_cli(
     action_bus.execute(
         action=cmd,
         handler=update_company_service)
-    update_company_service.execute(cmd)
 
     # TU później:
     # - change address

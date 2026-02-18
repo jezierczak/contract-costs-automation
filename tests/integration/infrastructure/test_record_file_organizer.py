@@ -65,7 +65,6 @@ def test_move_to_failed_creates_reason_subdir(tmp_path):
 
 
 from datetime import date
-from contract_costs.model.company import CompanyType
 from tests.builders.company_builder import CompanyBuilder
 
 

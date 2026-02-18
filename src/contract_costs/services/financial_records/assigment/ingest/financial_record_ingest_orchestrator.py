@@ -1,42 +1,67 @@
 import logging
 from uuid import UUID
 
-from contract_costs.repository.financial_record_repository import FinancialRecordRepository
+from contract_costs.action_bus.action_handler import ActionHandler
 
 from contract_costs.services.catalogues.record_file_workworkflow_service import RecordFileWorkflowService
 from contract_costs.services.financial_records.assigment.ingest.completion_validator.invoice_completion_reason import \
     FinancialRecordCompletionReason
+from contract_costs.services.financial_records.assigment.ingest.dto.financial_record_ingest_command import \
+    BaseFinancialRecordIngestCommand, IngestFinancialRecordFromDocumentCommand, IngestFinancialRecordFromExcelCommand
 from contract_costs.services.financial_records.assigment.ingest.excel_financial_record_ingest_service import ExcelFinancialRecordIngestService
 from contract_costs.services.financial_records.assigment.ingest.completion_validator.invoice_completion_validator import RecordCompletionValidator
 from contract_costs.services.financial_records.assigment.ingest.pdf_financial_record_ingest_service import PdfFinancialRecordIngestService
 from contract_costs.services.financial_records.assigment.invoice_sources.dto.common import  RecordIngestBatch
 
 from contract_costs.services.financial_records.assigment.ingest.financial_record_line_update_service import FinancialRecordLineUpdateService
-
+from contract_costs.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
 
-class FinancialRecordIngestOrchestrator:
+class FinancialRecordIngestOrchestrator(ActionHandler[BaseFinancialRecordIngestCommand, UUID | None]):
 
     def __init__(
             self,
             record_ingest_service_document: PdfFinancialRecordIngestService,
             record_ingest_service_excel: ExcelFinancialRecordIngestService,
             record_line_service: FinancialRecordLineUpdateService,
-            record_repository: FinancialRecordRepository,
             file_workflow: RecordFileWorkflowService,
             record_completion_validator: RecordCompletionValidator,
     ) -> None:
         self._document_ingest = record_ingest_service_document
         self._excel_ingest = record_ingest_service_excel
         self._record_line_service = record_line_service
-        self._record_repository = record_repository
         self._file_workflow = file_workflow
         self._completion_validator = record_completion_validator
 
-    def ingest_from_document(
+    def execute(
             self,
             *,
+            action: BaseFinancialRecordIngestCommand,
+            uow: UnitOfWork,
+    ):
+        if isinstance(action, IngestFinancialRecordFromDocumentCommand):
+            return self._ingest_from_document(
+                uow=uow,
+                organization_id=action.organization_id,
+                actor_user_id=action.actor_user_id,
+                batch=action.batch,
+            )
+
+        if isinstance(action, IngestFinancialRecordFromExcelCommand):
+            return self._ingest_from_excel(
+                uow=uow,
+                organization_id=action.organization_id,
+                actor_user_id=action.actor_user_id,
+                batch=action.batch,
+            )
+
+        raise RuntimeError("Unsupported ingest command type")
+
+    def _ingest_from_document(
+            self,
+            *,
+            uow:UnitOfWork,
             organization_id: UUID,
             actor_user_id: UUID,
             batch: RecordIngestBatch,
@@ -48,6 +73,7 @@ class FinancialRecordIngestOrchestrator:
         """
 
         ref_map = self._document_ingest.apply(
+            uow=uow,
             organization_id=organization_id,
             actor_user_id=actor_user_id,
             updates=batch.financial_records)
@@ -56,20 +82,8 @@ class FinancialRecordIngestOrchestrator:
             actor_user_id=actor_user_id,
             lines=batch.lines,
             ref_map=ref_map,
+            uow=uow
         )
-
-        #
-        # for ref in ref_map.values():
-        #     if ref.record_id:
-        #
-        #         record = self._record_repository.get(organization_id=organization_id, record_id=ref.record_id)
-        #         if record is None:
-        #             raise RuntimeError(
-        #                 f"Record not found for id {ref.record_id}"
-        #             )
-        #         self._file_workflow.sync(
-        #             organization_id=organization_id,
-        #             record=record,)
 
         record_ids = [
             ref.record_id
@@ -82,9 +96,10 @@ class FinancialRecordIngestOrchestrator:
 
         return record_ids[0]
 
-    def ingest_from_excel(
+    def _ingest_from_excel(
             self,
             *,
+            uow: UnitOfWork,
             organization_id: UUID,
             actor_user_id: UUID,
             batch: RecordIngestBatch,
@@ -99,6 +114,7 @@ class FinancialRecordIngestOrchestrator:
         # =========================
 
         ref_map = self._excel_ingest.apply(
+            uow=uow,
             organization_id=organization_id,
             actor_user_id=actor_user_id,
             updates=batch.financial_records
@@ -113,6 +129,7 @@ class FinancialRecordIngestOrchestrator:
             actor_user_id=actor_user_id,
             lines=batch.lines,
             ref_map=ref_map,
+            uow=uow
         )
 
         # =========================
@@ -147,6 +164,7 @@ class FinancialRecordIngestOrchestrator:
                 organization_id=organization_id,
                 actor_user_id=actor_user_id,
                 record_ids=to_finalize,
+                record_repo=uow.financial_records
             )
 
         # =========================
@@ -157,7 +175,7 @@ class FinancialRecordIngestOrchestrator:
             if not ref.record_id:
                 continue
 
-            record = self._record_repository.get(
+            record = uow.financial_records.get(
                 organization_id=organization_id,
                 record_id=ref.record_id,
             )
@@ -169,4 +187,5 @@ class FinancialRecordIngestOrchestrator:
             self._file_workflow.sync(
                 organization_id=organization_id,
                 record=record,
+                uow=uow,
             )

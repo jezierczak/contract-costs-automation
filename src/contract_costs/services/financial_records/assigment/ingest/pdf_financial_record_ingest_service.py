@@ -9,6 +9,7 @@ from contract_costs.services.financial_records.assigment.ingest.dto.invoice_ref_
 )
 from contract_costs.services.financial_records.assigment.invoice_sources.dto.common import ResolvedFinancialRecordUpdate
 from contract_costs.services.financial_records.assigment.ingest.financial_record_ingest_service import FinancialRecordIngestService
+from contract_costs.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
 
@@ -22,14 +23,16 @@ class PdfFinancialRecordIngestService(FinancialRecordIngestService):
     - nigdy nie PROCESSED
     """
 
+
     def apply(
         self,
         *,
+        uow: UnitOfWork,
         organization_id: UUID,
         actor_user_id: UUID,
         updates: list[ResolvedFinancialRecordUpdate],
     ) -> dict[str, FinancialRecordRefResult]:
-
+        record_repo=uow.financial_records
         results: dict[str, FinancialRecordRefResult] = {}
 
         for update in updates:
@@ -39,6 +42,8 @@ class PdfFinancialRecordIngestService(FinancialRecordIngestService):
             existing = self._get_existing_record(
                 organization_id=organization_id,
                 update=update,
+                record_repo=record_repo
+
             )
 
             # -------------------------------------------------
@@ -88,7 +93,7 @@ class PdfFinancialRecordIngestService(FinancialRecordIngestService):
                 documents=[],
             )
 
-            self._record_repository.add(record)
+            record_repo.add(record)
 
             results[ref_key] = FinancialRecordRefResult(
                 record_id=record_id,

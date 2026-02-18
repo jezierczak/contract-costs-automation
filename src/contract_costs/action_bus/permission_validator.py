@@ -1,5 +1,6 @@
 from contract_costs.action_bus.ROLE_PERMISSIONS import ROLE_PERMISSIONS
 from contract_costs.action_bus.action import Action
+from contract_costs.action_bus.action_type import ActionType
 from contract_costs.action_bus.permission_resolver import PermissionResolver
 
 
@@ -10,21 +11,38 @@ class PermissionValidator:
 
     def validate(self, action: Action) -> None:
 
-        action_type = action.action_type #getattr(type(action), "__action_type__", None)
+        action_type = action.action_type
 
         if action_type is None:
-            raise RuntimeError(
-                f"{type(action).__name__} missing @action_type decorator"
+            raise RuntimeError("Missing action_type")
+
+        # 1️⃣ PUBLIC
+        if action_type == ActionType.SYSTEM_CREATE_ORGANIZATION_NEW_USER:
+            return
+
+        # 2️⃣ AUTHENTICATED (bez org)
+        # if scope == ActionScope.AUTHENTICATED:
+        #     allowed = self._permission_resolver.has_system_permission(
+        #         user_id=action.actor_user_id,
+        #         action_type=action_type,
+        #     )
+        #     if not allowed:
+        #         raise PermissionError("Not allowed")
+        #     return
+
+        # 3️⃣ TENANT
+        # if scope == ActionScope.TENANT:
+
+
+        if hasattr(action, "organization_id") and hasattr(action, "actor_user_id"):
+            allowed = self._permission_resolver.has_permission(
+                organization_id=action.organization_id,
+                user_id=action.actor_user_id,
+                action_type=action_type,
             )
-
-        allowed = self._permission_resolver.has_permission(
-            organization_id=action.organization_id,
-            user_id=action.actor_user_id,
-            action_type=action_type,
-        )
-
-        if not allowed:
-            raise PermissionError("Not allowed")
+            if not allowed:
+                raise PermissionError("Not allowed")
+            return
 
 
         # Query → tylko membership check

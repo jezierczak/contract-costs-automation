@@ -5,7 +5,7 @@ from uuid import UUID
 
 from contract_costs.common.ids import new_uuid
 from contract_costs.common.time import utc_now
-from contract_costs.model.contract import Contract, ContractStatus
+from contract_costs.model.contract import Contract, ContractStatus, ContractType
 from tests.builders.company_builder import CompanyBuilder
 from contract_costs.model.company import Company
 
@@ -31,6 +31,7 @@ class ContractBuilder:
         self._budget = Decimal("1000.00")
         self._path = None
         self._status = ContractStatus.PLANNED
+        self._contract_type = ContractType.PROJECT
 
     # ---------- build ----------
 
@@ -52,6 +53,7 @@ class ContractBuilder:
             budget=self._budget,
             path=self._path,
             status=self._status,
+            contract_type=ContractType.PROJECT
         )
 
     # ---------- base ----------
@@ -110,4 +112,8 @@ class ContractBuilder:
 
     def with_path(self, path: Path | None) -> "ContractBuilder":
         self._path = path
+        return self
+
+    def with_contract_type(self,contract_type: ContractType | None) -> "ContractBuilder":
+        self._contract_type = contract_type if contract_type else ContractType.PROJECT
         return self

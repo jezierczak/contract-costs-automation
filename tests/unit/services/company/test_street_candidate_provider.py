@@ -25,10 +25,11 @@ def build_input(street=None):
 # BASIC GUARDS
 # ------------------------------------------------------------
 
-def test_returns_empty_when_no_street(company_repo):
-    provider = StreetCandidateProvider(company_repo)
+def test_returns_empty_when_no_street(uow):
+    provider = StreetCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=new_uuid(),
         input_=build_input(),
     )
@@ -36,10 +37,11 @@ def test_returns_empty_when_no_street(company_repo):
     assert result == []
 
 
-def test_returns_empty_when_no_tokens(company_repo):
-    provider = StreetCandidateProvider(company_repo)
+def test_returns_empty_when_no_tokens(uow):
+    provider = StreetCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=new_uuid(),
         input_=build_input("12"),
     )
@@ -51,7 +53,7 @@ def test_returns_empty_when_no_tokens(company_repo):
 # MATCH BY NUMBER + TOKEN
 # ------------------------------------------------------------
 
-def test_match_by_same_number_and_token(company_repo):
+def test_match_by_same_number_and_token(company_repo, uow):
     org_id = new_uuid()
 
     company = (
@@ -63,9 +65,10 @@ def test_match_by_same_number_and_token(company_repo):
 
     company_repo.add(company)
 
-    provider = StreetCandidateProvider(company_repo)
+    provider = StreetCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=org_id,
         input_=build_input("ul. Krakowska 12"),
     )
@@ -78,7 +81,7 @@ def test_match_by_same_number_and_token(company_repo):
 # MATCH BY TOKENS ONLY (NO NUMBER)
 # ------------------------------------------------------------
 
-def test_match_by_two_common_tokens(company_repo):
+def test_match_by_two_common_tokens(company_repo, uow):
     org_id = new_uuid()
 
     company = (
@@ -90,9 +93,10 @@ def test_match_by_two_common_tokens(company_repo):
 
     company_repo.add(company)
 
-    provider = StreetCandidateProvider(company_repo)
+    provider = StreetCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=org_id,
         input_=build_input("Jana Pawla"),
     )
@@ -104,7 +108,7 @@ def test_match_by_two_common_tokens(company_repo):
 # NO MATCH WHEN ONLY ONE TOKEN
 # ------------------------------------------------------------
 
-def test_no_match_with_single_common_token(company_repo):
+def test_no_match_with_single_common_token(company_repo, uow):
     org_id = new_uuid()
 
     company = (
@@ -116,9 +120,10 @@ def test_no_match_with_single_common_token(company_repo):
 
     company_repo.add(company)
 
-    provider = StreetCandidateProvider(company_repo)
+    provider = StreetCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=org_id,
         input_=build_input("Jana"),
     )
@@ -130,7 +135,7 @@ def test_no_match_with_single_common_token(company_repo):
 # ORGANIZATION SCOPING
 # ------------------------------------------------------------
 
-def test_scoped_to_organization(company_repo):
+def test_scoped_to_organization(company_repo, uow):
     org1 = new_uuid()
     org2 = new_uuid()
 
@@ -143,9 +148,10 @@ def test_scoped_to_organization(company_repo):
 
     company_repo.add(company)
 
-    provider = StreetCandidateProvider(company_repo)
+    provider = StreetCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=org2,
         input_=build_input("Krakowska 12"),
     )

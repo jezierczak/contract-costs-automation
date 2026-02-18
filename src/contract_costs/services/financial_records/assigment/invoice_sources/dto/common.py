@@ -76,9 +76,12 @@ class FinancialRecordLineUpdate:
     unit: UnitOfMeasure
     amount: Amount
 
-    contract_id: str | None
-    contract_node_id: str | None
+    contract_code: str | None
+    contract_node_code: str | None
     value_type_code: str | None
+    agreement_code: str | None
+    agreement_node_code: str | None
+
 
 @dataclass(frozen=True)
 class InvoiceExcelBatch:

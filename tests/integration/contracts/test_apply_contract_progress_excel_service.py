@@ -1,25 +1,24 @@
-import pytest
 from decimal import Decimal
-from uuid import uuid4
 from pathlib import Path
-from unittest.mock import MagicMock
+from uuid import uuid4
 
-from contract_costs.model.contract import ContractStatus
-from contract_costs.model.contract_node_progress import ContractNodeProgress
+import pytest
+
 from contract_costs.model.company import CompanyType
+from contract_costs.model.contract import ContractStatus
 from contract_costs.services.contracts.apply.apply_contract_progress_excel_service import (
     ApplyContractProgressExcelService,
 )
-from contract_costs.services.contracts.apply.apply_contract_progress_service import ApplyContractProgressService
-
-from tests.builders.contract_builder import ContractBuilder
+from contract_costs.services.contracts.apply.apply_contract_progress_service import (
+    ApplyContractProgressService,
+)
+from contract_costs.services.contracts.apply.command.apply_contract_progress_excel_command import (
+    ApplyContractProgressExcelCommand,
+)
 from tests.builders.company_builder import CompanyBuilder
+from tests.builders.contract_builder import ContractBuilder
 from tests.helpers.contracts_helpers import make_contract_node
 
-
-# =====================================================
-# HELPERS
-# =====================================================
 
 def make_contract(organization_id):
     return (
@@ -31,44 +30,23 @@ def make_contract(organization_id):
     )
 
 
-
-
-
-# =====================================================
-# TESTS
-# =====================================================
-
-def test_apply_progress_success(
-    monkeypatch,
-    contract_repo,
-    contract_node_repo,
-):
+def test_apply_progress_success(monkeypatch, contract_repo, contract_node_repo, uow):
     organization_id = uuid4()
     actor_user_id = uuid4()
 
-    # --- create contract ---
     contract = make_contract(organization_id)
     contract_repo.add(contract)
 
-    # --- create node ---
     node = make_contract_node(
         organization_id=organization_id,
         contract_id=contract.id,
     )
     contract_node_repo.add_all([node])
 
-    # --- build services ---
-    apply_progress_service = ApplyContractProgressService(
-        contract_repository=contract_repo,
-        contract_node_repository=contract_node_repo,
-        id_generator=uuid4,
+    service = ApplyContractProgressExcelService(
+        apply_contract_progress_service=ApplyContractProgressService(id_generator=uuid4)
     )
 
-    excel_service = ApplyContractProgressExcelService(
-        apply_contract_progress_service=apply_progress_service
-    )
-
-    # --- mock excel ---
     monkeypatch.setattr(
         "contract_costs.infrastructure.excel.excel_loader.ExcelLoader.load",
         lambda **kwargs: [{
@@ -79,42 +57,41 @@ def test_apply_progress_success(
         }],
     )
 
-    # --- execute ---
-    excel_service.apply(
-        contract=contract,
-        excel_path=Path("fake.xlsx"),
-        organization_id=organization_id,
-        actor_user_id=actor_user_id,
+    service.execute(
+        action=ApplyContractProgressExcelCommand(
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
+            contract_id=contract.id,
+            excel_path=Path("fake.xlsx"),
+        ),
+        uow=uow,
     )
 
-    # --- assert ---
     updated_nodes = contract_node_repo.list_by_contract(
         organization_id=organization_id,
         contract_id=contract.id,
     )
-
     updated_node = next(n for n in updated_nodes if n.id == node.id)
-
     assert updated_node.progress == Decimal("0.5")
 
 
-
-def test_progress_rejects_non_leaf(monkeypatch):
+def test_progress_rejects_non_leaf(monkeypatch, contract_repo, contract_node_repo, uow):
     organization_id = uuid4()
     actor_user_id = uuid4()
-
-    repo = MagicMock()
-    repo2 = MagicMock()
-    service = ApplyContractProgressExcelService(
-        apply_contract_progress_service=ApplyContractProgressService(
-            contract_repository=repo, contract_node_repository=repo2))
-
     contract = make_contract(organization_id)
+    contract_repo.add(contract)
 
     parent = make_contract_node(organization_id=organization_id, contract_id=contract.id)
-    child = make_contract_node(organization_id=organization_id, contract_id=contract.id, parent_id=parent.id)
+    child = make_contract_node(
+        organization_id=organization_id,
+        contract_id=contract.id,
+        parent_id=parent.id,
+    )
+    contract_node_repo.add_all([parent, child])
 
-    repo.list_by_contract.return_value = [parent, child]
+    service = ApplyContractProgressExcelService(
+        apply_contract_progress_service=ApplyContractProgressService(id_generator=uuid4)
+    )
 
     monkeypatch.setattr(
         "contract_costs.infrastructure.excel.excel_loader.ExcelLoader.load",
@@ -127,62 +104,57 @@ def test_progress_rejects_non_leaf(monkeypatch):
     )
 
     with pytest.raises(ValueError):
-        service.apply(
-            contract=contract,
-            excel_path=Path("fake.xlsx"),
-            organization_id=organization_id,
-            actor_user_id=actor_user_id,
+        service.execute(
+            action=ApplyContractProgressExcelCommand(
+                organization_id=organization_id,
+                actor_user_id=actor_user_id,
+                contract_id=contract.id,
+                excel_path=Path("fake.xlsx"),
+            ),
+            uow=uow,
         )
 
 
-def test_progress_rejects_invalid_range(monkeypatch):
-    organization_id = uuid4()
-    actor_user_id = uuid4()
-
-    repo = MagicMock()
-    repo2 = MagicMock()
+def test_progress_rejects_invalid_range(monkeypatch, uow):
     service = ApplyContractProgressExcelService(
-        apply_contract_progress_service=ApplyContractProgressService(
-            contract_repository=repo, contract_node_repository=repo2))
-
-    contract = make_contract(organization_id)
-    node = make_contract_node(organization_id=organization_id, contract_id=contract.id)
-
-    repo.list_by_contract.return_value = [node]
+        apply_contract_progress_service=ApplyContractProgressService(id_generator=uuid4)
+    )
 
     monkeypatch.setattr(
         "contract_costs.infrastructure.excel.excel_loader.ExcelLoader.load",
         lambda **kwargs: [{
-            "Contract": contract.code,
-            "Node ID": str(node.id),
+            "Contract": "ANY",
+            "Node ID": str(uuid4()),
             "New Progress [%]": Decimal("150"),
             "Code": "A",
         }],
     )
 
     with pytest.raises(ValueError):
-        service.apply(
-            contract=contract,
-            excel_path=Path("fake.xlsx"),
-            organization_id=organization_id,
-            actor_user_id=actor_user_id,
+        service.execute(
+            action=ApplyContractProgressExcelCommand(
+                organization_id=uuid4(),
+                actor_user_id=uuid4(),
+                contract_id=uuid4(),
+                excel_path=Path("fake.xlsx"),
+            ),
+            uow=uow,
         )
 
 
-def test_progress_rejects_wrong_contract(monkeypatch):
+def test_progress_ignores_contract_column(monkeypatch, contract_repo, contract_node_repo, uow):
     organization_id = uuid4()
     actor_user_id = uuid4()
 
-    repo = MagicMock()
-    repo2 = MagicMock()
-    service = ApplyContractProgressExcelService(
-        apply_contract_progress_service=ApplyContractProgressService(
-            contract_repository=repo, contract_node_repository=repo2))
-
     contract = make_contract(organization_id)
-    node = make_contract_node(organization_id=organization_id, contract_id=contract.id)
+    contract_repo.add(contract)
 
-    repo.list_by_contract.return_value = [node]
+    node = make_contract_node(organization_id=organization_id, contract_id=contract.id)
+    contract_node_repo.add_all([node])
+
+    service = ApplyContractProgressExcelService(
+        apply_contract_progress_service=ApplyContractProgressService(id_generator=uuid4)
+    )
 
     monkeypatch.setattr(
         "contract_costs.infrastructure.excel.excel_loader.ExcelLoader.load",
@@ -194,20 +166,25 @@ def test_progress_rejects_wrong_contract(monkeypatch):
         }],
     )
 
-    with pytest.raises(ValueError):
-        service.apply(
-            contract=contract,
-            excel_path=Path("fake.xlsx"),
+    service.execute(
+        action=ApplyContractProgressExcelCommand(
             organization_id=organization_id,
             actor_user_id=actor_user_id,
-        )
+            contract_id=contract.id,
+            excel_path=Path("fake.xlsx"),
+        ),
+        uow=uow,
+    )
+
+    updated = contract_node_repo.get(
+        organization_id=organization_id,
+        contract_node_id=node.id,
+    )
+    assert updated is not None
+    assert updated.progress == Decimal("0.5")
 
 
-def test_progress_on_inactive_node_raises(
-    monkeypatch,
-    contract_repo,
-    contract_node_repo,
-):
+def test_progress_on_inactive_node_raises(monkeypatch, contract_repo, contract_node_repo, uow):
     organization_id = uuid4()
     actor_user_id = uuid4()
 
@@ -221,14 +198,8 @@ def test_progress_on_inactive_node_raises(
     )
     contract_node_repo.add_all([node])
 
-    apply_progress_service = ApplyContractProgressService(
-        contract_repository=contract_repo,
-        contract_node_repository=contract_node_repo,
-        id_generator=uuid4,
-    )
-
-    excel_service = ApplyContractProgressExcelService(
-        apply_contract_progress_service=apply_progress_service
+    service = ApplyContractProgressExcelService(
+        apply_contract_progress_service=ApplyContractProgressService(id_generator=uuid4)
     )
 
     monkeypatch.setattr(
@@ -242,9 +213,12 @@ def test_progress_on_inactive_node_raises(
     )
 
     with pytest.raises(ValueError, match="inactive"):
-        excel_service.apply(
-            contract=contract,
-            excel_path=Path("fake.xlsx"),
-            organization_id=organization_id,
-            actor_user_id=actor_user_id,
+        service.execute(
+            action=ApplyContractProgressExcelCommand(
+                organization_id=organization_id,
+                actor_user_id=actor_user_id,
+                contract_id=contract.id,
+                excel_path=Path("fake.xlsx"),
+            ),
+            uow=uow,
         )

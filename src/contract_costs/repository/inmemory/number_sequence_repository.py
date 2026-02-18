@@ -19,7 +19,6 @@ class InMemoryNumberSequenceRepository(NumberSequenceRepository):
 
     def get_for_update(
         self,
-        conn,  # ignorujemy w in-memory
         organization_id: UUID,
         scope_key: str,
     ) -> NumberSequence | None:
@@ -33,7 +32,6 @@ class InMemoryNumberSequenceRepository(NumberSequenceRepository):
 
     def add(
         self,
-        conn,  # ignorujemy
         sequence: NumberSequence,
     ) -> None:
 
@@ -47,9 +45,8 @@ class InMemoryNumberSequenceRepository(NumberSequenceRepository):
 
             self._data[key] = sequence
 
-    def save(
+    def update(
         self,
-        conn,  # ignorujemy
         sequence: NumberSequence,
     ) -> None:
 

@@ -1,39 +1,39 @@
 import logging
+from uuid import UUID
 
+from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.model.company import CompanyType
 from contract_costs.model.document import DocumentType
 from contract_costs.model.financial_record import FinancialRecordStatus, FinancialRecord
-from contract_costs.repository.document_repository import DocumentRepository
 from contract_costs.services.companies.company_evaluate_orchestrator import CompanyEvaluateOrchestrator, EvaluateMode
 from contract_costs.services.documents.prepare.dto.candidate_record_dto import CandidateRecordDto
 from contract_costs.services.documents.prepare.dto.prepare_document_bundle import PrepareDocumentsBundle
 from contract_costs.services.documents.prepare.dto.prepare_document_dto import PreparedDocumentDto
+from contract_costs.services.documents.prepare.dto.prepare_documents_command import PrepareDocumentsCommand
+from contract_costs.unit_of_work import UnitOfWork
 
-from contract_costs.repository.financial_record_repository import FinancialRecordRepository
 
 logger = logging.getLogger(__name__)
 
-class PrepareDocumentsService:
+class PrepareDocumentsService(ActionHandler[PrepareDocumentsCommand, PrepareDocumentsBundle]):
 
     def __init__(
         self,
-        document_repository: DocumentRepository,
-        record_repository: FinancialRecordRepository,
         company_evaluate: CompanyEvaluateOrchestrator,
     ) -> None:
-        self._documents = document_repository
-        self._records = record_repository
         self._company_evaluate = company_evaluate
 
     def execute(
         self,
         *,
-        organization_id,
-        actor_user_id,
+        action: PrepareDocumentsCommand,
+        uow:UnitOfWork
     ) -> PrepareDocumentsBundle:
+        document_repo = uow.documents
 
-        documents = self._documents.list_unattached(
-            organization_id=organization_id,
+
+        documents = document_repo.list_unattached(
+            organization_id=action.organization_id,
         )
 
         prepared: list[PreparedDocumentDto] = []
@@ -48,14 +48,16 @@ class PrepareDocumentsService:
             candidates =  []
             try:
                 candidates = self._find_candidates(
-                    organization_id=organization_id,
-                    actor_user_id=actor_user_id,
+                    organization_id=action.organization_id,
+                    actor_user_id=action.actor_user_id,
                     seller_nip=d.seller_nip,
                     document_number=d.document_number,
+                    uow=uow
                 )
 
             except RuntimeError:
                 logger.warning("Found no candidates for %s, %s",d.document_number, d.seller_nip)
+
 
             logger.info("found candidates: %s", candidates)
 
@@ -79,8 +81,9 @@ class PrepareDocumentsService:
     def _find_candidates(
             self,
             *,
-            organization_id,
-            actor_user_id,
+            uow:UnitOfWork,
+            organization_id:UUID,
+            actor_user_id:UUID,
             seller_nip: str | None,
             document_number: str | None,
     ) -> list[CandidateRecordDto]:
@@ -93,10 +96,12 @@ class PrepareDocumentsService:
             actor_user_id=actor_user_id,
             input_tax_number=seller_nip,
             role=CompanyType.SELLER,
-            mode=EvaluateMode.NO_CREATE)
+            mode=EvaluateMode.NO_CREATE,
+            uow=uow
+        )
 
         #logger.info("Found Seller: %s", seller)
-        records: list[FinancialRecord] = self._records.list_by_seller_id(
+        records: list[FinancialRecord] = uow.financial_records.list_by_seller_id(
             organization_id=organization_id,
             seller_id=seller.id,
         )

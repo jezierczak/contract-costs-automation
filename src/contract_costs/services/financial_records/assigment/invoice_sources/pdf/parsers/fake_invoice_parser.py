@@ -2,7 +2,7 @@
 from decimal import Decimal
 from datetime import date
 
-
+from contract_costs.model.document import DocumentType
 from contract_costs.model.financial_record import PaymentMethod, PaymentStatus, FinancialRecordStatus
 from contract_costs.services.financial_records.assigment.apply.commands.invoice_command import InvoiceCommand
 
@@ -22,9 +22,11 @@ class FakeDocumentParser(DocumentParser):
         # invoice_ref: InvoiceRef = InvoiceRef(invoice_id=None, external_ref="PDF-001")
 
         return DocumentParseResult(
+            document_type=DocumentType.INVOICE,
             record=FinancialRecordUpdate(
 
                 command=InvoiceCommand.APPLY,
+                record_id=None,
                 reference="FV/1/2024",
                 old_reference=None,
                 invoice_date=date(2024, 1, 10),
@@ -35,7 +37,8 @@ class FakeDocumentParser(DocumentParser):
                 payment_status=PaymentStatus.UNPAID,
                 status=FinancialRecordStatus.NEW_COST,
                 due_date=date(2024, 1, 20),
-
+                paid_date=None,
+                tags=None
             ),
             lines=[
                 FinancialRecordLineUpdate(
@@ -47,9 +50,11 @@ class FakeDocumentParser(DocumentParser):
                     unit=UnitOfMeasure.PIECE,
                     amount=Amount(Decimal("200"),VatRate.VAT_23),
 
-                    contract_id=None,
-                    contract_node_id=None,
+                    contract_code=None,
+                    contract_node_code=None,
                     value_type_code=None,
+                    agreement_code=None,
+                    agreement_node_code=None,
                 )
             ],
             buyer=CompanyInput(

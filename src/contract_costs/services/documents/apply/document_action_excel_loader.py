@@ -4,6 +4,7 @@ from uuid import UUID
 from openpyxl import load_workbook
 
 from contract_costs.infrastructure.excel.excel_loader import ExcelLoader
+from contract_costs.model.document import DocumentType
 from contract_costs.services.documents.apply.dto.apply_document_command import DocumentApplyAction, ApplyDocumentCommand
 from contract_costs.services.documents.prepare.build_document_assignment_columns import \
     build_document_assignment_columns
@@ -88,6 +89,12 @@ class DocumentActionExcelLoader:
             # -----------------------------
 
             override_type = row.get("Type")
+            if override_type:
+                try:
+                    DocumentType(override_type)
+                except ValueError:
+                    raise ValueError(f"Invalid document type '{override_type}'")
+
             override_number = row.get("Document Number")
             override_seller_nip = row.get("Seller NIP")
 

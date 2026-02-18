@@ -25,10 +25,11 @@ def build_input(tax_number=None):
 # BASIC
 # ------------------------------------------------------------
 
-def test_returns_empty_when_no_tax_number(company_repo):
-    provider = ExactNipCandidateProvider(company_repo)
+def test_returns_empty_when_no_tax_number(uow):
+    provider = ExactNipCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=new_uuid(),
         input_=build_input(),
     )
@@ -36,7 +37,7 @@ def test_returns_empty_when_no_tax_number(company_repo):
     assert result == []
 
 
-def test_returns_company_when_exact_nip_matches(company_repo):
+def test_returns_company_when_exact_nip_matches(company_repo, uow):
     org_id = new_uuid()
 
     company = (
@@ -48,9 +49,10 @@ def test_returns_company_when_exact_nip_matches(company_repo):
 
     company_repo.add(company)
 
-    provider = ExactNipCandidateProvider(company_repo)
+    provider = ExactNipCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=org_id,
         input_=build_input(tax_number="1234567890"),
     )
@@ -63,7 +65,7 @@ def test_returns_company_when_exact_nip_matches(company_repo):
 # NORMALIZATION
 # ------------------------------------------------------------
 
-def test_normalizes_tax_number_before_matching(company_repo):
+def test_normalizes_tax_number_before_matching(company_repo, uow):
     org_id = new_uuid()
 
     company = (
@@ -75,9 +77,10 @@ def test_normalizes_tax_number_before_matching(company_repo):
 
     company_repo.add(company)
 
-    provider = ExactNipCandidateProvider(company_repo)
+    provider = ExactNipCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=org_id,
         input_=build_input(tax_number="PL 123-456-78-90"),
     )
@@ -90,7 +93,7 @@ def test_normalizes_tax_number_before_matching(company_repo):
 # PLACEHOLDER FALLBACK
 # ------------------------------------------------------------
 
-def test_matches_tmp_placeholder(company_repo):
+def test_matches_tmp_placeholder(company_repo, uow):
     org_id = new_uuid()
 
     company = (
@@ -102,9 +105,10 @@ def test_matches_tmp_placeholder(company_repo):
 
     company_repo.add(company)
 
-    provider = ExactNipCandidateProvider(company_repo)
+    provider = ExactNipCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=org_id,
         input_=build_input(tax_number="TMP-ABC123"),
     )
@@ -113,7 +117,7 @@ def test_matches_tmp_placeholder(company_repo):
     assert result[0].id == company.id
 
 
-def test_matches_ai_placeholder(company_repo):
+def test_matches_ai_placeholder(company_repo, uow):
     org_id = new_uuid()
 
     company = (
@@ -125,9 +129,10 @@ def test_matches_ai_placeholder(company_repo):
 
     company_repo.add(company)
 
-    provider = ExactNipCandidateProvider(company_repo)
+    provider = ExactNipCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=org_id,
         input_=build_input(tax_number="AI-XYZ999"),
     )
@@ -139,7 +144,7 @@ def test_matches_ai_placeholder(company_repo):
 # SCOPING
 # ------------------------------------------------------------
 
-def test_is_scoped_to_organization(company_repo):
+def test_is_scoped_to_organization(company_repo, uow):
     org1 = new_uuid()
     org2 = new_uuid()
 
@@ -152,9 +157,10 @@ def test_is_scoped_to_organization(company_repo):
 
     company_repo.add(company)
 
-    provider = ExactNipCandidateProvider(company_repo)
+    provider = ExactNipCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=org2,
         input_=build_input(tax_number="1234567890"),
     )

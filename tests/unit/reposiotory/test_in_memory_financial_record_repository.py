@@ -140,7 +140,10 @@ def test_list_for_review_excludes_deleted(financial_record_repo):
     financial_record_repo.add(active)
     financial_record_repo.add(deleted)
 
-    query = FinancialRecordReviewQuery()
+    query = FinancialRecordReviewQuery(
+        organization_id=org_id,
+        actor_user_id=new_uuid(),
+    )
 
     result = financial_record_repo.list_for_review(
         organization_id=org_id,
@@ -172,6 +175,8 @@ def test_list_for_review_only_ready(financial_record_repo):
     financial_record_repo.add(draft)
 
     query = FinancialRecordReviewQuery(
+        organization_id=org_id,
+        actor_user_id=new_uuid(),
         only_ready_for_accountant=True
     )
 
@@ -204,6 +209,8 @@ def test_list_for_review_date_filter(financial_record_repo):
     financial_record_repo.add(new)
 
     query = FinancialRecordReviewQuery(
+        organization_id=org_id,
+        actor_user_id=new_uuid(),
         from_date=date(2024, 6, 1)
     )
 
@@ -235,7 +242,10 @@ def test_list_for_review_sorted_desc(financial_record_repo):
     financial_record_repo.add(older)
     financial_record_repo.add(newer)
 
-    query = FinancialRecordReviewQuery()
+    query = FinancialRecordReviewQuery(
+        organization_id=org_id,
+        actor_user_id=new_uuid(),
+    )
 
     result = financial_record_repo.list_for_review(
         organization_id=org_id,

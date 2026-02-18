@@ -3,6 +3,7 @@ from uuid import UUID
 
 from contract_costs.services.financial_records.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
 from contract_costs.model.company import Company
+from contract_costs.unit_of_work import UnitOfWork
 
 
 class CompanyCandidateProvider(ABC):
@@ -19,6 +20,7 @@ class CompanyCandidateProvider(ABC):
     def find_candidates(
         self,
         *,
+        uow:UnitOfWork,
         organization_id: UUID,
         input_: CompanyInput,
     ) -> list[Company]:

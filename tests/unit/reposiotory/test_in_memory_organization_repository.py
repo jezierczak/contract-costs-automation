@@ -45,6 +45,6 @@ def test_list_active_only(organization_repo):
     organization_repo.add(active)
     organization_repo.add(inactive)
 
-    result = organization_repo.list_contracts(active_only=True)
+    result = organization_repo.list(active_only=True)
 
     assert result == [active]

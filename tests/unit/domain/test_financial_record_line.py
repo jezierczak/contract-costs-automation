@@ -32,6 +32,8 @@ def build_line(
             tax_treatment=TaxTreatment.TAX_DEDUCTIBLE,
         ),
         description=None,
+        agreement_id=None,
+        agreement_node_id=None
     )
 
 def test_financial_record_line_creation():

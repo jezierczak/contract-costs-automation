@@ -1,90 +1,84 @@
 from decimal import Decimal
 from typing import Iterable
-from uuid import UUID
 
-from contract_costs.repository.contract_repository import ContractRepository
-from contract_costs.repository.financial_record_line_repository import FinancialRecordLineRepository
-from contract_costs.repository.contract_node_repository import ContractNodeRepository
-from contract_costs.repository.value_type_repository import ValueTypeRepository
+from contract_costs.action_bus.action_handler import ActionHandler
+from contract_costs.services.reports.dto.generate_contract_cost_report_query import GenerateContractCostReportQuery
+from contract_costs.unit_of_work import UnitOfWork
 
 
-class ContractCostReportService:
+class ContractCostReportService(
+    ActionHandler[GenerateContractCostReportQuery, list[dict]]
+):
 
-    def __init__(
+    def execute(
         self,
-        contract_repository: ContractRepository,
-        invoice_line_repository: FinancialRecordLineRepository,
-        cost_node_repository: ContractNodeRepository,
-        cost_type_repository: ValueTypeRepository,
-    ):
-        self._contracts = contract_repository
-        self._invoice_lines = invoice_line_repository
-        self._cost_nodes = cost_node_repository
-        self._cost_types = cost_type_repository
+        *,
+        action: GenerateContractCostReportQuery,
+        uow: UnitOfWork,
+    ) -> list[dict]:
 
-    def generate_rows(self,
-                      *,
-                      organization_id: UUID,
-                      contract_id: UUID) -> list[dict]:
-        contract = self._contracts.get(organization_id=organization_id,contract_id=contract_id)
+        contract = uow.contracts.get(
+            organization_id=action.organization_id,
+            contract_id=action.contract_id,
+        )
         if contract is None:
             raise ValueError("Contract does not exist")
 
-        # --- cost nodes ---
-        cost_nodes = self._cost_nodes.list_by_contract(organization_id=organization_id,contract_id=contract_id)
+        cost_nodes = uow.contract_nodes.list_by_contract(
+            organization_id=action.organization_id,
+            contract_id=action.contract_id,
+        )
         leaf_nodes = self._leaf_nodes(cost_nodes)
         leaf_by_id = {n.id: n for n in leaf_nodes}
 
-        # --- invoice lines ---
         lines = [
             line
-            for line in self._invoice_lines.list_all(organization_id=organization_id)
-            if line.contract_id == contract_id
+            for line in uow.financial_record_lines.list_all(
+                organization_id=action.organization_id
+            )
+            if line.contract_id == action.contract_id
         ]
 
-        cost_types = {ct.id: ct for ct in self._cost_types.list_all(organization_id=organization_id)}
+        cost_types = {
+            ct.id: ct
+            for ct in uow.value_types.list_all(
+                organization_id=action.organization_id
+            )
+        }
 
         rows: list[dict] = []
 
         for line in lines:
-            if line.contract_node_id not in leaf_by_id:
-                continue  # tylko leaf
-            if line.contract_node_id is None:
+            if not line.contract_node_id:
                 continue
+
             if line.contract_node_id not in leaf_by_id:
                 continue
 
             node = leaf_by_id[line.contract_node_id]
-            if line.value_type_id:
-                cost_type = cost_types.get(line.value_type_id)
-            else: cost_type = None
-            # cost_type = cost_types.get(line.cost_type_id)
+            cost_type = (
+                cost_types.get(line.value_type_id)
+                if line.value_type_id
+                else None
+            )
 
             rows.append(
                 {
-                    # --- contract ---
-                    # "contract_id": contract.id,
                     "contract_code": contract.code,
                     "contract_name": contract.name,
 
-                    # --- cost node ---
                     "cost_node_id": node.id,
                     "cost_node_code": node.code,
                     "cost_node_name": node.name,
                     "cost_node_budget": node.budget,
 
-                    # --- cost type ---
                     "cost_type_code": cost_type.code if cost_type else None,
                     "cost_type_name": cost_type.name if cost_type else None,
 
-                    # --- amounts ---
-                    # "quantity": line.quantity,
-                    # "unit": line.unit.value,
-                    "net_amount": line.amount.net if line.amount.net else Decimal("0"),
+                    "net_amount": line.amount.net or Decimal("0"),
                     "vat_amount": line.amount.tax,
                     "gross_amount": line.amount.gross,
                     "non_tax_amount": line.amount.non_tax_cost,
-
                 }
             )
 

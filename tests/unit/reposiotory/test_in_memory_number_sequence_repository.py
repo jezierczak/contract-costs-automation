@@ -11,31 +11,29 @@ def test_add_and_get_sequence(number_sequence_repo):
         scope_key=scope,
     )
 
-    number_sequence_repo.add(None, seq)
+    number_sequence_repo.add( seq)
 
     result = number_sequence_repo.get_for_update(
-        None,
         organization_id=org_id,
         scope_key=scope,
     )
 
     assert result == seq
 
-    import pytest
 
-    def test_add_duplicate_sequence_raises(number_sequence_repo):
-        org_id = new_uuid()
-        scope = "invoice"
+def test_add_duplicate_sequence_raises(number_sequence_repo):
+    org_id = new_uuid()
+    scope = "invoice"
 
-        seq = NumberSequence.create_initial(
-            organization_id=org_id,
-            scope_key=scope,
-        )
+    seq = NumberSequence.create_initial(
+        organization_id=org_id,
+        scope_key=scope,
+    )
 
-        number_sequence_repo.add(None, seq)
+    number_sequence_repo.add( seq)
 
-        with pytest.raises(RuntimeError):
-            number_sequence_repo.add(None, seq)
+    with pytest.raises(RuntimeError):
+        number_sequence_repo.add( seq)
 
 def test_save_existing_sequence(number_sequence_repo):
     org_id = new_uuid()
@@ -46,13 +44,12 @@ def test_save_existing_sequence(number_sequence_repo):
         scope_key=scope,
     )
 
-    number_sequence_repo.add(None, seq)
+    number_sequence_repo.add( seq)
 
     seq.increase()
-    number_sequence_repo.save(None, seq)
+    number_sequence_repo.update(seq)
 
     result = number_sequence_repo.get_for_update(
-        None,
         organization_id=org_id,
         scope_key=scope,
     )
@@ -71,7 +68,7 @@ def test_save_non_existing_raises(number_sequence_repo):
     )
 
     with pytest.raises(RuntimeError):
-        number_sequence_repo.save(None, seq)
+        number_sequence_repo.update(seq)
 
 def test_sequences_are_isolated_by_org(number_sequence_repo):
     org1 = new_uuid()
@@ -81,11 +78,11 @@ def test_sequences_are_isolated_by_org(number_sequence_repo):
     seq1 = NumberSequence.create_initial(org1, scope)
     seq2 = NumberSequence.create_initial(org2, scope)
 
-    number_sequence_repo.add(None, seq1)
-    number_sequence_repo.add(None, seq2)
+    number_sequence_repo.add(seq1)
+    number_sequence_repo.add(seq2)
 
-    result1 = number_sequence_repo.get_for_update(None, org1, scope)
-    result2 = number_sequence_repo.get_for_update(None, org2, scope)
+    result1 = number_sequence_repo.get_for_update(org1, scope)
+    result2 = number_sequence_repo.get_for_update(org2, scope)
 
     assert result1.organization_id == org1
     assert result2.organization_id == org2
@@ -97,15 +94,15 @@ def test_sequences_are_isolated_by_scope(number_sequence_repo):
     invoice_seq = NumberSequence.create_initial(org_id, "invoice")
     contract_seq = NumberSequence.create_initial(org_id, "contract")
 
-    number_sequence_repo.add(None, invoice_seq)
-    number_sequence_repo.add(None, contract_seq)
+    number_sequence_repo.add(invoice_seq)
+    number_sequence_repo.add(contract_seq)
 
     result_invoice = number_sequence_repo.get_for_update(
-        None, org_id, "invoice"
+    org_id, "invoice"
     )
 
     result_contract = number_sequence_repo.get_for_update(
-        None, org_id, "contract"
+    org_id, "contract"
     )
 
     assert result_invoice.scope_key == "invoice"
@@ -116,17 +113,17 @@ def test_get_for_update_returns_reference(number_sequence_repo):
     scope = "invoice"
 
     seq = NumberSequence.create_initial(org_id, scope)
-    number_sequence_repo.add(None, seq)
+    number_sequence_repo.add( seq)
 
     loaded = number_sequence_repo.get_for_update(
-        None, org_id, scope
+    org_id, scope
     )
 
     loaded.increase()
 
     # Bez save, bo to referencja
     again = number_sequence_repo.get_for_update(
-        None, org_id, scope
+    org_id, scope
     )
 
     assert again.current_value == 2

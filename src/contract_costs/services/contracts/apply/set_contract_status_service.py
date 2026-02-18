@@ -7,45 +7,44 @@ from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.common.time import utc_now
 from contract_costs.model.contract import Contract
 from contract_costs.repository.contract_repository import ContractRepository
-from contract_costs.services.contracts.apply.command.set_contract_status_command import (
-    SetContractStatusCommand
-)
+from contract_costs.services.contracts.apply.command.set_contract_status_command import SetContractStatusCommand
+from contract_costs.unit_of_work import UnitOfWork
 
-class SetContractStatusService(ActionHandler[SetContractStatusCommand,None]):
+
+class SetContractStatusService(ActionHandler[SetContractStatusCommand, None]):
 
     def __init__(
         self,
-        contract_repository: ContractRepository,
+        # contract_repository: ContractRepository,
         clock: Callable[[], datetime] = utc_now,
     ) -> None:
-        self._contracts = contract_repository
+        # self._contracts = contract_repository
         self._clock = clock
 
-    def execute(self, command: SetContractStatusCommand) -> None:
+    def execute(self, *, action: SetContractStatusCommand, uow: UnitOfWork) -> None:
+        contract_repo = uow.contracts
+
         contract = self._get_contract(
-            organization_id=command.organization_id,
-            contract_id=command.contract_id,
+            organization_id=action.organization_id,
+            contract_id=action.contract_id,
+            contract_repo=contract_repo
         )
 
-        if contract.status == command.new_status:
-            return  # idempotent
+        if contract.status == action.new_status:
+            return
 
         updated = replace(
             contract,
-            status=command.new_status,
+            status=action.new_status,
             updated_at=self._clock(),
-            updated_by_user_id=command.actor_user_id,
+            updated_by_user_id=action.actor_user_id,
         )
 
-        self._contracts.update(updated)
+        contract_repo.update(updated)
 
-    def _get_contract(
-            self,
-            *,
-            organization_id: UUID,
-            contract_id: UUID,
-    ) -> Contract:
-        contract = self._contracts.get(
+    @staticmethod
+    def _get_contract( *, organization_id: UUID, contract_id: UUID,contract_repo:ContractRepository) -> Contract:
+        contract = contract_repo.get(
             organization_id=organization_id,
             contract_id=contract_id,
         )

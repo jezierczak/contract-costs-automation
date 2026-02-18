@@ -10,12 +10,13 @@ from contract_costs.cli.registry import REGISTRY
 from contract_costs.cli.utils.context_helpers import require_organization_id, require_user_id
 from contract_costs.common.context.exceptions import ContextError
 
-# from contract_costs.infrastructure.excel.contracts.contract_cost_node_tree_excel_exporter import \
-#     ContractTreeExcelExporter
+
 from contract_costs.infrastructure.filesystem.show_file_manager import ContractsShowFileManager
 from contract_costs.model.contract import ContractType
 from contract_costs.reports.contracts.contract_list_columns import contract_list_columns
 from contract_costs.reports.contracts.contract_node_tree_column import contract_node_tree_columns
+from contract_costs.services.contracts.query.contract_details.contract_details_query_command import ContractDetailsQuery
+from contract_costs.services.contracts.query.list_contracts.list_contracts_query_command import ListContractsQuery
 
 logger = logging.getLogger(__name__)
 
@@ -69,19 +70,24 @@ def handle_show_contracts(args) -> None:
     except ContextError:
         return None
 
-    query = services.contract_query_service
-
     if args.ref:
-        return _handle_show_single_contract(args, query,services.contract_repository,organization_id)
-
+        return _handle_show_single_contract(
+            args,
+            organization_id,
+            actor_user_id,
+            services
+        )
     contract_type = ContractType.PROJECT
     if args.system:
         contract_type = ContractType.SYSTEM
 
-    items = query.list_contracts(
-        organization_id=organization_id,
-        contract_type= contract_type,
-        actor_user_id= actor_user_id
+    items = services.action_bus.execute(
+        action=ListContractsQuery(
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
+            contract_type=contract_type,
+        ),
+        handler=services.list_contracts_service,
     )
 
     if args.active:
@@ -105,7 +111,7 @@ def handle_show_contracts(args) -> None:
         output_path = fm.create_output_file()
         printer: TablePrinter = ExcelPrinter(output_path=output_path)
         printer.print(
-            organization_id=organization_id,
+            organization_id=str(organization_id),
             items=items,
             columns=columns,
             header=header,
@@ -116,7 +122,7 @@ def handle_show_contracts(args) -> None:
 
     printer = CmdPrinter()
     printer.print(
-        organization_id=organization_id,
+        organization_id=str(organization_id),
         items=items,
         columns=columns,
         header=header,
@@ -125,11 +131,15 @@ def handle_show_contracts(args) -> None:
     return None
 
 
-def _handle_show_single_contract(args, query,repo,organization_id) -> None:
-    contract = query.get_contract_details(
-        organization_id=organization_id,
-        contract_id=_resolve_contract_id(args.ref, repo,organization_id),
-        at_date=date.fromisoformat(args.at_date) if args.at_date else None,
+def _handle_show_single_contract(args, organization_id, actor_user_id, services) -> None:
+    contract = services.action_bus.execute(
+        action=ContractDetailsQuery(
+            organization_id=organization_id,
+            contract_id=_resolve_contract_id(args.ref,services.contract_repository,organization_id),
+            actor_user_id=actor_user_id,
+            at_date=date.fromisoformat(args.at_date) if args.at_date else None
+        ),
+        handler=services.contract_details_service,
     )
 
     header = {

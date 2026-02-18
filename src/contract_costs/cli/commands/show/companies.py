@@ -1,10 +1,8 @@
-from openai import organization
-
 from contract_costs.cli.context import get_services
 from contract_costs.cli.printers.table_printer.cmd_printer import CmdPrinter
 from contract_costs.cli.printers.table_printer.table_printer import TablePrinter
 from contract_costs.cli.registry import REGISTRY
-from contract_costs.cli.utils.context_helpers import require_organization_id
+from contract_costs.cli.utils.context_helpers import require_organization_id, require_user_id
 from contract_costs.common.context.exceptions import ContextError
 from contract_costs.model.company import CompanyType
 from contract_costs.reports.companies.company_list_columns import company_list_columns
@@ -33,6 +31,7 @@ def handle_show_companies(args) -> None:
     services = get_services()
     try:
         organization_id = require_organization_id(services.context)
+        actor_user_id = require_user_id(services.context)
     except ContextError:
         return
 
@@ -46,6 +45,7 @@ def handle_show_companies(args) -> None:
 
     query = CompanyQuery(
         organization_id=organization_id,
+        actor_user_id=actor_user_id,
         tax_number=args.nip,
         own_only=args.own,
         include_inactive=args.inactive,
@@ -53,8 +53,7 @@ def handle_show_companies(args) -> None:
         role=role,
     )
 
-    items = services.company_query_service.execute(query)
-
+    items = services.action_bus.execute(action=query,handler=services.company_query_service)
     if not items:
         print("No companies found.")
         return
@@ -68,7 +67,7 @@ def handle_show_companies(args) -> None:
 
     printer: TablePrinter[CompanyDTO] = CmdPrinter(style="pipe")
     printer.print(
-        organization_id=organization_id,
+        organization_id=str(organization_id),
         items=items,
         columns=columns,
         header=header,

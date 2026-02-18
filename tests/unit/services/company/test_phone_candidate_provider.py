@@ -24,10 +24,11 @@ def build_input(phone=None):
 # BASIC GUARDS
 # ------------------------------------------------------------
 
-def test_returns_empty_when_phone_missing(company_repo):
-    provider = PhoneCandidateProvider(company_repo)
+def test_returns_empty_when_phone_missing(uow):
+    provider = PhoneCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=new_uuid(),
         input_=build_input(),
     )
@@ -35,10 +36,11 @@ def test_returns_empty_when_phone_missing(company_repo):
     assert result == []
 
 
-def test_returns_empty_when_phone_invalid(company_repo):
-    provider = PhoneCandidateProvider(company_repo)
+def test_returns_empty_when_phone_invalid(uow):
+    provider = PhoneCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=new_uuid(),
         input_=build_input(phone="123"),
     )
@@ -50,7 +52,7 @@ def test_returns_empty_when_phone_invalid(company_repo):
 # NORMALIZATION
 # ------------------------------------------------------------
 
-def test_matches_phone_with_spaces_and_prefix(company_repo):
+def test_matches_phone_with_spaces_and_prefix(company_repo, uow):
     org_id = new_uuid()
 
     company = (
@@ -62,9 +64,10 @@ def test_matches_phone_with_spaces_and_prefix(company_repo):
 
     company_repo.add(company)
 
-    provider = PhoneCandidateProvider(company_repo)
+    provider = PhoneCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=org_id,
         input_=build_input(phone="+48 123 456 789"),
     )
@@ -73,7 +76,7 @@ def test_matches_phone_with_spaces_and_prefix(company_repo):
     assert result[0].id == company.id
 
 
-def test_matches_phone_with_dashes(company_repo):
+def test_matches_phone_with_dashes(company_repo, uow):
     org_id = new_uuid()
 
     company = (
@@ -85,9 +88,10 @@ def test_matches_phone_with_dashes(company_repo):
 
     company_repo.add(company)
 
-    provider = PhoneCandidateProvider(company_repo)
+    provider = PhoneCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=org_id,
         input_=build_input(phone="987-654-321"),
     )
@@ -99,7 +103,7 @@ def test_matches_phone_with_dashes(company_repo):
 # MULTIPLE RESULTS
 # ------------------------------------------------------------
 
-def test_returns_multiple_when_many_have_same_phone(company_repo):
+def test_returns_multiple_when_many_have_same_phone(company_repo, uow):
     org_id = new_uuid()
 
     c1 = (
@@ -119,9 +123,10 @@ def test_returns_multiple_when_many_have_same_phone(company_repo):
     company_repo.add(c1)
     company_repo.add(c2)
 
-    provider = PhoneCandidateProvider(company_repo)
+    provider = PhoneCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=org_id,
         input_=build_input(phone="555666777"),
     )
@@ -133,7 +138,7 @@ def test_returns_multiple_when_many_have_same_phone(company_repo):
 # ORGANIZATION SCOPING
 # ------------------------------------------------------------
 
-def test_scoped_to_organization(company_repo):
+def test_scoped_to_organization(company_repo, uow):
     org1 = new_uuid()
     org2 = new_uuid()
 
@@ -146,9 +151,10 @@ def test_scoped_to_organization(company_repo):
 
     company_repo.add(company)
 
-    provider = PhoneCandidateProvider(company_repo)
+    provider = PhoneCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=org2,
         input_=build_input(phone="111222333"),
     )

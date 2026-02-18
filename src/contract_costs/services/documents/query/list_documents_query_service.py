@@ -1,34 +1,35 @@
 import logging
 
 from contract_costs.action_bus.action_handler import ActionHandler
-from contract_costs.repository.document_repository import DocumentRepository
 from contract_costs.services.documents.query.document_list_item_dto import DocumentListItemDto
 from contract_costs.services.documents.query.list_docuemnts_query_command import ListDocumentsQueryCommand
+from contract_costs.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
 
 
-class ListDocumentsQueryService(ActionHandler[ListDocumentsQueryCommand,list[DocumentListItemDto]]):
+class ListDocumentsQueryService(ActionHandler[ListDocumentsQueryCommand, list[DocumentListItemDto]]):
 
-    def __init__(
-        self,
-        document_repository: DocumentRepository,
-    ) -> None:
-        self._documents = document_repository
+    # def __init__(
+    #     self,
+    #     document_repository: DocumentRepository,
+    # ) -> None:
+    #     self._documents = document_repository
 
     def execute(
         self,
-        cmd: ListDocumentsQueryCommand,
+        *,
+        action: ListDocumentsQueryCommand,
+        uow: UnitOfWork,
     ) -> list[DocumentListItemDto]:
-
-        documents = self._documents.list_filtered(
-            organization_id=cmd.organization_id,
-            has_payload=cmd.has_payload,
-            has_record=cmd.has_record,
-            document_source=cmd.source,
+        documents_repo=uow.documents
+        documents = documents_repo.list_filtered(
+            organization_id=action.organization_id,
+            has_payload=action.has_payload,
+            has_record=action.has_record,
+            document_source=action.source,
         )
 
-        # Bezpieczne sortowanie (gdyby repo nie sortowało)
         documents = sorted(
             documents,
             key=lambda d: d.created_at,
@@ -38,7 +39,6 @@ class ListDocumentsQueryService(ActionHandler[ListDocumentsQueryCommand,list[Doc
         result: list[DocumentListItemDto] = []
 
         for d in documents:
-
             file_name = self._extract_file_name(d.file_path)
 
             result.append(
@@ -59,14 +59,10 @@ class ListDocumentsQueryService(ActionHandler[ListDocumentsQueryCommand,list[Doc
         logger.info(
             "ListDocumentsQueryService returned %s documents for org=%s",
             len(result),
-            cmd.organization_id,
+            action.organization_id,
         )
 
         return result
-
-    # ---------------------------------------------------------
-    # Helpers
-    # ---------------------------------------------------------
 
     @staticmethod
     def _extract_file_name(file_path: str | None) -> str:

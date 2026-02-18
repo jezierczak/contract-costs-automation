@@ -1,10 +1,14 @@
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, model_validator
 
+from contract_costs.action_bus.action_type import ActionType, action_type
+from contract_costs.action_bus.command import Command
 from contract_costs.infrastructure.excel.invoice_excel_context import FinancialRecordExcelContext
+from contract_costs.model.company import Company
 
 
 class FinancialRecordAction(Enum):
@@ -50,14 +54,10 @@ class FinancialRecordSelector(BaseModel):
             )
         return self
 
-    # @model_validator(mode="after")
-    # def at_least_one_selector(self):
-    #     if not self.selectors:
-    #         raise ValueError("At least one invoice selector is required")
-    #     return self
 
-
-class FinancialRecordActionCommand(BaseModel):
+@dataclass(frozen=True,slots=True)
+@action_type(ActionType.FINANCIAL_RECORD_APPROVAL)
+class FinancialRecordActionCommand(Command):
     action: FinancialRecordAction
     selectors: list[FinancialRecordSelector]
     payload: dict[str, Any] | None = None

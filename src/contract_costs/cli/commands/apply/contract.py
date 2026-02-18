@@ -6,6 +6,8 @@ from contract_costs.cli.utils.context_helpers import require_organization_id, re
 from contract_costs.cli.utils.contract_resolver import resolve_contract
 from contract_costs.common.context.exceptions import ContextError
 from contract_costs.infrastructure.filesystem.excel_domain_file_manager import InputsContractsAssignmentFileManager
+from contract_costs.services.contracts.apply.command.apply_contract_structure_excel_command import \
+    ApplyNewContractStructureExcelCommand, UpdateContractStructureExcelCommand
 
 logger = logging.getLogger(__name__)
 
@@ -46,11 +48,13 @@ def handle_apply_contract(args) -> None:
         fm = InputsContractsAssignmentFileManager(organization_id=organization_id)
         excel_path = fm.get_active_file()
 
-        services.apply_contract_structure_excel.apply_new(
-            excel_path=excel_path,
-            organization_id=organization_id,
-            actor_user_id=actor_user_id
-        )
+        services.action_bus.execute(
+            action=ApplyNewContractStructureExcelCommand(
+                excel_path=excel_path,
+                organization_id=organization_id,
+                actor_user_id=actor_user_id
+            ),
+            handler=services.apply_contract_structure_excel)
 
         fm.mark_processed()  # 🔒 DOMKNIĘCIE LIFECYCLE
 
@@ -64,12 +68,15 @@ def handle_apply_contract(args) -> None:
         contract_code=contract.code)
     excel_path = fm.get_active_file()
 
-    services.apply_contract_structure_excel.apply_update(
-        contract_id=contract.id,
-        excel_path=excel_path,
-        organization_id=organization_id,
-        actor_user_id=actor_user_id
-    )
+    services.action_bus.execute(
+        action=UpdateContractStructureExcelCommand(
+            contract_id=contract.id,
+            excel_path=excel_path,
+            organization_id=organization_id,
+            actor_user_id=actor_user_id
+        ),
+        handler=services.apply_contract_structure_excel)
+
 
     fm.mark_processed()  # 🔒 DOMKNIĘCIE LIFECYCLE
 

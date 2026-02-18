@@ -47,8 +47,8 @@ def handle_apply_documents(args) -> None:
     logger.info(f"Processing {len(commands)} document decisions...")
     for cmd in commands:
         try:
-            services.apply_document_service.execute(cmd=cmd)
-        except Exception as e:
+            services.action_bus.execute(action=cmd,handler=services.apply_document_service)
+        except Exception:
             errors += 1
             logger.exception(f"Document {cmd.document_id} failed")
 

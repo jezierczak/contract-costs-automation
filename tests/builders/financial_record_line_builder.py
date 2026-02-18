@@ -59,6 +59,8 @@ class FinancialRecordLineBuilder:
             unit=self._unit,
             amount=self._amount,
             description=self._description,
+            agreement_id=None,
+            agreement_node_id=None
         )
 
     # =====================================================

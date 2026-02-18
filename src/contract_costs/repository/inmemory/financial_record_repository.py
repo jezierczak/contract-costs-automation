@@ -221,8 +221,19 @@ class InMemoryFinancialRecordRepository(FinancialRecordRepository):
                 if r.invoice_date and r.invoice_date <= query.to_date
             ]
 
-        return sorted(
-            result,
-            key=lambda r: (r.invoice_date or r.timestamp),
-            reverse=True,
-        )
+        if query.payment_statuses:
+            result = sorted(
+                result,
+                key=lambda r: (r.due_date, r.timestamp),
+            )
+        else:
+            result = sorted(
+                result,
+                key=lambda r: (r.invoice_date or r.timestamp, r.timestamp),
+                reverse=True,
+            )
+
+        if query.limit:
+            result = result[:query.limit]
+
+        return result

@@ -5,10 +5,7 @@ from datetime import date
 
 from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.model.value_direction import ValueDirection
-from contract_costs.repository.contract_node_repository import ContractNodeRepository
 from contract_costs.repository.contract_repository import ContractRepository
-from contract_costs.repository.financial_record_line_repository import FinancialRecordLineRepository
-from contract_costs.repository.value_type_repository import ValueTypeRepository
 from contract_costs.services.contracts.prepare.contract_node_tree_index import ContractNodeTreeIndex
 from contract_costs.services.contracts.query.contract_details.contract_details_query_command import (
     ContractDetailsQuery,
@@ -19,22 +16,23 @@ from contract_costs.services.contracts.query.dto.contract_details_dto import (
 from contract_costs.services.contracts.query.dto.contract_node_details_dto import (
     ContractNodeDetailsDTO,
 )
+from contract_costs.unit_of_work import UnitOfWork
 
 
 class ContractDetailsQueryService(ActionHandler[ContractDetailsQuery,ContractDetailsDTO]):
 
-    def __init__(
-        self,
-        *,
-        contract_repo: ContractRepository,
-        contract_node_repo: ContractNodeRepository,
-        record_line_repo: FinancialRecordLineRepository,
-        value_type_repo: ValueTypeRepository,
-    ) -> None:
-        self._contract_repo = contract_repo
-        self._node_repo = contract_node_repo
-        self._record_line_repo = record_line_repo
-        self._value_type_repo = value_type_repo
+    # def __init__(
+    #     self,
+    #     *,
+    #     contract_repo: ContractRepository,
+    #     contract_node_repo: ContractNodeRepository,
+    #     record_line_repo: FinancialRecordLineRepository,
+    #     value_type_repo: ValueTypeRepository,
+    # ) -> None:
+    #     self._contract_repo = contract_repo
+    #     self._node_repo = contract_node_repo
+    #     self._record_line_repo = record_line_repo
+    #     self._value_type_repo = value_type_repo
 
     # =====================================================
     # PUBLIC API
@@ -42,26 +40,35 @@ class ContractDetailsQueryService(ActionHandler[ContractDetailsQuery,ContractDet
 
     def execute(
         self,
-        query: ContractDetailsQuery,
+        *,
+        action: ContractDetailsQuery,
+        uow:UnitOfWork
     ) -> ContractDetailsDTO:
 
-        contract = self._get_contract(query)
+        contract_repo = uow.contracts
+        node_repo = uow.contract_nodes
+        record_line_repo = uow.financial_record_lines
+        value_type_repo = uow.value_types
 
-        nodes = self._node_repo.list_by_contract(
-            organization_id=query.organization_id,
-            contract_id=query.contract_id,
+        contract = self._get_contract(contract_repo=contract_repo,query=action)
+
+        nodes = node_repo.list_by_contract(
+            organization_id=action.organization_id,
+            contract_id=action.contract_id,
         )
 
         tree = ContractNodeTreeIndex(nodes)
 
         planned_budget, progress_map = self._calculate_budget_and_progress(
             tree=tree,
-            at_date=query.at_date,
+            at_date=action.at_date,
         )
 
         values = self._aggregate_financials(
-            organization_id=query.organization_id,
-            contract_id=query.contract_id,
+            value_type_repo=value_type_repo,
+            record_line_repo=record_line_repo,
+            organization_id=action.organization_id,
+            contract_id=action.contract_id,
             tree=tree,
         )
 
@@ -137,16 +144,17 @@ class ContractDetailsQueryService(ActionHandler[ContractDetailsQuery,ContractDet
     # =====================================================
     # AGGREGATION: FINANCIALS
     # =====================================================
-
+    @staticmethod
     def _aggregate_financials(
-        self,
         *,
+        value_type_repo,
+        record_line_repo,
         organization_id: UUID,
         contract_id: UUID,
         tree: ContractNodeTreeIndex,
     ) -> dict[UUID, dict[str, Decimal]]:
 
-        value_types = self._value_type_repo.list_all(
+        value_types = value_type_repo.list_all(
             organization_id=organization_id
         )
 
@@ -155,7 +163,7 @@ class ContractDetailsQueryService(ActionHandler[ContractDetailsQuery,ContractDet
             for vt in value_types
         }
 
-        record_lines = self._record_line_repo.list_by_contract(
+        record_lines = record_line_repo.list_by_contract(
             organization_id=organization_id,
             contract_id=contract_id,
         )
@@ -211,9 +219,8 @@ class ContractDetailsQueryService(ActionHandler[ContractDetailsQuery,ContractDet
     # =====================================================
     # DTO BUILD
     # =====================================================
-
+    @staticmethod
     def _build_node_dtos(
-        self,
         *,
         tree: ContractNodeTreeIndex,
         planned_budget: dict[UUID, Decimal],
@@ -247,11 +254,13 @@ class ContractDetailsQueryService(ActionHandler[ContractDetailsQuery,ContractDet
     # HELPERS
     # =====================================================
 
+    @staticmethod
     def _get_contract(
-        self,
+        *,
+        contract_repo: ContractRepository,
         query: ContractDetailsQuery,
     ):
-        contract = self._contract_repo.get(
+        contract = contract_repo.get(
             organization_id=query.organization_id,
             contract_id=query.contract_id,
         )

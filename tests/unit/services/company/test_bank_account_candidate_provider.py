@@ -21,10 +21,11 @@ def build_input(bank_account=None):
     )
 
 
-def test_returns_empty_when_no_bank_account(company_repo):
-    provider = BankAccountCandidateProvider(company_repo)
+def test_returns_empty_when_no_bank_account(uow):
+    provider = BankAccountCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=new_uuid(),
         input_=build_input(),
     )
@@ -32,10 +33,11 @@ def test_returns_empty_when_no_bank_account(company_repo):
     assert result == []
 
 
-def test_returns_empty_when_invalid_bank_account(company_repo):
-    provider = BankAccountCandidateProvider(company_repo)
+def test_returns_empty_when_invalid_bank_account(uow):
+    provider = BankAccountCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=new_uuid(),
         input_=build_input(bank_account="INVALID"),
     )
@@ -43,7 +45,7 @@ def test_returns_empty_when_invalid_bank_account(company_repo):
     assert result == []
 
 
-def test_returns_matching_company(company_repo):
+def test_returns_matching_company(company_repo, uow):
     org_id = new_uuid()
 
     company = (
@@ -55,9 +57,10 @@ def test_returns_matching_company(company_repo):
 
     company_repo.add(company)
 
-    provider = BankAccountCandidateProvider(company_repo)
+    provider = BankAccountCandidateProvider()
 
     result = provider.find_candidates(
+        uow=uow,
         organization_id=org_id,
         input_=build_input(bank_account="1234 5678 9012 3456 7890 1234 56"),
     )

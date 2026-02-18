@@ -1,9 +1,11 @@
 import logging
 
 from contract_costs.cli.context import get_services
-from contract_costs.cli.utils.context_helpers import require_organization_id
+from contract_costs.cli.utils.context_helpers import require_organization_id, require_user_id
 from contract_costs.common.context.exceptions import ContextError
 from contract_costs.infrastructure.filesystem.excel_domain_file_manager import FinancialRecordExcelPrepareFileManager
+from contract_costs.services.financial_records.excel.dto.financial_record_excel_export_command import \
+    FinancialRecordExcelExportCommand
 from contract_costs.services.financial_records.excel.layouts.financial_record_excel_layout_resolver import FinancialRecordExcelView
 from contract_costs.services.financial_records.review.financial_record_review_list_query_service import FinancialRecordReviewQuery
 
@@ -34,6 +36,7 @@ def handle_prepare_financial_records_for_accountant(args) -> None:
 
     try:
         organization_id = require_organization_id(services.context)
+        actor_user_id = require_user_id(services.context)
     except ContextError:
         return
 
@@ -41,6 +44,8 @@ def handle_prepare_financial_records_for_accountant(args) -> None:
         from_date=args.from_date,
         to_date=args.to_date,
         only_ready_for_accountant=not args.include_unprocessed,
+        organization_id=organization_id,
+        actor_user_id=actor_user_id
     )
 
     view = FinancialRecordExcelView.FOR_ACCOUNTANT
@@ -52,12 +57,21 @@ def handle_prepare_financial_records_for_accountant(args) -> None:
     )
     output_path = file_manager.prepare_target()
 
-    services.financial_record_excel_export_service.export(
-        organization_id=organization_id,
-        review_query=review_query,
-        view=view,
-        output_path=output_path,
-    )
+    # services.financial_record_excel_export_service.export(
+    #     organization_id=organization_id,
+    #     review_query=review_query,
+    #     view=view,
+    #     output_path=output_path,
+    # )
+    services.action_bus.execute(
+        action=FinancialRecordExcelExportCommand(
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
+            review_query=review_query,
+            view=view,
+            output_path=output_path,
+        ),
+        handler=services.financial_record_excel_export_service)
 
     logger.info("Prepared financial records for accountant: %s", output_path)
 

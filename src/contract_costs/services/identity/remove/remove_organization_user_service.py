@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Callable
 
+from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.common.time import utc_now
 from contract_costs.model.identity.organization_role import OrganizationRole
 from contract_costs.repository.identity.organization_user_repository import OrganizationUserRepository
@@ -11,58 +12,39 @@ from contract_costs.services.identity.exceptions import (
     PermissionDenied,
     UserNotMemberOfOrganization,
 )
+from contract_costs.unit_of_work import UnitOfWork
 
 
-class RemoveOrganizationUserService:
+class RemoveOrganizationUserService(
+    ActionHandler[RemoveOrganizationUserCommand, None]
+):
 
-    def __init__(
-        self,
-        *,
-        organization_user_repo: OrganizationUserRepository,
-        clock: Callable[[], datetime] = utc_now,
-    ):
-        self._organization_user_repo = organization_user_repo
+    def __init__(self, clock: Callable[[], datetime] = utc_now):
         self._clock = clock
 
-    def execute(self, cmd: RemoveOrganizationUserCommand) -> None:
-        # --- actor membership ---
-        actor_membership = self._organization_user_repo.get_by_org_and_user(
-            organization_id=cmd.organization_id,
-            user_id=cmd.actor_user_id,
-        )
-        if not actor_membership:
-            raise PermissionDenied("User is not a member of this organization")
+    def execute(self, *, action:RemoveOrganizationUserCommand, uow:UnitOfWork) -> None:
 
-        if actor_membership.role not in (
-            OrganizationRole.OWNER,
-            OrganizationRole.ADMIN,
-        ):
-            raise PermissionDenied("Only OWNER or ADMIN can remove users")
+        repo = uow.organization_users
 
-        # --- target membership ---
-        target_membership = self._organization_user_repo.get_by_org_and_user(
-            organization_id=cmd.organization_id,
-            user_id=cmd.target_user_id,
+        actor = repo.get_by_org_and_user(
+            organization_id=action.organization_id,
+            user_id=action.actor_user_id,
         )
-        if not target_membership:
+        if not actor:
+            raise PermissionDenied("User is not a member")
+
+        target = repo.get_by_org_and_user(
+            organization_id=action.organization_id,
+            user_id=action.target_user_id,
+        )
+        if not target:
             raise UserNotMemberOfOrganization()
 
-        if target_membership.role == OrganizationRole.OWNER:
-            raise PermissionDenied("Cannot remove organization OWNER")
-
-        if not target_membership.is_active:
-            # już usunięty → idempotencja
-            return
-
-        now = self._clock()
-
-        removed = target_membership.__class__(  # frozen dataclass
-            **{
-                **target_membership.__dict__,
-                "is_active": False,
-                "updated_at": now,
-                "updated_by_user_id": cmd.actor_user_id,
-            }
+        updated = target.remove(
+            actor_role=actor.role,
+            now=self._clock(),
+            by_user_id=action.actor_user_id,
         )
 
-        self._organization_user_repo.update(removed)
+        if updated != target:
+            repo.update(updated)

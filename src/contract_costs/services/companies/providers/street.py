@@ -2,10 +2,9 @@ import re
 from uuid import UUID
 
 from contract_costs.model.company import Company
-from contract_costs.repository.company_repository import CompanyRepository
 from contract_costs.services.companies.providers.candidate_provider import CompanyCandidateProvider
 from contract_costs.services.financial_records.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
-
+from contract_costs.unit_of_work import UnitOfWork
 
 STOPWORDS = {
     "UL", "UL.", "ALEJA", "AL", "AL.", "PLAC", "PL", "OS", "OS."
@@ -55,12 +54,13 @@ class StreetCandidateProvider(CompanyCandidateProvider):
     ✔️ działa dobrze przy lokalnych firmach
     """
 
-    def __init__(self, repo: CompanyRepository) -> None:
-        self._repo = repo
+    # def __init__(self, repo: CompanyRepository) -> None:
+    #     self._repo = repo
 
     def find_candidates(
         self,
         *,
+        uow: UnitOfWork,
         organization_id: UUID,
         input_: CompanyInput,
     ) -> list[Company]:
@@ -75,7 +75,7 @@ class StreetCandidateProvider(CompanyCandidateProvider):
             return []
 
         # tokeny do SQL (numer osobno – NIE jako token nazwy)
-        candidates = self._repo.find_by_street_tokens(
+        candidates = uow.companies.find_by_street_tokens(
             organization_id=organization_id,
             tokens=input_tokens,
         )

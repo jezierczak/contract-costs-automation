@@ -6,24 +6,26 @@ from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.common.time import utc_now
 from contract_costs.repository.company_repository import CompanyRepository
 from contract_costs.services.companies.dto.activate_company_command import (
-    ActivateCompanyCommand,
+    BaseActivateCompanyCommand,
 )
+from contract_costs.unit_of_work import UnitOfWork
 
 
-class ActivateCompanyService(ActionHandler[ActivateCompanyCommand,None]):
+class ActivateCompanyService(ActionHandler[BaseActivateCompanyCommand,None]):
 
     def __init__(
         self,
-        company_repository: CompanyRepository,
+        # company_repository: CompanyRepository,
         clock: Callable[[], datetime] = utc_now,
     ) -> None:
-        self._companies = company_repository
+        # self._companies = company_repository
         self._clock = clock
 
-    def execute(self, cmd: ActivateCompanyCommand) -> None:
-        company = self._companies.get(
-            cmd.company_id,
-            cmd.organization_id,
+    def execute(self, *, action: BaseActivateCompanyCommand, uow: UnitOfWork) -> None:
+        repo = uow.companies
+        company = repo.get(
+            action.company_id,
+            action.organization_id,
         )
         if company is None:
             raise ValueError("Company does not exist")
@@ -35,7 +37,7 @@ class ActivateCompanyService(ActionHandler[ActivateCompanyCommand,None]):
             company,
             is_active=True,
             updated_at=self._clock(),
-            updated_by_user_id=cmd.actor_user_id,
+            updated_by_user_id=action.actor_user_id,
         )
 
-        self._companies.update(updated)
+        repo.update(updated)

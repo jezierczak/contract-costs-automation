@@ -3,69 +3,80 @@ from datetime import datetime
 from typing import Any, Callable
 from uuid import UUID
 
+from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.common.time import utc_now
 from contract_costs.model.financial_record import PaymentStatus, FinancialRecord, FinancialRecordStatus
-from contract_costs.repository.financial_record_repository import FinancialRecordRepository
 from contract_costs.services.financial_records.actions.dto.invoice_action_command import FinancialRecordActionCommand, FinancialRecordAction
 from contract_costs.services.financial_records.actions.financial_record_selector_resolver import FinancialRecordSelectorResolver
+from contract_costs.unit_of_work import UnitOfWork
 
 
 logger = logging.getLogger(__name__)
 
-class FinancialRecordActionService:
+class FinancialRecordActionService(
+    ActionHandler[FinancialRecordActionCommand, None]
+):
     def __init__(   self,
-                    financial_record_repository: FinancialRecordRepository,
                     clock: Callable[[], datetime] = utc_now,
                  ):
-        self._record_repo =financial_record_repository
-        self._financial_record_selector_resolver = FinancialRecordSelectorResolver(self._record_repo)
         self._clock = clock
 
     def execute(
             self,
             *,
-            organization_id: UUID,
-            actor_user_id: UUID,
-            cmd: FinancialRecordActionCommand,
+            action: FinancialRecordActionCommand,
+            uow:UnitOfWork,
     ) -> None:
-        record_ids = self._financial_record_selector_resolver.resolve(
-            organization_id=organization_id,
-            selectors=cmd.selectors)
+        record_repo = uow.financial_records
+        selector_resolver = FinancialRecordSelectorResolver(record_repo)
 
-        match cmd.action:
+        record_ids = selector_resolver.resolve(
+            organization_id=action.organization_id,
+            selectors=action.selectors)
+
+        match action.action:
             case FinancialRecordAction.MARK_PAID:
                 self._mark_paid(
-                    organization_id=organization_id,
-                    actor_user_id=actor_user_id,
+                    uow=uow,
                     record_ids=record_ids,
-                    payload=cmd.payload)
+                    organization_id=action.organization_id,
+                    actor_user_id=action.actor_user_id,
+                    payload=action.payload,
+                )
 
             case FinancialRecordAction.MARK_SENT_TO_ACCOUNTANT:
                 self._mark_sent_to_accountant(
-                    organization_id=organization_id,
-                    actor_user_id=actor_user_id,
-                    record_ids=record_ids)
+                    uow=uow,
+                    record_ids=record_ids,
+                    organization_id=action.organization_id,
+                    actor_user_id=action.actor_user_id,
+                )
 
             case FinancialRecordAction.MARK_UNPAID:
                 self._mark_unpaid(
-                    organization_id=organization_id,
-                    actor_user_id=actor_user_id,
-                    record_ids=record_ids)
+                    uow=uow,
+                    record_ids=record_ids,
+                    organization_id=action.organization_id,
+                    actor_user_id=action.actor_user_id,
+                )
 
             case FinancialRecordAction.REOPEN:
                 self._reopen(
-                    organization_id=organization_id,
-                    actor_user_id=actor_user_id,
-                    record_ids=record_ids)
+                    uow=uow,
+                    record_ids=record_ids,
+                    organization_id=action.organization_id,
+                    actor_user_id=action.actor_user_id,
+                )
 
             case _:
-                raise NotImplementedError(f"Action {cmd.action} not implemented")
+                raise NotImplementedError(f"Action {action.action} not implemented")
 
     def _mark_paid(
         self,
         *,
-        organization_id:UUID,
-        actor_user_id:UUID,
+        uow:UnitOfWork,
+        organization_id: UUID,
+        actor_user_id: UUID,
         record_ids: list[UUID],
         payload: dict[str, Any] | None,
     ) -> None:
@@ -75,7 +86,7 @@ class FinancialRecordActionService:
             paid_at = payload.get("paid_at")
 
         for record_id in record_ids:
-            record = self._require_record(organization_id=organization_id,record_id=record_id)
+            record = self._require_record(uow=uow,organization_id=organization_id,record_id=record_id)
 
             if record.payment_status == PaymentStatus.PAID:
                 continue  # albo raise, zależnie od filozofii
@@ -85,15 +96,16 @@ class FinancialRecordActionService:
                 updated_at=self._clock(),
                 updated_by_user_id=actor_user_id,
             )
-            self._record_repo.update(updated)
+            uow.financial_records.update(updated)
 
     def _mark_sent_to_accountant(self,
                                  *,
+                                 uow:UnitOfWork,
                                  organization_id: UUID,
                                  actor_user_id: UUID,
                                  record_ids: list[UUID]) -> None:
         for record_id in record_ids:
-            record = self._require_record(organization_id=organization_id,record_id=record_id)
+            record = self._require_record(uow=uow,organization_id=organization_id,record_id=record_id)
 
             if record.status != FinancialRecordStatus.PROCESSED:
                 logger.warning( f"Invoice {record.reference} "
@@ -108,15 +120,16 @@ class FinancialRecordActionService:
                 updated_at=self._clock(),
                 updated_by_user_id=actor_user_id,
             )
-            self._record_repo.update(updated)
+            uow.financial_records.update(updated)
 
     def _mark_unpaid(self,
                      *,
+                     uow:UnitOfWork,
                      organization_id: UUID,
                      actor_user_id: UUID,
                      record_ids: list[UUID]) -> None:
         for record_id in record_ids:
-            record = self._require_record(organization_id=organization_id,record_id=record_id)
+            record = self._require_record(uow=uow,organization_id=organization_id,record_id=record_id)
 
             if record.payment_status == PaymentStatus.UNPAID:
                 continue
@@ -125,17 +138,18 @@ class FinancialRecordActionService:
                 updated_at=self._clock(),
                 updated_by_user_id=actor_user_id,
             )
-            self._record_repo.update(updated)
+            uow.financial_records.update(updated)
 
 
     def _reopen(self,
                 *,
+                uow: UnitOfWork,
                 organization_id: UUID,
                 actor_user_id: UUID,
                 record_ids: list[UUID]) -> None:
 
         for record_id in record_ids:
-            record = self._require_record(organization_id=organization_id,record_id=record_id)
+            record = self._require_record(uow=uow,organization_id=organization_id,record_id=record_id)
 
             if record.status not in (
                     FinancialRecordStatus.SENT_TO_ACCOUNTANT,
@@ -149,12 +163,16 @@ class FinancialRecordActionService:
                 updated_at=self._clock(),
                 updated_by_user_id=actor_user_id
             )
-            self._record_repo.update(updated)
+            uow.financial_records.update(updated)
+    @staticmethod
+    def _require_record(
+            uow: UnitOfWork,
+            organization_id: UUID,
+            record_id: UUID,
+    ) -> FinancialRecord:
 
-
-
-    def _require_record(self, organization_id: UUID, record_id: UUID) -> FinancialRecord:
-        record = self._record_repo.get(organization_id=organization_id, record_id=record_id)
+        record = uow.financial_records.get(organization_id=organization_id,record_id=record_id)
         if not record:
-            raise ValueError(f"Financial record with id {record_id} not found")
+            raise ValueError(f"Financial record {record_id} not found")
+
         return record

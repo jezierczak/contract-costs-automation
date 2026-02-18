@@ -27,7 +27,7 @@ def handle_change_value_type_code(args=None) -> None:
     repo = services.value_type_repository
 
     code = input("Current cost type code:\n-> ").strip()
-    value_type = repo.get_by_code(code)
+    value_type = repo.get_by_code(organization_id=organization_id,code=code)
 
     if value_type is None:
         print("Value type not found.")
@@ -54,7 +54,7 @@ def handle_change_value_type_code(args=None) -> None:
         actor_user_id=actor_user_id,
         new_code=new_code,
     )
+    services.action_bus.execute(action=cmd,handler=services.change_value_type_code_service)
 
-    services.change_value_type_code_service.execute(cmd)
 
-    print("Cost type code changed.")
+    print("Value type code changed.")

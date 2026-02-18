@@ -1,84 +1,105 @@
+import logging
 from datetime import datetime
 from typing import Callable
 from uuid import UUID
 
+from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.common.ids import new_uuid
 from contract_costs.common.time import utc_now
 from contract_costs.model.identity.organization import Organization
 from contract_costs.model.identity.organization_role import OrganizationRole
 from contract_costs.model.identity.organization_user import OrganizationUser
 from contract_costs.model.identity.user import User
-from contract_costs.repository.identity.organization_repository import OrganizationRepository
-from contract_costs.repository.identity.organization_user_repository import OrganizationUserRepository
-from contract_costs.repository.identity.user_repository import UserRepository
 from contract_costs.services.identity.add.dto.create_organization_command import CreateOrganizationCommand
 from contract_costs.services.identity.exceptions import OrganizationAlreadyExists, UserAlreadyExists
+from contract_costs.services.init.init_application_service import InitApplicationService
+from contract_costs.unit_of_work import UnitOfWork
 
+logger = logging.getLogger(__name__)
 
-class CreateOrganizationWithOwnerService:
+class CreateOrganizationWithOwnerService(
+    ActionHandler[CreateOrganizationCommand, UUID]
+):
 
     def __init__(
         self,
         *,
-        organization_repo: OrganizationRepository,
-        user_repo: UserRepository,
-        organization_user_repo: OrganizationUserRepository,
+        init_app_service: InitApplicationService,
         id_generator: Callable[[], UUID] = new_uuid,
         clock: Callable[[], datetime] = utc_now,
+
     ):
-        self._organization_repo = organization_repo
-        self._user_repo = user_repo
-        self._organization_user_repo = organization_user_repo
+        self._init_app_service = init_app_service
         self._id_generator = id_generator
         self._clock = clock
 
-    def execute(self, cmd: CreateOrganizationCommand) -> UUID:
-        if self._organization_repo.get_by_code(cmd.organization_code):
+    def execute(
+        self,
+        *,
+        action: CreateOrganizationCommand,
+        uow: UnitOfWork,
+    ) -> UUID:
+        organization_repo =uow.organizations
+        user_repo =uow.users
+        organization_users_repo = uow.organization_users
+
+        if organization_repo.get_by_code(action.organization_code):
             raise OrganizationAlreadyExists()
 
-        if self._user_repo .get_by_login(cmd.owner_login):
+        if user_repo .get_by_login(action.owner_login):
             raise UserAlreadyExists()
 
         now = self._clock()
 
+        org_id = self._id_generator()
+        user_id = self._id_generator()
+        org_user_id = self._id_generator()
         org = Organization(
-            id=self._id_generator(),
-            code=cmd.organization_code,
-            name=cmd.organization_name,
+            id=org_id,
+            code=action.organization_code,
+            name=action.organization_name,
             is_active=True,
             created_at=now,
-            created_by_user_id=cmd.created_by_user_id,
+            created_by_user_id=action.created_by_user_id,
             updated_at=None,
             updated_by_user_id=None,
             settings=None,
         )
 
         user = User(
-            id=self._id_generator(),
-            login=cmd.owner_login,
-            email=cmd.owner_email,
-            full_name=cmd.owner_full_name,
+            id=user_id,
+            login=action.owner_login,
+            email=action.owner_email,
+            full_name=action.owner_full_name,
             is_active=True,
             created_at=now,
-            created_by_user_id=cmd.created_by_user_id,
+            created_by_user_id=action.created_by_user_id,
         )
 
         membership = OrganizationUser(
-            id=self._id_generator(),
+            id=org_user_id,
             organization_id=org.id,
             user_id=user.id,
             role=OrganizationRole.OWNER,
             is_active=True,
             created_at=now,
             accepted_at=now,
-            created_by_user_id=cmd.created_by_user_id,
+            created_by_user_id=action.created_by_user_id,
         )
 
-        # TRANSAKCJA
-        self._organization_repo.add_with_owner(
-            organization=org,
-            owner=user,
-            membership=membership,
-        )
+        organization_repo.add(org)
+        user_repo.add(user)
+        organization_users_repo.add(membership)
+
+        def _init():
+            try:
+                self._init_app_service.execute(organization_id=org_id)
+            except Exception:
+                logger.exception(
+                    "Failed to initialize organization workdir",
+                    extra={"organization_id": str(org_id)},
+                )
+
+        uow.add_post_commit_hook(_init)
 
         return org.id

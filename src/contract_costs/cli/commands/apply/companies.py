@@ -51,7 +51,10 @@ def handle_apply_companies(args) -> None:
     # MAP → COMMANDS
     # =====================
     commands = [
-        CompanyExcelActionMapper.map(row)
+        CompanyExcelActionMapper.map(
+            organization_id=organization_id,
+            actor_user_id=user_id,
+            row=row)
         for row in rows
     ]
 
@@ -64,7 +67,8 @@ def handle_apply_companies(args) -> None:
     # =====================
     # APPLY
     # =====================
-    services.apply_companies_from_excel_service.execute(apply_command)
+    services.action_bus.execute(action=apply_command,handler=services.apply_companies_from_excel_service)
+    # services.apply_companies_from_excel_service.execute(apply_command)
 
     fm.mark_processed()
     print(f"Applied {len(commands)} company commands from {input_path}")

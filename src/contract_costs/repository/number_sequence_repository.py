@@ -10,7 +10,6 @@ class NumberSequenceRepository(ABC):
     @abstractmethod
     def get_for_update(
         self,
-        conn,
         organization_id: UUID,
         scope_key: str,
     ) -> NumberSequence | None:
@@ -23,7 +22,6 @@ class NumberSequenceRepository(ABC):
     @abstractmethod
     def add(
         self,
-        conn,
         sequence: NumberSequence,
     ) -> None:
         """
@@ -32,9 +30,8 @@ class NumberSequenceRepository(ABC):
         ...
 
     @abstractmethod
-    def save(
+    def update(
         self,
-        conn,
         sequence: NumberSequence,
     ) -> None:
         """

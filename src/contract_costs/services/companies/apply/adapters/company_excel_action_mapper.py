@@ -9,7 +9,7 @@ from contract_costs.services.companies.apply.command import (
 
 class CompanyExcelActionMapper:
     @staticmethod
-    def map(row: dict) -> ApplyCompanyCommand:
+    def map(*,organization_id: UUID,actor_user_id:UUID,row: dict) -> ApplyCompanyCommand:
         action = CompanyActionType((row.get("ACTION") or "none").lower())
 
         company_id = (
@@ -42,4 +42,6 @@ class CompanyExcelActionMapper:
                 for t in (row.get("Tags") or "").split(",")
                 if t.strip()
             },
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
         )

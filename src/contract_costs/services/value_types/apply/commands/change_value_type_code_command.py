@@ -1,11 +1,12 @@
 from dataclasses import dataclass
-from datetime import datetime
 from uuid import UUID
 
+from contract_costs.action_bus.action_type import ActionType, action_type
+from contract_costs.action_bus.query import Query
 
-@dataclass(frozen=True)
-class ChangeValueTypeCodeCommand:
-    organization_id: UUID
-    actor_user_id: UUID
+
+@dataclass(frozen=True,slots=True)
+@action_type(ActionType.ORGANIZATION_SETTINGS_MANAGEMENT)
+class ChangeValueTypeCodeCommand(Query):
     value_type_id: UUID
     new_code: str

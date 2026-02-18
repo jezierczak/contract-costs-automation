@@ -20,10 +20,16 @@ def handle_use_organization(args):
     except ContextError:
         return
     cmd = UseOrganizationCommand(
-        user_id=user_id,
+        actor_user_id=user_id,
         organization_code=args.code,
     )
 
-    services.use_organization.execute(cmd)
+    services.action_bus.execute(
+        action=UseOrganizationCommand(
+            actor_user_id=user_id,
+            organization_code=args.code,
+        ),
+        handler=services.use_organization,
+    )
 
     print(f"Active organization set to: {args.code}")

@@ -47,7 +47,12 @@ def handle_add_contract_snapshot(args):
         snapshot_date=snapshot_date,
     )
 
-    snapshot, created = services.create_contract_snapshot.execute(cmd)
+
+    snapshot, created =services.action_bus.execute(
+        action=cmd,
+        handler=services.create_contract_snapshot,
+    )
+
 
     if created:
         print(

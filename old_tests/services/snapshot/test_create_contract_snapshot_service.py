@@ -34,7 +34,7 @@ def test_snapshot_created(repos):
         snapshot_date=date(2024, 1, 1),
     )
 
-    assert snapshot[0].contract_id == contract.id
+    assert snapshot[0].contract_code == contract.id
     assert len(snapshot_repo.list_all()) == 1
 
 @pytest.mark.skip(reason="Zmienione działanie progress")
@@ -64,7 +64,7 @@ def test_weighted_progress(repos):
     )
 
     by_node = {
-        s.contract_node_id: s
+        s.contract_node_code: s
         for s in node_snapshot_repo.list_all()
     }
 
@@ -142,6 +142,6 @@ def test_costs_aggregated(repos):
     assert sum(
         v.net
         for v in snapshots
-        if node_snapshot_repo.get(v.node_snapshot_id).contract_node_id in leaf_node_ids
+        if node_snapshot_repo.get(v.node_snapshot_id).contract_node_code in leaf_node_ids
     ) == Decimal("80")
 

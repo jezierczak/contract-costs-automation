@@ -9,6 +9,10 @@ from contract_costs.model.contract import ContractStatus
 from contract_costs.model.contract_node import ContractNodeInput
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 from contract_costs.services.contracts.apply.apply_contract_structure_excel import ApplyContractStructureExcelService
+from contract_costs.services.contracts.apply.command.apply_contract_structure_excel_command import (
+    ApplyNewContractStructureExcelCommand,
+    UpdateContractStructureExcelCommand,
+)
 
 from contract_costs.services.contracts.dto.create_contract_command import (
     CreateContractCommand,
@@ -47,7 +51,7 @@ def make_node_rows():
     ]
 
 
-def test_apply_new_calls_create_service(monkeypatch):
+def test_apply_new_calls_create_service(monkeypatch, uow):
     create_service = MagicMock()
     update_service = MagicMock()
     company_eval = MagicMock()
@@ -68,19 +72,19 @@ def test_apply_new_calls_create_service(monkeypatch):
         else make_node_rows(),
     )
 
-    service.apply_new(
-        excel_path=Path("fake.xlsx"),
+    action = ApplyNewContractStructureExcelCommand(
         organization_id=uuid4(),
         actor_user_id=uuid4(),
+        excel_path=Path("fake.xlsx"),
     )
+    service.execute(action=action, uow=uow)
 
-    assert create_service.init.called
-    assert create_service.add_contract_node_tree.called
+
     assert create_service.execute.called
     assert not update_service.execute.called
 
 
-def test_apply_update_calls_update_service(monkeypatch):
+def test_apply_update_calls_update_service(monkeypatch, uow):
     create_service = MagicMock()
     update_service = MagicMock()
     company_eval = MagicMock()
@@ -102,20 +106,21 @@ def test_apply_update_calls_update_service(monkeypatch):
 
     contract_id = uuid4()
 
-    service.apply_update(
-        excel_path=Path("fake.xlsx"),
-        contract_id=contract_id,
+    action = UpdateContractStructureExcelCommand(
         organization_id=uuid4(),
         actor_user_id=uuid4(),
+        contract_id=contract_id,
+        excel_path=Path("fake.xlsx"),
     )
+    service.execute(action=action, uow=uow)
 
     assert update_service.execute.called
-    command = update_service.execute.call_args[0][0]
+    command = update_service.execute.call_args.kwargs["action"]
 
     assert isinstance(command, UpdateContractStructureCommand)
     assert command.contract_id == contract_id
     assert len(command.contract_node_input) == 1
-    assert not create_service.init.called
+    assert not create_service.execute.called
 
 
 def test_build_contract_node_tree_duplicate_code_raises():

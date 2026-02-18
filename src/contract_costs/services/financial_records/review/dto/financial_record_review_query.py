@@ -1,8 +1,11 @@
+from dataclasses import dataclass
 from datetime import date
 from typing import TypedDict, cast, Any
 
 from pydantic import BaseModel
 
+from contract_costs.action_bus.action_type import ActionType, action_type
+from contract_costs.action_bus.query import Query
 from contract_costs.model.company import CompanyType
 from contract_costs.model.contract import ContractType
 from contract_costs.model.financial_record import FinancialRecordStatus, PaymentStatus
@@ -15,8 +18,9 @@ class CompanyReviewQuery(TypedDict,total=False):
     name: list[str] | str
     role: list[CompanyType] | CompanyType
 
-
-class FinancialRecordReviewQuery(BaseModel):
+@dataclass(frozen=True,slots=True)
+@action_type(ActionType.FINANCIAL_RECORD_VIEW)
+class FinancialRecordReviewQuery(Query):
     buyer_query: CompanyReviewQuery | None = None
     seller_query: CompanyReviewQuery | None = None
     statuses: list[FinancialRecordStatus] | None = None
@@ -29,6 +33,7 @@ class FinancialRecordReviewQuery(BaseModel):
 
     only_ready_for_accountant: bool | None = None
     direction: ValueDirection | None = None
+    limit: int | None = None
 
     @staticmethod
     def build_company_query(**kwargs) -> CompanyReviewQuery | None:

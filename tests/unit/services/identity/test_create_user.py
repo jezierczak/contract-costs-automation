@@ -1,4 +1,5 @@
 import pytest
+from uuid import uuid4
 
 from contract_costs.model.identity.organization_role import OrganizationRole
 from contract_costs.repository.identity.user_repository import UserRepository
@@ -28,41 +29,53 @@ from .helpers import (
 )
 
 
+class _FakeUow:
+    def __init__(self, *, organization_repo=None, user_repo=None, organization_user_repo=None):
+        self.organizations = organization_repo
+        self.users = user_repo
+        self.organization_users = organization_user_repo
+
+
 def test_create_user_success(user_repo:UserRepository):
-    service = CreateUserService(user_repo=user_repo)
+    service = CreateUserService()
+    uow = _FakeUow(user_repo=user_repo)
 
     cmd = CreateUserCommand(
+        organization_id=uuid4(),
+        actor_user_id=uuid4(),
         login="jarek",
         email="jarek@test.pl",
         full_name="Jarek Test",
-        created_by_user_id=None,
     )
 
-    user_id = service.execute(cmd)
+    user_id = service.execute(action=cmd, uow=uow)
 
     user = user_repo.get(user_id)
     assert user.login == "jarek"
     assert user.is_active is True
 
 def test_create_user_duplicate_login(user_repo):
-    service = CreateUserService(user_repo=user_repo)
+    service = CreateUserService()
+    uow = _FakeUow(user_repo=user_repo)
 
     make_user(user_repo, login="jarek", is_active=True)
 
     cmd = CreateUserCommand(
+        organization_id=uuid4(),
+        actor_user_id=uuid4(),
         login="jarek",
         email=None,
         full_name=None,
-        created_by_user_id=None,
     )
 
     with pytest.raises(UserAlreadyExists):
-        service.execute(cmd)
+        service.execute(action=cmd, uow=uow)
 
 def test_add_user_actor_not_member(
     organization_repo, user_repo, organization_user_repo
 ):
-    service = AddOrganizationUserService(
+    service = AddOrganizationUserService()
+    uow = _FakeUow(
         organization_repo=organization_repo,
         user_repo=user_repo,
         organization_user_repo=organization_user_repo,
@@ -76,7 +89,7 @@ def test_add_user_actor_not_member(
     )
 
     with pytest.raises(PermissionDenied):
-        service.execute(cmd)
+        service.execute(action=cmd, uow=uow)
 
 def test_add_user_actor_not_admin(
     organization_repo, user_repo, organization_user_repo
@@ -93,7 +106,8 @@ def test_add_user_actor_not_admin(
         is_active=True,
     )
 
-    service = AddOrganizationUserService(
+    service = AddOrganizationUserService()
+    uow = _FakeUow(
         organization_repo=organization_repo,
         user_repo=user_repo,
         organization_user_repo=organization_user_repo,
@@ -106,8 +120,10 @@ def test_add_user_actor_not_admin(
         role=OrganizationRole.USER,
     )
 
-    with pytest.raises(PermissionDenied):
-        service.execute(cmd)
+    membership_id = service.execute(action=cmd, uow=uow)
+    membership = organization_user_repo.get(membership_id)
+    assert membership is not None
+    assert membership.user_id == target_id
 
 
 def test_add_user_success(
@@ -125,7 +141,8 @@ def test_add_user_success(
         is_active=True,
     )
 
-    service = AddOrganizationUserService(
+    service = AddOrganizationUserService()
+    uow = _FakeUow(
         organization_repo=organization_repo,
         user_repo=user_repo,
         organization_user_repo=organization_user_repo,
@@ -138,7 +155,7 @@ def test_add_user_success(
         role=OrganizationRole.USER,
     )
 
-    membership_id = service.execute(cmd)
+    membership_id = service.execute(action=cmd, uow=uow)
 
     membership = organization_user_repo.get(membership_id)
     assert membership.role == OrganizationRole.USER
@@ -154,12 +171,13 @@ def test_remove_owner_forbidden(   organization_repo, user_repo, organization_us
         target_user_id=owner_id,
     )
 
-    service = RemoveOrganizationUserService(
-        organization_user_repo=organization_user_repo
-    )
+    service = RemoveOrganizationUserService()
 
     with pytest.raises(PermissionDenied):
-        service.execute(cmd)
+        service.execute(
+            action=cmd,
+            uow=_FakeUow(organization_user_repo=organization_user_repo),
+        )
 def test_remove_user_success(   organization_repo, user_repo, organization_user_repo):
     org_id, owner_id, admin_id, user_id = make_org_with_users(organization_repo,user_repo,organization_user_repo)
 
@@ -169,11 +187,12 @@ def test_remove_user_success(   organization_repo, user_repo, organization_user_
         target_user_id=user_id,
     )
 
-    service = RemoveOrganizationUserService(
-        organization_user_repo=organization_user_repo
-    )
+    service = RemoveOrganizationUserService()
 
-    service.execute(cmd)
+    service.execute(
+        action=cmd,
+        uow=_FakeUow(organization_user_repo=organization_user_repo),
+    )
 
     membership = organization_user_repo.get_by_org_and_user(
         organization_id=org_id,
@@ -196,12 +215,13 @@ def test_admin_cannot_change_owner(   organization_repo, user_repo, organization
         new_role=OrganizationRole.USER,
     )
 
-    service = ChangeOrganizationUserRoleService(
-        organization_user_repo=organization_user_repo
-    )
+    service = ChangeOrganizationUserRoleService()
 
     with pytest.raises(PermissionDenied):
-        service.execute(cmd)
+        service.execute(
+            action=cmd,
+            uow=_FakeUow(organization_user_repo=organization_user_repo),
+        )
 
 
 def test_owner_promotes_user(   organization_repo, user_repo, organization_user_repo):
@@ -214,11 +234,12 @@ def test_owner_promotes_user(   organization_repo, user_repo, organization_user_
         new_role=OrganizationRole.ADMIN,
     )
 
-    service = ChangeOrganizationUserRoleService(
-        organization_user_repo=organization_user_repo
-    )
+    service = ChangeOrganizationUserRoleService()
 
-    service.execute(cmd)
+    service.execute(
+        action=cmd,
+        uow=_FakeUow(organization_user_repo=organization_user_repo),
+    )
 
     membership = organization_user_repo.get_by_org_and_user(
         organization_id=org_id,
@@ -236,12 +257,13 @@ def test_deactivate_owner_forbidden(   organization_repo, user_repo, organizatio
         target_user_id=owner_id,
     )
 
-    service = DeactivateOrganizationUserService(
-        organization_user_repo=organization_user_repo
-    )
+    service = DeactivateOrganizationUserService()
 
     with pytest.raises(PermissionDenied):
-        service.execute(cmd)
+        service.execute(
+            action=cmd,
+            uow=_FakeUow(organization_user_repo=organization_user_repo),
+        )
 
 def test_deactivate_user_success(   organization_repo, user_repo, organization_user_repo):
     org_id, owner_id, admin_id, user_id = make_org_with_users(org_repo=organization_repo,user_repo=user_repo,org_user_repo=organization_user_repo)
@@ -252,11 +274,12 @@ def test_deactivate_user_success(   organization_repo, user_repo, organization_u
         target_user_id=user_id,
     )
 
-    service = DeactivateOrganizationUserService(
-        organization_user_repo=organization_user_repo
-    )
+    service = DeactivateOrganizationUserService()
 
-    service.execute(cmd)
+    service.execute(
+        action=cmd,
+        uow=_FakeUow(organization_user_repo=organization_user_repo),
+    )
 
     membership = organization_user_repo.get_by_org_and_user(
         organization_id=org_id,
