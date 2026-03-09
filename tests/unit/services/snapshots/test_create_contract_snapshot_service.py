@@ -231,7 +231,7 @@ def test_execute_builds_and_persists_aggregated_snapshot():
     by_node_snapshot_id = {v.node_snapshot_id: v for v in value_snapshots}
 
     root_values = by_node_snapshot_id[root_snapshot.id]
-    assert root_values.net == Decimal("300")
+    assert root_values.amount_value == Decimal("300")
     assert root_values.vat == Decimal("69.00")
     assert root_values.gross == Decimal("369.00")
     assert root_values.non_deductible == Decimal("0")

@@ -1,7 +1,7 @@
 from uuid import UUID
 from typing import Dict, List
 
-from contract_costs.model.document import Document
+from contract_costs.model.document import Document, DocumentStatus
 from contract_costs.repository.document_repository import DocumentRepository
 
 
@@ -110,17 +110,18 @@ class InMemoryDocumentRepository(DocumentRepository):
     # HASH CHECK
     # ============================================================
 
-    def exists_by_hash(
-        self,
-        *,
-        organization_id: UUID,
-        file_hash: str,
-    ) -> bool:
-        return any(
-            d.organization_id == organization_id
-            and d.file_hash == file_hash
-            for d in self._documents.values()
-        )
+    def get_by_hash(
+            self,
+            *,
+            organization_id: UUID,
+            file_hash: str,
+    ) -> Document | None:
+
+        for d in self._documents.values():
+            if d.organization_id == organization_id and d.file_hash == file_hash:
+                return d
+
+        return None
 
 
     def list_all(
@@ -137,14 +138,14 @@ class InMemoryDocumentRepository(DocumentRepository):
             reverse=True,
         )
 
-
     def list_filtered(
-        self,
-        *,
-        organization_id: UUID,
-        has_payload: bool | None = None,
-        has_record: bool | None = None,
-        document_source: str | None = None,
+            self,
+            *,
+            organization_id: UUID,
+            has_payload: bool | None = None,
+            has_record: bool | None = None,
+            document_source: str | None = None,
+            document_status: DocumentStatus | None = None,
     ) -> List[Document]:
 
         documents = [
@@ -152,12 +153,12 @@ class InMemoryDocumentRepository(DocumentRepository):
             if d.organization_id == organization_id
         ]
 
-        if has_payload:
+        if has_payload is True:
             documents = [d for d in documents if d.parsed_payload is not None]
         elif has_payload is False:
             documents = [d for d in documents if d.parsed_payload is None]
 
-        if has_record:
+        if has_record is True:
             documents = [d for d in documents if d.financial_record_id is not None]
         elif has_record is False:
             documents = [d for d in documents if d.financial_record_id is None]
@@ -166,6 +167,12 @@ class InMemoryDocumentRepository(DocumentRepository):
             documents = [
                 d for d in documents
                 if d.document_source == document_source
+            ]
+
+        if document_status:
+            documents = [
+                d for d in documents
+                if d.document_status == document_status
             ]
 
         return sorted(

@@ -37,7 +37,7 @@ class TestCreateContractService:
         service.init(contract_starter=contract_starter_1)
         service.execute()
 
-        contracts = con_repo.list_contracts()
+        contracts = con_repo.list_all_by_type()
         assert len(contracts) == 1
 
         contract = contracts[0]
@@ -74,7 +74,7 @@ class TestCreateContractService:
         contract.execute()
 
         # --- kontrakt ---
-        contracts = con_repo.list_contracts()
+        contracts = con_repo.list_all_by_type()
         assert len(contracts) == 1
         contract = contracts[0]
 

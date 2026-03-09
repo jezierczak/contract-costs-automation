@@ -105,7 +105,7 @@ def test_list_snapshots_aggregates_cost_and_revenue_for_root():
 
     assert len(result) == 1
     dto = result[0]
-    assert dto.contract_code == contract.code
+    assert dto.contract_reference == contract.code
     assert dto.net_cost == Decimal("100")
     assert dto.gross_cost == Decimal("123")
     assert dto.non_deductible == Decimal("10")
@@ -213,11 +213,11 @@ def test_get_snapshot_returns_nodes_with_cost_and_revenue_values():
         uow=uow,
     )
 
-    assert dto.contract_code == "C-77"
+    assert dto.contract_reference == "C-77"
     assert len(dto.nodes) == 2
     by_code = {n.code: n for n in dto.nodes}
     leaf_dto = by_code["A"]
-    assert leaf_dto.net == Decimal("100")
+    assert leaf_dto.amount_value == Decimal("100")
     assert leaf_dto.vat == Decimal("23")
     assert leaf_dto.gross == Decimal("123")
     assert leaf_dto.non_deductible == Decimal("7")

@@ -24,7 +24,7 @@ def snapshot_list_columns() -> Sequence[ExcelColumn[ContractSnapshotListDTO]]:
         getters=[
             lambda s: str(s.snapshot_id)[:8],
             lambda s: s.snapshot_date,
-            lambda s: s.contract_code,
+            lambda s: s.contract_reference,
             lambda s: s.planned_budget,
             lambda s: s.progress,
             lambda s: (s.planned_budget * s.progress),

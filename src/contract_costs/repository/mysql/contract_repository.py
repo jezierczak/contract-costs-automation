@@ -189,7 +189,7 @@ class MySQLContractRepository(ContractRepository):
         return self._row_to_contract(row)
 
 
-    def list_contracts(self, organization_id: UUID,contract_type: ContractType = ContractType.PROJECT) -> list[Contract]:
+    def list_all_by_type(self, organization_id: UUID, contract_type: ContractType = ContractType.PROJECT) -> list[Contract]:
         conn = self._get_connection()
         try:
             with conn.cursor(dictionary=True) as cur:
@@ -224,6 +224,54 @@ class MySQLContractRepository(ContractRepository):
             self._maybe_close(conn)
 
         return exists
+
+    def list_contracts(
+            self,
+            *,
+            organization_id: UUID,
+            contract_type: ContractType | None = None,
+            status: ContractStatus | None = None,
+            search: str | None = None,
+    ) -> list[Contract]:
+
+        conn = self._get_connection()
+
+        try:
+            with conn.cursor(dictionary=True) as cur:
+
+                sql = """
+                      SELECT *
+                      FROM contracts
+                      WHERE organization_id = %s \
+                      """
+
+                params = [str(organization_id)]
+
+                # --- contract type filter ---
+                if contract_type is not None:
+                    sql += " AND contract_type = %s"
+                    params.append(contract_type.value)
+
+                # --- status filter ---
+                if status is not None:
+                    sql += " AND status = %s"
+                    params.append(status.value)
+
+                # --- search filter (code + name) ---
+                if search:
+                    sql += " AND (code LIKE %s OR name LIKE %s)"
+                    like = f"%{search}%"
+                    params.extend([like, like])
+
+                sql += " ORDER BY created_at DESC"
+
+                cur.execute(sql, tuple(params))
+                rows = cur.fetchall()
+
+        finally:
+            self._maybe_close(conn)
+
+        return [self._row_to_contract(row) for row in rows]
 
     def get_by_code(
             self,

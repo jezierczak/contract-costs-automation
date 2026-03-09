@@ -80,9 +80,9 @@ def make_line_update(**kwargs) -> FinancialRecordLineUpdate:
         quantity=Decimal("1"),
         unit=UnitOfMeasure.PIECE,
         amount=Amount(Decimal("100"), VatRate.VAT_23),
-        contract_code=kwargs.get("contract_id"),
-        contract_node_code=kwargs.get("cost_node_id"),
-        value_type_code=kwargs.get("cost_type_id"),
+        contract_reference=kwargs.get("contract_id"),
+        contract_node_reference=kwargs.get("cost_node_id"),
+        value_type_reference=kwargs.get("cost_type_id"),
     )
 
 def make_line(

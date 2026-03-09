@@ -1,0 +1,65 @@
+
+<div class="p-3 border-b flex justify-end">
+
+    <button
+        hx-get="/value_types/table?include_inactive={{ 'false' if include_inactive else 'true' }}"
+        hx-target="#value-types-table"
+        hx-swap="innerHTML"
+        class="px-3 py-2 rounded text-sm
+        {% if include_inactive %}
+            bg-blue-600 text-white
+        {% else %}
+            bg-gray-200 hover:bg-gray-300
+        {% endif %}
+        "
+    >
+        {% if include_inactive %}
+            🙈 Ukryj nieaktywne
+        {% else %}
+            👁 Pokaż nieaktywne
+        {% endif %}
+    </button>
+
+</div>
+<table class="w-full text-sm">
+
+<thead class="bg-gray-100">
+<tr>
+    <th class="p-3">Code</th>
+    <th class="p-3">Name</th>
+    <th class="p-3">Direction</th>
+    <th class="p-3">Active</th>
+</tr>
+</thead>
+
+<tbody>
+{% for v in items %}
+<tr
+    class="cursor-pointer hover:bg-gray-50"
+    hx-get="/value_types/{{ v.code }}/review"
+    hx-target="#modal-area"
+    hx-swap="innerHTML"
+>
+    <td class="p-2 font-medium">{{ v.code }}</td>
+    <td class="p-2">{{ v.name }}</td>
+
+    <td class="p-2">
+        <span class="px-2 py-0.5 text-xs rounded
+            {% if v.direction == 'COST' %}
+                bg-red-100 text-red-700
+            {% else %}
+                bg-green-100 text-green-700
+            {% endif %}
+        ">
+            {{ v.direction }}
+        </span>
+    </td>
+
+    <td class="p-2">
+        {{ "✔" if v.is_active else "—" }}
+    </td>
+</tr>
+{% endfor %}
+</tbody>
+
+</table>

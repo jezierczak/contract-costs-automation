@@ -6,13 +6,15 @@ from contract_costs.action_bus.action_type import action_type, ActionType
 
 
 @dataclass(frozen=True,slots=True)
-@action_type(ActionType.SYSTEM_CREATE_ORGANIZATION_NEW_USER)
+@action_type(ActionType.SYSTEM)
 class CreateOrganizationCommand(Action):
     organization_code: str
     organization_name: str
 
     owner_login: str
+    owner_password_hash: str
     owner_email: str | None
     owner_full_name: str | None
 
     created_by_user_id: UUID | None  # None przy self-signup
+

@@ -2,7 +2,7 @@ import json
 from uuid import UUID
 
 from contract_costs.infrastructure.db.mysql_connection import get_connection
-from contract_costs.model.document import Document
+from contract_costs.model.document import Document, DocumentStatus
 from contract_costs.repository.document_repository import DocumentRepository
 from contract_costs.repository.mysql.document_mapper import map_row_to_document
 
@@ -31,10 +31,10 @@ class MySQLDocumentRepository(DocumentRepository):
             INSERT INTO documents (
                 id, organization_id, financial_record_id, document_source,
                 document_type, document_number, seller_nip, parsed_payload,
-                file_hash, file_path, filename, mime_type, size,
+                file_hash, file_path, filename, mime_type, size, score, scoring_breakdown, document_status, 
                 created_at, created_by_user_id, updated_at, updated_by_user_id
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s,%s , %s, %s, %s, %s, %s, %s, %s,%s,%s, %s, %s, %s, %s, %s, %s, %s)
         """
 
         conn = self._get_connection()
@@ -56,6 +56,9 @@ class MySQLDocumentRepository(DocumentRepository):
                         document.filename,
                         document.mime_type,
                         document.size,
+                        document.scoring.score if document.scoring else None,
+                        json.dumps(document.scoring.breakdown) if document.scoring else None,
+                        document.document_status.value,
                         document.created_at,
                         str(document.created_by_user_id) if document.created_by_user_id else None,
                         document.updated_at,
@@ -71,23 +74,26 @@ class MySQLDocumentRepository(DocumentRepository):
 
     def update(self, document: Document) -> None:
         sql = """
-            UPDATE documents
-            SET financial_record_id = %s,
-                document_source     = %s,
-                document_type       = %s,
-                document_number     = %s,
-                seller_nip          = %s,
-                parsed_payload      = %s,
-                file_hash           = %s,
-                file_path           = %s,
-                filename            = %s,
-                mime_type           = %s,
-                size                = %s,
-                updated_at          = %s,
-                updated_by_user_id  = %s
-            WHERE id = %s
-              AND organization_id = %s
-        """
+              UPDATE documents
+              SET financial_record_id = %s,
+                  document_source     = %s,
+                  document_status     = %s,
+                  document_type       = %s,
+                  document_number     = %s,
+                  seller_nip          = %s,
+                  parsed_payload      = %s,
+                  file_hash           = %s,
+                  file_path           = %s,
+                  filename            = %s,
+                  mime_type           = %s,
+                  size                = %s,
+                  score               = %s,
+                  scoring_breakdown   = %s,
+                  updated_at          = %s,
+                  updated_by_user_id  = %s
+              WHERE id = %s
+                AND organization_id = %s \
+              """
 
         conn = self._get_connection()
         try:
@@ -97,6 +103,7 @@ class MySQLDocumentRepository(DocumentRepository):
                     (
                         str(document.financial_record_id) if document.financial_record_id else None,
                         document.document_source.value if document.document_source else None,
+                        document.document_status.value,
                         document.document_type.value if document.document_type else None,
                         document.document_number,
                         document.seller_nip,
@@ -106,6 +113,8 @@ class MySQLDocumentRepository(DocumentRepository):
                         document.filename,
                         document.mime_type,
                         document.size,
+                        document.scoring.score if document.scoring else None,
+                        json.dumps(document.scoring.breakdown) if document.scoring else None,
                         document.updated_at,
                         str(document.updated_by_user_id) if document.updated_by_user_id else None,
                         str(document.id),
@@ -210,20 +219,27 @@ class MySQLDocumentRepository(DocumentRepository):
         finally:
             self._maybe_close(conn)
 
-    def exists_by_hash(self, *, organization_id: UUID, file_hash: str) -> bool:
+    def get_by_hash(
+            self,
+            *,
+            organization_id: UUID,
+            file_hash: str,
+    ) -> Document | None:
+
         sql = """
-            SELECT 1
-            FROM documents
-            WHERE organization_id = %s
-              AND file_hash = %s
-            LIMIT 1
-        """
+              SELECT *
+              FROM documents
+              WHERE organization_id = %s
+                AND file_hash = %s
+              LIMIT 1 
+              """
 
         conn = self._get_connection()
         try:
-            with conn.cursor() as cur:
+            with conn.cursor(dictionary=True) as cur:
                 cur.execute(sql, (str(organization_id), file_hash))
-                return cur.fetchone() is not None
+                row = cur.fetchone()
+                return self._map_row(row) if row else None
         finally:
             self._maybe_close(conn)
 
@@ -251,6 +267,7 @@ class MySQLDocumentRepository(DocumentRepository):
         has_payload: bool | None = None,
         has_record: bool | None = None,
         document_source: str | None = None,
+        document_status: DocumentStatus | None = None,
     ) -> list[Document]:
         conditions = ["organization_id = %s"]
         params: list[str] = [str(organization_id)]
@@ -268,6 +285,9 @@ class MySQLDocumentRepository(DocumentRepository):
         if document_source:
             conditions.append("document_source = %s")
             params.append(document_source)
+        if document_status:
+            conditions.append("document_status = %s")
+            params.append(document_status.value)
 
         where_clause = " AND ".join(conditions)
         sql = f"""

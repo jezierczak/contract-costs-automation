@@ -4,7 +4,7 @@ from typing import Sequence
 from uuid import UUID
 
 from contract_costs.infrastructure.db.mysql_connection import get_connection
-from contract_costs.model.amount import Amount, TaxTreatment, VatRate
+from contract_costs.model.amount import Amount, TaxTreatment, VatRate, AmountInputType
 from contract_costs.model.financial_record_line import FinancialRecordLine
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 from contract_costs.repository.financial_record_line_repository import FinancialRecordLineRepository
@@ -33,11 +33,11 @@ class MySQLFinancialRecordLineRepository(FinancialRecordLineRepository):
         sql = """
         INSERT INTO financial_record_lines (
             id, organization_id, financial_record_id, contract_id, contract_node_id,
-            value_type_id, item_name, quantity, unit, amount_value, vat_rate,
+            value_type_id, item_name, quantity, unit, amount_value, amount_input_type, vat_rate,
             tax_treatment, description, created_at, created_by_user_id,
             updated_at, updated_by_user_id,agreement_id,agreement_node_id
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s,%s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s,%s)
         """
 
         conn = self._get_connection()
@@ -56,6 +56,7 @@ class MySQLFinancialRecordLineRepository(FinancialRecordLineRepository):
                         line.quantity,
                         line.unit.value if line.unit else None,
                         line.amount.value,
+                        line.amount.input_type.value,
                         line.amount.vat_rate.value,
                         line.amount.tax_treatment.value,
                         line.description,
@@ -191,6 +192,7 @@ class MySQLFinancialRecordLineRepository(FinancialRecordLineRepository):
                   quantity            = %s,
                   unit                = %s,
                   amount_value        = %s,
+                  amount_input_type   = %s,
                   vat_rate            = %s,
                   tax_treatment       = %s,
                   description         = %s,
@@ -216,6 +218,7 @@ class MySQLFinancialRecordLineRepository(FinancialRecordLineRepository):
                         line.quantity,
                         line.unit.value if line.unit else None,
                         line.amount.value,
+                        line.amount.input_type.value,
                         line.amount.vat_rate.value,
                         line.amount.tax_treatment.value,
                         line.description,
@@ -330,7 +333,8 @@ class MySQLFinancialRecordLineRepository(FinancialRecordLineRepository):
             quantity=row["quantity"],
             unit=UnitOfMeasure(row["unit"]) if row["unit"] else None,
             amount=Amount(
-                value=row["amount_value"],
+                value=Decimal(row["amount_value"]),
+                input_type=AmountInputType(row["amount_input_type"]),
                 vat_rate=VatRate(Decimal(row["vat_rate"])),
                 tax_treatment=TaxTreatment(row["tax_treatment"]),
             ),

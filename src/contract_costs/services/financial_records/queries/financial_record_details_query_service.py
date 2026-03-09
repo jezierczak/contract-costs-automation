@@ -4,6 +4,7 @@ from decimal import Decimal
 from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.services.financial_records.assigment.ingest.completion_validator.invoice_completion_validator import \
     RecordCompletionValidator
+from contract_costs.services.financial_records.queries.dto.attached_document_view import AttachedDocumentView
 from contract_costs.services.financial_records.queries.dto.financial_record_details_query import \
     FinancialRecordDetailsQuery
 from contract_costs.services.financial_records.queries.dto.invoice_query import FinancialRecordDetailsView, InvoiceLineView
@@ -57,6 +58,15 @@ class FinancialRecordDetailsQueryService(
         else:
             direction = None
 
+        documents = [
+            AttachedDocumentView(
+                id=str(doc.id),
+                filename=doc.filename,
+                document_type=doc.document_type.value if doc.document_type else None,
+            )
+            for doc in record.documents
+        ]
+
         line_views = []
         total_net = Decimal("0")
         total_vat = Decimal("0")
@@ -101,18 +111,39 @@ class FinancialRecordDetailsQueryService(
                 if line.value_type_id
                 else None
             )
+            agreement = (
+                contract_repo.get(
+                    organization_id=action.organization_id,
+                    contract_id=line.agreement_id,
+                )
+                if line.agreement_id
+                else None
+            )
+
+            agreement_node = (
+                contract_node_repo.get(
+                    organization_id=action.organization_id,
+                    contract_node_id=line.agreement_node_id,
+                )
+                if line.agreement_node_id
+                else None
+            )
 
             line_views.append(
                 InvoiceLineView(
                     item_name=line.item_name,
+                    description=line.description,
                     quantity=line.quantity or Decimal("0"),
                     unit=line.unit.name if line.unit else "",
                     net=net,
                     vat=vat,
                     gross=gross,
+                    not_evidenced=not_evidenced,
                     contract_code=contract.code if contract else None,
                     cost_node_code=contract_node.code if contract_node else None,
                     cost_type_code=value_type.code if value_type else None,
+                    agreement_code=agreement.code if agreement else None,
+                    agreement_node_code=agreement_node.code if agreement_node else None,
                 )
             )
 
@@ -130,14 +161,17 @@ class FinancialRecordDetailsQueryService(
             payment_method=record.payment_method.value,
             payment_status=record.payment_status.value,
             due_date=record.due_date,
+            paid_date=record.paid_date,
             total_net=total_net,
             total_vat=total_vat,
             total_gross=total_gross,
             total_not_evidenced=total_not_evidenced,
             contract_codes=", ".join(
-                {l.contract_code for l in line_views if l.contract_code}
+                {l.contract_code  for l in line_views if l.contract_code }
             ),
             direction=direction.value if direction else "",
+            documents=documents,
+            tags=", ".join(sorted(record.tags)) if record.tags else ""
         )
 
     @staticmethod

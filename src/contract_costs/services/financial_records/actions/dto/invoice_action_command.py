@@ -16,6 +16,8 @@ class FinancialRecordAction(Enum):
     MARK_UNPAID = "mark_unpaid"
     MARK_SENT_TO_ACCOUNTANT = "mark_sent_to_accountant"
     REOPEN = "reopen"
+    DELETE = "delete"
+    TO_IN_PROGRESS = "TO_IN_PROGRESS"
 
 def financial_record_action_from_excel(
         *,

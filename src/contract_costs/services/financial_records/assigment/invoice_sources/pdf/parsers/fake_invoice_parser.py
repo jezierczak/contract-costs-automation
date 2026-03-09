@@ -50,11 +50,11 @@ class FakeDocumentParser(DocumentParser):
                     unit=UnitOfMeasure.PIECE,
                     amount=Amount(Decimal("200"),VatRate.VAT_23),
 
-                    contract_code=None,
-                    contract_node_code=None,
-                    value_type_code=None,
-                    agreement_code=None,
-                    agreement_node_code=None,
+                    contract_reference=None,
+                    contract_node_reference=None,
+                    value_type_reference=None,
+                    agreement_reference=None,
+                    agreement_node_reference=None,
                 )
             ],
             buyer=CompanyInput(

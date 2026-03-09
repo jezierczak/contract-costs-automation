@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Contract Costs</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+</head>
+
+<body class="m-0 font-sans bg-gray-100">
+
+{% if request.state.ctx.user_id %}
+
+<!-- TOP BAR -->
+<div class="bg-gray-800 text-white px-4 py-2 flex items-center">
+
+    <div>
+        🏢 {{ request.state.ctx.organization.name }}
+        [ {{ request.state.ctx.organization.code }} ]
+    </div>
+
+    <div class="ml-auto flex items-center gap-4">
+
+        <div class="text-sm text-gray-200">
+            👤 {{ request.state.ctx.user.login }}
+            [{{ request.state.ctx.membership.role.value }}]
+            <span class="text-gray-400 text-xs">
+                [{{ request.state.ctx.user.last_login_at }}]
+            </span>
+        </div>
+
+        <form method="post" action="/logout">
+            <button class="bg-red-600 hover:bg-red-700 px-3 py-1 rounded">
+                Wyloguj
+            </button>
+        </form>
+
+    </div>
+
+</div>
+
+<div class="flex h-[calc(100vh-44px)]">
+
+    <!-- SIDEBAR -->
+    <aside class="w-56 bg-gray-900 text-white p-5 flex flex-col">
+
+        <h3 class="text-xl font-bold mb-6">
+            Contract Costs
+        </h3>
+
+    <nav class="space-y-4 flex-1">
+
+    <!-- DASHBOARD -->
+    <div>
+        <a href="/" class="block px-3 py-2 rounded hover:bg-gray-800">
+            Dashboard
+        </a>
+    </div>
+
+    <!-- FINANSE -->
+    <div>
+        <div class="text-xs uppercase text-gray-400 mb-2">
+            Finanse
+        </div>
+
+        <a href="/own-company-finances"
+           class="block px-3 py-2 rounded hover:bg-gray-800">
+            💰 Finanse firm
+        </a>
+
+        <a href="/contracts"
+           class="block px-3 py-2 rounded hover:bg-gray-800">
+            📊 Kontrakty
+        </a>
+    </div>
+
+    <!-- DANE -->
+    <div>
+        <div class="text-xs uppercase text-gray-400 mb-2">
+            Dane
+        </div>
+
+        <a href="/documents" class="block px-3 py-2 rounded hover:bg-gray-800">
+            Dokumenty
+        </a>
+
+        <a href="/records" class="block px-3 py-2 rounded hover:bg-gray-800">
+            Rekordy
+        </a>
+    </div>
+
+    <!-- SŁOWNIKI -->
+    <div>
+        <div class="text-xs uppercase text-gray-400 mb-2">
+            Słowniki
+        </div>
+
+        <a href="/companies" class="block px-3 py-2 rounded hover:bg-gray-800">
+            Firmy
+        </a>
+
+        <a href="/value_types" class="block px-3 py-2 rounded hover:bg-gray-800">
+            Kategorie finansowe
+        </a>
+    </div>
+
+</nav>
+
+    </aside>
+
+{% endif %}
+
+    <!-- MAIN -->
+    <main
+        class="
+            flex-1
+            bg-gray-50
+            overflow-auto
+            rounded-xl
+            m-3
+            {% if request.state.ctx.user_id %}p-5{% else %}p-10{% endif %}
+            h-full
+            shadow-sm
+        "
+    >
+
+        {% block content %}{% endblock %}
+
+
+
+    </main>
+        <!-- HTMX MODALS -->
+        <div id="modal-area"></div>
+</div>
+
+<!-- ===================================================== -->
+<!-- GLOBAL EVENTS (MINIMAL / SAFE) -->
+<!-- ===================================================== -->
+<script>
+document.body.addEventListener("htmx:afterSwap", (e) => {
+
+    if (!e.target.id || e.target.id !== "modal-area") return
+
+    const modal = document.querySelector("#modal-area .fixed")
+    if (!modal) return
+
+    const dropzone = modal.querySelector(".dropzone")
+    const input = modal.querySelector(".file-input")
+
+    if (!dropzone || !input) return
+
+    dropzone.onclick = () => input.click()
+
+    dropzone.addEventListener("dragover", ev => {
+        ev.preventDefault()
+        dropzone.classList.add("border-green-500","bg-green-50")
+    })
+
+    dropzone.addEventListener("dragleave", () => {
+        dropzone.classList.remove("border-green-500","bg-green-50")
+    })
+
+    dropzone.addEventListener("drop", ev => {
+        ev.preventDefault()
+
+        const dt = new DataTransfer()
+
+        for (const file of ev.dataTransfer.files) {
+            dt.items.add(file)
+        }
+
+        input.files = dt.files
+        input.dispatchEvent(new Event("change", { bubbles: true }))
+    })
+})
+</script>
+<script>
+/*
+    Zamknij modal po uploadzie.
+    Backend zwraca:
+        response.headers["HX-Trigger"] = "documentsUploaded"
+*/
+document.body.addEventListener("documentsUploaded", () => {
+    const modal = document.querySelector("#modal-area .fixed")
+    if (modal) {
+        modal.remove()
+    }
+})
+</script>
+<script>
+document.body.addEventListener("duplicateDocument", (e) => {
+    const id = e.detail.document_id
+    htmx.ajax("GET", `/documents/${id}/apply-form`, "#modal-area")
+})
+</script>
+
+<script>
+(function() {
+    const handler = (e) => {
+        if (e.key === "Escape") {
+            const modal = document.querySelector("#modal-area .fixed");
+            if (modal) {
+                modal.remove();
+                document.removeEventListener("keydown", handler);
+            }
+        }
+    };
+    document.addEventListener("keydown", handler);
+})();
+</script>
+
+<script>
+document.body.addEventListener("showError", function(e) {
+    alert(e.detail.value || e.detail);
+});
+</script>
+<script>
+document.body.addEventListener("closeModal", () => {
+    document.getElementById("modal-area").innerHTML = "";
+})
+</script>
+<script>
+document.body.addEventListener("click", function(e) {
+
+    const row = e.target.closest(".table-row-link");
+    if (!row) return;
+
+    // NIE klikaj jeśli user kliknął button/link/input
+    if (e.target.closest("a, button, input, select, textarea")) return;
+
+
+    window.location.assign(row.dataset.href);
+});
+</script>
+<script>
+document.body.addEventListener("click", function(e){
+
+    const row = e.target.closest(".contract-node-row");
+    if (!row) return;
+
+    const nodeId = row.dataset.nodeId;
+    const script = document.getElementById("node-data-" + nodeId);
+
+    if (!script) return;
+
+    const data = JSON.parse(script.textContent);
+
+    renderNodeBreakdown(data);
+});
+
+function renderNodeBreakdown(items){
+
+    const body = document.getElementById("node-modal-body");
+
+    if (!items.length){
+        body.innerHTML = "<div class='text-gray-500'>Brak danych</div>";
+        document.getElementById("node-modal").classList.remove("hidden");
+        return;
+    }
+
+    // =================================================
+    // SPLIT COST / REVENUE
+    // =================================================
+    const costs = items.filter(i => i.direction === "COST");
+    const revenues = items.filter(i => i.direction === "REVENUE");
+
+    const sum = arr =>
+        arr.reduce((acc, i) => acc + Number(i.total || 0), 0);
+
+    const costTotal = sum(costs);
+    const revenueTotal = sum(revenues);
+
+    // =================================================
+    // TABLE BUILDER
+    // =================================================
+    function renderSection(title, rows, total, colorClass){
+
+        if (!rows.length) return "";
+
+        return `
+        <div class="mt-4">
+
+
+            <table class="w-full text-sm border rounded overflow-hidden">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="p-2 text-left">Kod</th>
+                        <th class="p-2 text-left">Nazwa</th>
+                        <th class="p-2 text-right">Net</th>
+                        <th class="p-2 text-right">Non-deduct</th>
+                        <th class="p-2 text-right">Total</th>
+                        <th class="p-2 text-right">% udział</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows.map(i => `
+                        <tr class="border-t hover:bg-gray-50">
+                            <td class="p-2">${i.code}</td>
+                            <td class="p-2">${i.name}</td>
+                            <td class="p-2 text-right">${i.net}</td>
+                            <td class="p-2 text-right">${i.non_deductible}</td>
+                            <td class="p-2 text-right font-medium">
+                                ${i.total}
+                            </td>
+                            <td class="p-2 text-right text-xs text-gray-600">
+                                ${Number(i.percent_of_direction || 0).toFixed(1)}%
+                            </td>
+                        </tr>
+                    `).join("")}
+                </tbody>
+                  <tfoot class="bg-gray-50 border-t font-semibold">
+                        <tr><td class="p-2 text-right ${colorClass}">
+                                SUMA
+                        </td>
+                        <td class="p-2 text-left ${colorClass}">
+                                (${title}):
+                        </td>
+                            <td class="p-2" colspan="2"></td>
+                            <td class="p-2 text-right ${colorClass}">
+                                ${total.toFixed(2)}
+                            </td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+            </table>
+
+
+        </div>
+        `;
+    }
+
+    // =================================================
+    // RENDER
+    // =================================================
+    body.innerHTML = `
+        ${renderSection("Koszty", costs, costTotal, "text-red-700")}
+        ${renderSection("Przychody", revenues, revenueTotal, "text-green-700")}
+    `;
+
+    document.getElementById("node-modal").classList.remove("hidden");
+}
+
+function closeNodeModal(){
+    document.getElementById("node-modal").classList.add("hidden");
+}
+</script>
+</body>
+</html>
+<style>
+@keyframes flashReady {
+    0%   { background-color: #dcfce7; }   /* zielony */
+    100% { background-color: transparent; }
+}
+
+.flash-ready {
+    animation: flashReady 1.5s ease-out;
+}
+</style>
+
+

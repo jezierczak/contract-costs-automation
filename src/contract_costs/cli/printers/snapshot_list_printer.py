@@ -27,7 +27,7 @@ def print_snapshot_list(rows):
         print(
             f"{str(r.snapshot_id)[:8]:<10}"
             f"{r.snapshot_date:%Y-%m-%d}  "
-            f"{r.contract_code:<12}"
+            f"{r.contract_reference:<12}"
             f"{_fmt_money(r.planned_budget):>14}"
             f"{_fmt_percent(r.progress):>7}"
             f"{_fmt_money(done):>12}"

@@ -37,13 +37,15 @@ class UpdateValueTypeService(
         if value_type is None:
             raise ValueError("Value type does not exist")
 
-        if value_type.name == action.name and value_type.description == action.description:
+        if value_type.name == action.name and value_type.description == action.description and value_type.code == action.code and value_type.direction == action.direction:
             return
 
         updated = replace(
             value_type,
             name=action.name,
             description=action.description,
+            code=action.code,
+            direction=action.direction,
             updated_at=self._clock(),
             updated_by_user_id=action.actor_user_id,
         )

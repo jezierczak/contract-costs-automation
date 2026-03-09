@@ -1,0 +1,52 @@
+<div class="w-full max-w-xl mx-auto box-border">
+
+<h2 class="text-xl font-bold mb-3">
+🚀 Pierwszy krok
+</h2>
+
+<p class="mb-4">
+Dodaj swoją firmę, aby zacząć pracę.
+</p>
+
+<form method="post" action="/companies/create-own" class="space-y-3">
+
+<input name="name"
+       placeholder="Nazwa firmy"
+       class="w-full border rounded px-3 py-2">
+
+<input name="tax_number"
+       placeholder="NIP"
+       class="w-full border rounded px-3 py-2"
+
+>
+    <textarea
+    name="description"
+    placeholder="Opis firmy (opcjonalnie)"
+    class="w-full border rounded px-3 py-2"
+></textarea>
+
+<hr class="my-3">
+
+<input name="street" placeholder="Ulica" class="w-full border rounded px-3 py-2">
+<input name="city" placeholder="Miasto" class="w-full border rounded px-3 py-2">
+<input name="zip_code" placeholder="Kod pocztowy" class="w-full border rounded px-3 py-2">
+<input name="country" placeholder="Kraj" class="w-full border rounded px-3 py-2">
+
+<hr class="my-3">
+
+<input name="phone_number" placeholder="Telefon" class="w-full border rounded px-3 py-2">
+<input name="email" placeholder="Email" class="w-full border rounded px-3 py-2">
+
+<hr class="my-3">
+
+<input name="account_number" placeholder="Numer konta" class="w-full border rounded px-3 py-2">
+<input name="country_code" placeholder="Kod kraju konta (PL)" class="w-full border rounded px-3 py-2">
+
+<button
+class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 w-full">
+Dodaj firmę
+</button>
+
+</form>
+
+</div>

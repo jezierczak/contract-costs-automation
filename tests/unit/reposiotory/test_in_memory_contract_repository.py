@@ -43,7 +43,7 @@ def test_list_filters_by_organization(contract_repo):
     contract_repo.add(c1)
     contract_repo.add(c2)
 
-    result = contract_repo.list_contracts(org1,contract_type=ContractType.PROJECT)
+    result = contract_repo.list_all_by_type(org1, contract_type=ContractType.PROJECT)
 
     assert result == [c1]
 

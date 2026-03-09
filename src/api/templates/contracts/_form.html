@@ -1,0 +1,111 @@
+<form method="post" action="{{ action_url }}" class="space-y-4">
+
+{% if error %}
+<div class="mb-4 p-3 bg-red-100 text-red-700 rounded text-sm">
+    ⚠️ {{ error }}
+</div>
+{% endif %}
+
+<!-- CODE -->
+<div>
+    <label class="block text-sm font-medium text-gray-600 mb-1">
+        Kod kontraktu
+    </label>
+    <input
+        name="code"
+        value="{{ form.code if form else (contract.code if contract else '') }}"
+        class="w-full border rounded px-3 py-2 text-sm"
+    >
+</div>
+
+<!-- NAME -->
+<div>
+    <label class="block text-sm font-medium text-gray-600 mb-1">
+        Nazwa kontraktu
+    </label>
+    <input
+        name="name"
+        value="{{ (form.name if form else (contract.name if contract else '')) or '' }}"
+        class="w-full border rounded px-3 py-2 text-sm"
+    >
+</div>
+
+<!-- DESCRIPTION -->
+<div>
+    <label class="block text-sm font-medium text-gray-600 mb-1">
+        Opis
+    </label>
+    <textarea
+        name="description"
+        class="w-full border rounded px-3 py-2 text-sm"
+        rows="3"
+    >{{ (form.description if form else (contract.description if contract else '')) or '' }}</textarea>
+</div>
+
+<!-- OWNER -->
+<div>
+    <label class="block text-sm font-medium text-gray-600 mb-1">
+        Firma własna (Owner)
+    </label>
+
+    <select
+        name="owner_id"
+        class="w-full border rounded px-3 py-2 text-sm"
+    >
+        {% for company in own_companies %}
+        <option
+            value="{{ company.id }}"
+            {% if form %}
+                {% if form.owner_id == company.id|string %}selected{% endif %}
+            {% else %}
+                {% if contract and contract.owner and contract.owner.id == company.id %}
+                    selected
+                {% endif %}
+            {% endif %}
+        >
+            {{ company.name }}
+        </option>
+        {% endfor %}
+    </select>
+</div>
+
+<!-- CLIENT -->
+<div>
+    <label class="block text-sm font-medium text-gray-600 mb-1">
+        Kontrahent (Client)
+    </label>
+
+    <select
+        name="client_id"
+        class="w-full border rounded px-3 py-2 text-sm"
+    >
+        <option value="">-- brak --</option>
+
+        {% for company in counterparties %}
+        <option
+            value="{{ company.id }}"
+            {% if form %}
+                {% if form.client_id == company.id|string %}selected{% endif %}
+            {% else %}
+                {% if contract and contract.client and contract.client.id == company.id %}
+                    selected
+                {% endif %}
+            {% endif %}
+        >
+            {{ company.name }}
+        </option>
+        {% endfor %}
+    </select>
+</div>
+
+<!-- SUBMIT -->
+<div class="pt-2">
+    <button
+        type="submit"
+        class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+    >
+        {{ submit_label }}
+    </button>
+</div>
+
+</form>

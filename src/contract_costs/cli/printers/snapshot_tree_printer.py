@@ -38,7 +38,7 @@ def print_snapshot_tree(nodes):
         code = f"{prefix}{connector}{node.code}" if prefix else node.code
 
         done = node.planned_budget * node.progress
-        spend = node.net + node.non_deductible
+        spend = node.amount_value + node.non_deductible
         result = done - spend
 
         print(
@@ -46,7 +46,7 @@ def print_snapshot_tree(nodes):
             f"{_fmt_money(node.planned_budget):>12}"
             f"{_fmt_percent(node.progress):>7}"
             f"{_fmt_money(done):>12}"
-            f"{_fmt_money(node.net):>12}"
+            f"{_fmt_money(node.amount_value):>12}"
             f"{_fmt_money(node.non_deductible):>12}"
             f"{_fmt_money(spend):>12}"
             f"{_fmt_money(result):>12}"

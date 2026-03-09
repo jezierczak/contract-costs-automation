@@ -122,19 +122,19 @@ class GenerateFinancialRecordAssignmentBundleService(
         ]
 
         #  Contracts
-        projects = contract_repo.list_contracts(
+        projects = contract_repo.list_all_by_type(
             organization_id=action.organization_id,
             contract_type=ContractType.PROJECT,
         )
 
-        systems = contract_repo.list_contracts(
+        systems = contract_repo.list_all_by_type(
             organization_id=action.organization_id,
             contract_type=ContractType.SYSTEM,
         )
 
         contracts = projects+systems
 
-        agreements = contract_repo.list_contracts(
+        agreements = contract_repo.list_all_by_type(
             organization_id=action.organization_id,
             contract_type=ContractType.AGREEMENT,
         )

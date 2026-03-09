@@ -1,0 +1,15 @@
+{% extends "workspace.html" %}
+
+{% block workspace_content %}
+
+<div
+    hx-get="/records/mainboard/stats"
+    hx-trigger="load, recordsUpdated from:body"
+    hx-swap="innerHTML"
+    class="grid grid-cols-2 gap-4"
+>
+
+
+</div>
+
+{% endblock %}

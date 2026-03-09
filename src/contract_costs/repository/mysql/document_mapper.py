@@ -4,16 +4,43 @@ from uuid import UUID
 from contract_costs.model.document import (
     Document,
     DocumentType,
-    DocumentSource,
+    DocumentSource, DocumentStatus, ScoringResult,
 )
 
 
 def map_row_to_document(row: dict) -> Document:
+    status = DocumentStatus(row["document_status"] or "NEW")
+
+    # BACKWARD COMPATIBILITY
+    if status == DocumentStatus.NEW:
+        if row["financial_record_id"]:
+            status = DocumentStatus.APPLIED
+        elif row["parsed_payload"]:
+            status = DocumentStatus.READY
+
+    scoring = None
+
+    score = row.get("score")
+    breakdown_raw = row.get("scoring_breakdown")
+
+    if score is not None:
+        if breakdown_raw is None:
+            breakdown = {}
+        elif isinstance(breakdown_raw, str):
+            breakdown = json.loads(breakdown_raw)
+        else:
+            breakdown = breakdown_raw  # jeśli driver już zwrócił dict
+
+        scoring = ScoringResult(
+            score=score,
+            breakdown=breakdown,
+        )
     return Document(
         id=UUID(row["id"]),
         organization_id=UUID(row["organization_id"]),
         financial_record_id=UUID(row["financial_record_id"]) if row["financial_record_id"] else None,
         document_source=DocumentSource(row["document_source"]),
+        document_status=status,
         document_type=DocumentType(row["document_type"]) if row["document_type"] else None,
         document_number=row["document_number"],
         seller_nip=row["seller_nip"],
@@ -27,4 +54,5 @@ def map_row_to_document(row: dict) -> Document:
         created_by_user_id=UUID(row["created_by_user_id"]) if row["created_by_user_id"] else None,
         updated_at=row["updated_at"],
         updated_by_user_id=UUID(row["updated_by_user_id"]) if row["updated_by_user_id"] else None,
+        scoring=scoring,
     )

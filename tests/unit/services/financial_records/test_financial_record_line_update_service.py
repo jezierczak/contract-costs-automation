@@ -37,11 +37,11 @@ def _line_update(*, record_reference: str | None, record_line_id=None) -> Financ
         quantity=Decimal("1"),
         unit=UnitOfMeasure.PIECE,
         amount=Amount(Decimal("100"), VatRate.VAT_23),
-        contract_code="C-1",
-        contract_node_code="N-1",
-        value_type_code="VT-1",
-        agreement_code=None,
-        agreement_node_code=None
+        contract_reference="C-1",
+        contract_node_reference="N-1",
+        value_type_reference="VT-1",
+        agreement_reference=None,
+        agreement_node_reference=None
     )
 
 

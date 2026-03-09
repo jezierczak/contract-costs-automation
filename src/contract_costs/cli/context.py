@@ -5,6 +5,9 @@ from contract_costs.common.context.context_provider import ContextProvider
 from contract_costs.common.context.file_context_provider import FileContextProvider
 from contract_costs.infrastructure.excel.base_excel_exporter import BaseExcelExporter
 from contract_costs.infrastructure.excel.invoice_action_excel_loader import FinancialRecordActionExcelLoader
+from contract_costs.services.business_event.business_event_service import BusinessEventService
+from contract_costs.services.business_event.list_business_events_query_service import ListBusinessEventsQueryService
+from contract_costs.services.business_event.log_business_event_service import LogBusinessEventService
 from contract_costs.services.catalogues.document_file_organizer import DocumentFileOrganizer
 from contract_costs.services.catalogues.record_file_organizer import RecordFileOrganizer
 from contract_costs.services.catalogues.record_file_workworkflow_service import RecordFileWorkflowService
@@ -24,6 +27,14 @@ from contract_costs.services.companies.providers.name import NameCandidateProvid
 from contract_costs.services.companies.providers.phone import PhoneCandidateProvider
 from contract_costs.services.companies.query.company_query_service import CompanyQueryService
 from contract_costs.services.companies.update_company_service import UpdateCompanyService
+from contract_costs.services.company_dashboard.company_dashboard_query_service import CompanyDashboardQueryService
+from contract_costs.services.company_dashboard.company_fixed_costs_query_service import CompanyFixedCostsQueryService
+from contract_costs.services.company_dashboard.company_month_breakdown_query_service import \
+    CompanyMonthBreakdownQueryService
+from contract_costs.services.contract_nodes.add_contract_node_service import AddContractNodeService
+from contract_costs.services.contract_nodes.contract_tree_query_service import ContractTreeQueryService
+from contract_costs.services.contract_nodes.remove_contract_node_service import RemoveContractNodeService
+from contract_costs.services.contract_nodes.update_contract_node_service import UpdateContractNodeService
 from contract_costs.services.contracts.apply.apply_contract_progress_excel_service import \
     ApplyContractProgressExcelService
 from contract_costs.services.contracts.apply.apply_contract_progress_service import ApplyContractProgressService
@@ -47,6 +58,7 @@ from contract_costs.services.contracts.query.list_contracts.list_contracts_query
     ListContractsQueryService
 from contract_costs.services.contracts.system_contract.create_system_contract_orchestrator import \
     CreateSystemContractOrchestrator
+from contract_costs.services.contracts.update_contract_service import UpdateContractService
 from contract_costs.services.contracts.validators.contract_node_tree_validator import ContractNodeEntityValidator
 from contract_costs.services.documents.apply.apply_document_service import ApplyDocumentService
 
@@ -57,8 +69,13 @@ from contract_costs.services.documents.process.document_parser_resolver import D
 from contract_costs.services.documents.process.parse_document_from_file import ParseDocumentFromFileService
 from contract_costs.services.documents.process.process_document_service import ProcessDocumentService
 from contract_costs.services.documents.process.reprocess.reprocess_document_service import ReprocessDocumentService
+from contract_costs.services.documents.query.get_document_file_query_service import GetDocumentFileQueryService
+from contract_costs.services.documents.query.get_document_query import GetDocumentQueryService
 
 from contract_costs.services.documents.query.list_documents_query_service import ListDocumentsQueryService
+from contract_costs.services.documents.scoring.document_decision_service import DocumentDecisionService
+from contract_costs.services.documents.scoring.find_matching_record_service import FindMatchingRecordService
+from contract_costs.services.documents.scoring.simple_scoring_policy import SimpleScoringPolicy
 from contract_costs.services.documents.upload.upload_document_service import UploadDocumentService
 from contract_costs.services.financial_records.actions.financial_record_action_service import \
     FinancialRecordActionService
@@ -70,14 +87,25 @@ from contract_costs.services.financial_records.assigment.invoice_sources.documen
     CreateRecordFromDocumentService
 from contract_costs.services.financial_records.assigment.invoice_sources.excel.invoice_excel_resolver import \
     FinancialRecordExcelBatchResolver
+from contract_costs.services.financial_records.queries.record_edit_workspace_query_service import \
+    RecordEditWorkspaceQueryService
+from contract_costs.services.financial_records.queries.record_mainboard_stats_query_service import \
+    RecordMainboardStatsQueryService
 from contract_costs.services.identity.accept.accept_organization_invite_service import AcceptOrganizationInviteService
 from contract_costs.services.identity.add.add_organization_user_service import AddOrganizationUserService
 from contract_costs.services.identity.add.create_organization_with_owner import CreateOrganizationWithOwnerService
 from contract_costs.services.identity.add.create_user_service import CreateUserService
+from contract_costs.services.identity.auth.session.clean_up_expired_sessions_service import \
+    CleanupExpiredSessionsService
+from contract_costs.services.identity.auth.session.create_session_service import CreateSessionService
+from contract_costs.services.identity.auth.session.logout import LogoutService
+from contract_costs.services.identity.auth.session.update_session_organization_service import \
+    UpdateSessionOrganizationService
 from contract_costs.services.identity.change.change_organization_user_role_service import \
     ChangeOrganizationUserRoleService
 from contract_costs.services.identity.deactivate.deactivate_organization_user_service import \
     DeactivateOrganizationUserService
+from contract_costs.services.identity.auth.autenticate_user_service import AuthenticateUserService
 
 from contract_costs.services.identity.query.show_organization_users import ListOrganizationUsersQueryService
 from contract_costs.services.identity.query.show_organizations import ListUserOrganizationsQueryService
@@ -89,6 +117,7 @@ from contract_costs.services.init.init_application_service import InitApplicatio
 from contract_costs.services.number_generator.number_generator import NumberGenerator
 from contract_costs.services.snapshots.contract_snapshot_query_service import ContractSnapshotQueryService
 from contract_costs.services.snapshots.create_contract_snapshot_service import CreateContractSnapshotService
+from contract_costs.services.value_types.apply.activate_value_type_service import ActivateValueTypeService
 
 from contract_costs.services.value_types.apply.change_value_type_code_service import ChangeValueTypeCodeService
 from contract_costs.services.value_types.apply.deactivate_value_type_service import DeactivateValueTypeService
@@ -160,7 +189,7 @@ class Services:
         self._user_repo = None
         self._document_repo = None
         self._number_sequence_repo = None
-
+        self._session_repo = None
         # services
         # self._company_resolver = None
         self._financial_record_ingest_orchestrator = None
@@ -204,6 +233,7 @@ class Services:
         self._deactivate_company_service = None
         self._value_type_query_service = None
         self._deactivate_value_type_service = None
+        self._activate_value_type_service = None
         self._update_value_type_service = None
         self._change_value_type_code_service = None
         self._contract_prepare_excel_exporter =None
@@ -242,6 +272,29 @@ class Services:
         self._list_user_organizations_user_service = None
 
         self._document_action_excel_loader_service = None
+
+        self._password_hasher = None
+        self._cleanup_sessions_service = None
+        self._update_session_organization_service = None
+
+        self._add_contract_node_service = None
+        self._remove_contract_node_service = None
+        self._update_contract_node_service = None
+        self._contract_tree_query_service = None
+        self._get_document_file_service = None
+        self._get_document_service = None
+
+        self._update_contract_service = None
+
+        self._log_business_event_service = None
+        self._list_business_events_query_service = None
+        self._record_edit_workspace_query_service = None
+        self._mainboard_stats_query_service=None
+
+        self._company_dashboard_query_service = None
+
+        self._company_month_breakdown_service = None
+        self._company_fixed_costs_query_service = None
 
         self._normalizer = DocumentParseNormalizer()
 
@@ -469,6 +522,12 @@ class Services:
         return self._number_sequence_repo
 
     @property
+    def session_repository(self):
+        if self._session_repo is None:
+            self._session_repo = self._factory.session_repository()
+        return self._session_repo
+
+    @property
     def uow(self) -> UnitOfWork:
         return self._factory.unit_of_work()
 
@@ -593,9 +652,10 @@ class Services:
 
     @property
     def create_company(self):
-        return CreateCompanyService(
-            create_system_contract=self.create_system_contract,
-        )
+        if self._create_company_service is None:
+            self._create_company_service = CreateCompanyService(create_system_contract=self.create_system_contract,)
+        return self._create_company_service
+
 
     @property
     def update_company_service(self):
@@ -655,7 +715,7 @@ class Services:
     def contract_cost_report(self):
         if self._contract_cost_report is None:
             from contract_costs.services.reports.contract_cost_report_service import (
-                ContractCostReportService,
+                ContractCostReportService
             )
             self._contract_cost_report = ContractCostReportService()
         return self._contract_cost_report
@@ -680,6 +740,18 @@ class Services:
                 exporter=BaseExcelExporter()
             )
         return self._financial_record_excel_export_service
+
+    @property
+    def log_business_event_service(self):
+        if self._log_business_event_service is None:
+            self._log_business_event_service = LogBusinessEventService(events_log=BusinessEventService())
+        return self._log_business_event_service
+
+    @property
+    def list_business_events_query_service(self):
+        if self._list_business_events_query_service is None:
+            self._list_business_events_query_service = ListBusinessEventsQueryService()
+        return self._list_business_events_query_service
 
     # @property
     # def invoice_seller_summary_query_service(self):
@@ -732,15 +804,22 @@ class Services:
 
     @property
     def deactivate_value_type_service(self):
-        return DeactivateValueTypeService(
+        if self._deactivate_value_type_service is None:
+            self._deactivate_value_type_service = DeactivateValueTypeService()
+        return self._deactivate_value_type_service
+    @property
+    def activate_value_type_service(self):
+        if self._activate_value_type_service is None:
+            self._activate_value_type_service = ActivateValueTypeService()
+        return self._activate_value_type_service
 
-        )
 
     @property
     def update_value_type_service(self):
-        return UpdateValueTypeService(
+        if self._update_value_type_service is None:
+            self._update_value_type_service = UpdateValueTypeService()
+        return self._update_value_type_service
 
-        )
 
     @property
     def change_value_type_code_service(self):
@@ -893,6 +972,12 @@ class Services:
     def process_document_service(self):
         return ProcessDocumentService(
             parse_service=self.parse_document_from_file,
+            scoring_policy=SimpleScoringPolicy(),
+            decision_service=DocumentDecisionService(
+                matching_service=FindMatchingRecordService(company_evaluator=self.company_evaluate_orchestrator),
+            ),
+            apply_service=self.apply_document_service,
+            event_service=BusinessEventService()
         )
 
     @property
@@ -960,6 +1045,22 @@ class Services:
         return BackfillSystemContractsService(
             create_system_contract=self.create_system_contract,
         )
+
+    @property
+    def authenticate_user_service(self):
+        return AuthenticateUserService(
+            password_hasher=self.password_hasher
+        )
+
+    ###################################################################
+    #API
+    ###################################################################
+    @property
+    def password_hasher(self):
+        if self._password_hasher is None:
+            from api.security.password_hasher import PasslibPasswordHasher
+            self._password_hasher = PasslibPasswordHasher()
+        return self._password_hasher
     # @staticmethod
     # def current_user_id() -> UUID:
     #     session = load_session()
@@ -967,6 +1068,106 @@ class Services:
     #         raise RuntimeError("Not logged in. Run: login <user>")
     #
     #     return UUID(session["user_id"])
+
+    @property
+    def create_session_service(self):
+        return CreateSessionService()
+
+    @property
+    def logout_service(self):
+        return LogoutService()
+
+    @property
+    def cleanup_expired_sessions_service(self):
+
+        return CleanupExpiredSessionsService()
+
+    @property
+    def update_session_organization_service(self):
+        if self._update_session_organization_service is None:
+            self._update_session_organization_service = (
+                UpdateSessionOrganizationService()
+            )
+        return self._update_session_organization_service
+
+    @property
+    def add_contract_node_service(self):
+        if self._add_contract_node_service is None:
+            self._add_contract_node_service = AddContractNodeService()
+        return self._add_contract_node_service
+
+    @property
+    def remove_contract_node_service(self):
+        if self._remove_contract_node_service is None:
+            self._remove_contract_node_service = RemoveContractNodeService()
+        return self._remove_contract_node_service
+
+    @property
+    def update_contract_node_service(self):
+        if self._update_contract_node_service is None:
+            self._update_contract_node_service = UpdateContractNodeService()
+        return self._update_contract_node_service
+
+    @property
+    def contract_tree_query_service(self):
+        if self._contract_tree_query_service is None:
+            self._contract_tree_query_service = ContractTreeQueryService()
+        return self._contract_tree_query_service
+
+
+    @property
+    def update_contract_service(self):
+        if self._update_contract_service is None:
+            self._update_contract_service = UpdateContractService()
+        return self._update_contract_service
+
+    @property
+    def get_document_file_service(self):
+        if self._get_document_file_service is None:
+            self._get_document_file_service = GetDocumentFileQueryService()
+        return self._get_document_file_service
+
+    @property
+    def get_document_service(self):
+        if self._get_document_service is None:
+            self._get_document_service = GetDocumentQueryService(company_evaluate=self.company_evaluate_orchestrator)
+        return self._get_document_service
+
+
+    @property
+    def record_edit_workspace_query_service(self):
+        if self._record_edit_workspace_query_service is None:
+            self._record_edit_workspace_query_service = RecordEditWorkspaceQueryService(
+                contract_query_service=self.list_contracts_service,
+                contract_tree_query_service=self.contract_tree_query_service,
+                value_type_query_service=self.value_type_query_service,
+            )
+        return self._record_edit_workspace_query_service
+
+    @property
+    def mainboard_stats_query_service(self):
+        if self._mainboard_stats_query_service is None:
+            self._mainboard_stats_query_service = RecordMainboardStatsQueryService()
+        return self._mainboard_stats_query_service
+
+    @property
+    def company_dashboard_query_service(self):
+        if self._company_dashboard_query_service is None:
+            self._company_dashboard_query_service = CompanyDashboardQueryService()
+        return self._company_dashboard_query_service
+
+    @property
+    def company_month_breakdown_service(self):
+        if self._company_month_breakdown_service is None:
+            self._company_month_breakdown_service = CompanyMonthBreakdownQueryService()
+        return self._company_month_breakdown_service
+
+    @property
+    def company_fixed_costs_query_service(self):
+        if self._company_fixed_costs_query_service is None:
+            self._company_fixed_costs_query_service = CompanyFixedCostsQueryService()
+        return self._company_fixed_costs_query_service
+
 
 _services: Dict[str, Services] = {}
 

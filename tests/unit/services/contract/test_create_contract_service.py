@@ -23,7 +23,7 @@ def test_create_contract_without_nodes(contract_repo, contract_node_repo, uow):
 
     contract = service.execute(action=cmd, uow=uow)
 
-    contracts = contract_repo.list_contracts(
+    contracts = contract_repo.list_all_by_type(
         organization_id=cmd.organization_id,
         contract_type=ContractType.PROJECT,
     )
@@ -115,7 +115,7 @@ def test_validator_failure_prevents_persist(
     with pytest.raises(ValueError):
         service.execute(action=cmd, uow=uow)
 
-    assert contract_repo.list_contracts(cmd.organization_id,contract_type=ContractType.PROJECT) == []
+    assert contract_repo.list_all_by_type(cmd.organization_id, contract_type=ContractType.PROJECT) == []
     assert contract_node_repo.list_nodes(organization_id=cmd.organization_id) == []
 
 

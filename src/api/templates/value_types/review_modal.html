@@ -1,0 +1,115 @@
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+
+    <div class="bg-white w-[520px] rounded-xl shadow-xl overflow-hidden">
+
+        <!-- HEADER -->
+        <div class="px-5 py-4 border-b flex justify-between items-center">
+            <h2 class="text-lg font-semibold">
+                Kategoria finansowa
+            </h2>
+
+            <button
+                onclick="document.getElementById('modal-area').innerHTML=''"
+                class="text-gray-400 hover:text-gray-600 text-xl leading-none"
+            >
+                ×
+            </button>
+        </div>
+
+        <!-- BODY -->
+        <div class="p-5 flex flex-col gap-4">
+
+            <!-- CODE -->
+            <div>
+                <div class="text-xs text-gray-500">Code</div>
+                <div class="text-sm font-semibold">
+                    {{ item.code }}
+                </div>
+            </div>
+
+            <!-- NAME -->
+            <div>
+                <div class="text-xs text-gray-500">Name</div>
+                <div class="text-sm font-medium">
+                    {{ item.name }}
+                </div>
+            </div>
+
+            <!-- DIRECTION -->
+            <div>
+                <div class="text-xs text-gray-500">Direction</div>
+
+                <span class="px-2 py-0.5 rounded text-xs font-medium
+                    {% if item.direction == 'COST' %}
+                        bg-red-100 text-red-700
+                    {% else %}
+                        bg-green-100 text-green-700
+                    {% endif %}
+                ">
+                    {{ item.direction }}
+                </span>
+            </div>
+
+            <!-- DESCRIPTION -->
+            <div>
+                <div class="text-xs text-gray-500">Description</div>
+                <div class="text-sm text-gray-700">
+                    {{ item.description or "—" }}
+                </div>
+            </div>
+
+            <!-- ACTIVE -->
+            <div>
+                <div class="text-xs text-gray-500">Active</div>
+                <div class="text-sm">
+                    {{ "✔ Aktywny" if item.is_active else "— Nieaktywny" }}
+                </div>
+            </div>
+
+        </div>
+
+        <!-- FOOTER -->
+        <div class="px-5 py-4 border-t flex justify-end gap-2">
+
+            <button
+                onclick="document.getElementById('modal-area').innerHTML=''"
+                class="px-3 py-1.5 rounded bg-gray-100 hover:bg-gray-200 text-sm"
+            >
+                Zamknij
+            </button>
+         {%if item.is_active %}
+            <button
+                hx-get="/value_types/{{ item.code }}/edit"
+                hx-target="#modal-area"
+                hx-swap="innerHTML"
+                class="px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm"
+            >
+                Edytuj
+            </button>
+
+            <button
+                hx-post="/value_types/{{ item.id }}/delete"
+                hx-confirm="Usunąć kategorię?"
+                hx-target="#modal-area"
+                hx-swap="innerHTML"
+                class="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700 text-sm"
+            >
+                Usuń
+            </button>
+            {%else%}
+            <button
+                hx-post="/value_types/{{ item.id }}/activate"
+                hx-confirm="Aktywować ponownie?"
+                hx-target="#modal-area"
+                hx-swap="innerHTML"
+                class="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700 text-sm"
+            >
+                Aktywuj
+            </button>
+            {%endif%}
+
+        </div>
+
+    </div>
+
+</div>

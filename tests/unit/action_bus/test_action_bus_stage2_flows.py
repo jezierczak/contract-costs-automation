@@ -147,7 +147,7 @@ def test_action_bus_add_contract_creates_contract(services_memory, uow):
         handler=services_memory.create_contract,
     )
 
-    contracts = uow.contracts.list_contracts(org_id, contract_type=ContractType.PROJECT)
+    contracts = uow.contracts.list_all_by_type(org_id, contract_type=ContractType.PROJECT)
     assert len(contracts) == 1
     assert contracts[0].code == "ADD-C-1"
 

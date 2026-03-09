@@ -26,11 +26,11 @@ def contract_list_columns() -> list[ExcelColumn[ContractListDTO]]:
             lambda c: c.planned_budget,
             lambda c: c.progress if c.progress is not None else None,
             lambda c: (c.planned_budget * c.progress) if c.progress is not None else None,
-            lambda c: c.net,
+            lambda c: c.amount_value,
             lambda c: c.non_deduction,
-            lambda c: c.net + c.non_deduction,
+            lambda c: c.amount_value + c.non_deduction,
             lambda c: (
-                (c.planned_budget * c.progress) - (c.net + c.non_deduction)
+                (c.planned_budget * c.progress) - (c.amount_value + c.non_deduction)
                 if c.progress is not None
                 else None
             ),

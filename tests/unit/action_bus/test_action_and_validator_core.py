@@ -33,7 +33,7 @@ class _UndecoratedAction(Action):
 
 
 @dataclass(frozen=True, slots=True)
-@action_type(ActionType.SYSTEM_CREATE_ORGANIZATION_NEW_USER)
+@action_type(ActionType.SYSTEM)
 class _SystemAction(Action):
     organization_id: object
     actor_user_id: object

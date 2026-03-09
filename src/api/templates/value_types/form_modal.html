@@ -1,0 +1,28 @@
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+
+    <div class="bg-white w-[520px] rounded-xl shadow-xl overflow-hidden">
+
+        <!-- HEADER -->
+        <div class="px-5 py-4 border-b flex justify-between items-center">
+            <h2 class="text-lg font-semibold">
+                {% if item %}Edytuj{% else %}Nowa kategoria{% endif %}
+            </h2>
+
+            <button
+                onclick="document.getElementById('modal-area').innerHTML=''"
+                class="text-gray-400 hover:text-gray-600 text-xl leading-none"
+            >
+                ×
+            </button>
+        </div>
+
+        <!-- BODY -->
+        <div class="p-5">
+
+            {% include "value_types/_form.html" %}
+
+        </div>
+
+    </div>
+
+</div>

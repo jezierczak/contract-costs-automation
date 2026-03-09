@@ -171,13 +171,13 @@ class ContractSnapshotQueryService(
                     continue
 
                 if vt.direction == ValueDirection.COST:
-                    net_cost += v.net
+                    net_cost += v.amount_value
                     vat += v.vat
                     gross += v.gross
                     non_deductible += v.non_deductible
 
                 elif vt.direction == ValueDirection.REVENUE:
-                    revenue += v.net
+                    revenue += v.amount_value
                     revenue_non_deductible += v.non_deductible
 
             result_nodes.append(

@@ -7,7 +7,7 @@ from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.common.ids import new_uuid
 from contract_costs.common.time import utc_now
 from contract_costs.model.company import CompanyType
-from contract_costs.model.document import Document, DocumentType
+from contract_costs.model.document import Document, DocumentType, DocumentStatus
 from contract_costs.repository.document_repository import DocumentRepository
 from contract_costs.services.catalogues.document_file_organizer import DocumentFileOrganizer
 from contract_costs.services.catalogues.record_file_workworkflow_service import RecordFileWorkflowService
@@ -21,7 +21,7 @@ from contract_costs.services.financial_records.assigment.invoice_sources.documen
 from contract_costs.unit_of_work import UnitOfWork
 
 
-class ApplyDocumentService(ActionHandler[ApplyDocumentCommand,None]):
+class ApplyDocumentService(ActionHandler[ApplyDocumentCommand,UUID | None]):
 
     def __init__(
         self,
@@ -47,18 +47,21 @@ class ApplyDocumentService(ActionHandler[ApplyDocumentCommand,None]):
     # ENTRY POINT
     # ============================================================
 
-    def execute(self, *, action: ApplyDocumentCommand, uow:UnitOfWork) -> None:
+    def execute(self, *, action: ApplyDocumentCommand, uow:UnitOfWork) -> UUID | None:
         doc_repo = uow.documents
 
         document = doc_repo.get(
             organization_id=action.organization_id,
             document_id=action.document_id,
         )
-
-
-
         if not document:
             raise RuntimeError("Document not found")
+
+        if document.document_status == DocumentStatus.APPLIED:
+            return document.financial_record_id
+
+        if document.document_status != DocumentStatus.READY:
+            raise RuntimeError("Document is not ready to apply")
 
         if document.financial_record_id:
             raise RuntimeError("Document already assigned")
@@ -77,14 +80,13 @@ class ApplyDocumentService(ActionHandler[ApplyDocumentCommand,None]):
         # --------------------------------------------------------
         # 2️⃣ SWITCH ACTION
         # --------------------------------------------------------
-
+        record_id: UUID | None = None
         match action.action:
-
             case DocumentApplyAction.CREATE_NEW:
-                self._create_new(uow, action, document)
+                record_id = self._create_new(uow, action, document)
 
             case DocumentApplyAction.ADD_TO_EXISTING:
-                self._attach_existing(uow,action, document)
+                record_id = self._attach_existing(uow,action, document)
 
             case DocumentApplyAction.SKIP:
                 self._skip(doc_repo,document)
@@ -94,6 +96,8 @@ class ApplyDocumentService(ActionHandler[ApplyDocumentCommand,None]):
 
             case _:
                 raise RuntimeError("Unknown action")
+
+        return record_id
 
     @staticmethod
     def _apply_overrides(
@@ -121,7 +125,7 @@ class ApplyDocumentService(ActionHandler[ApplyDocumentCommand,None]):
         uow:UnitOfWork,
         cmd: ApplyDocumentCommand,
         document: Document,
-    ) -> None:
+    ) -> UUID:
 
         record_id = self._create_record_service.execute(
             action=CreateRecordFromDocumentCommand(
@@ -138,13 +142,24 @@ class ApplyDocumentService(ActionHandler[ApplyDocumentCommand,None]):
             ),
             uow=uow
         )
+        document_updated = uow.documents.get(
+            organization_id=cmd.organization_id,
+            document_id=document.id,
+        )
+        if not document_updated:
+            raise RuntimeError("Document disappeared after create")
+
+        document_result = document_updated.mark_applied(record_id)
+        uow.documents.update(document_result)
+
+        return record_id
 
     def _attach_existing(
             self,
             uow:UnitOfWork,
             cmd: ApplyDocumentCommand,
             document: Document,
-    ) -> None:
+    ) -> UUID:
 
         if not cmd.target_record_id:
             raise RuntimeError("Missing target record")
@@ -185,19 +200,21 @@ class ApplyDocumentService(ActionHandler[ApplyDocumentCommand,None]):
         updated_doc = replace(
             document,
             file_path=raw_relative.as_posix(),
-        )
+        ).mark_applied(record.id)
 
         uow.documents.update(updated_doc)
 
         # ============================================================
         # 2️⃣ ATTACH
         # ============================================================
-
-        uow.documents.attach_to_record(
-            organization_id=cmd.organization_id,
-            document_id=document.id,
-            record_id=record.id,
-        )
+        #
+        # uow.documents.attach_to_record(
+        #     organization_id=cmd.organization_id,
+        #     document_id=document.id,
+        #     record_id=record.id,
+        # )
+        # document = updated_doc.mark_applied(record.id)
+        # uow.documents.update(document)
 
         # ============================================================
         # 3️⃣ SYNC (business location)
@@ -213,6 +230,10 @@ class ApplyDocumentService(ActionHandler[ApplyDocumentCommand,None]):
                 record=refreshed_record,
                 uow=uow,
             )
+
+
+        return record.id
+
 
     def _skip(self,doc_repo:DocumentRepository, document: Document) -> None:
         org_root = cfg.WORK_DIR / str(document.organization_id)

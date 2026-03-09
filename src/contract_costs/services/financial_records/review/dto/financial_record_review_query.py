@@ -13,6 +13,7 @@ from contract_costs.model.value_direction import ValueDirection
 
 
 class CompanyReviewQuery(TypedDict,total=False):
+    id: list[str] | str
     any: str
     tax_numbers: list[str] | str
     name: list[str] | str

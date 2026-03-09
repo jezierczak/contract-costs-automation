@@ -11,7 +11,7 @@ from contract_costs.services.financial_records.assigment.invoice_sources.dto.com
     FinancialRecordLineUpdate
 from contract_costs.services.financial_records.assigment.invoice_sources.pdf.parsers.dto.parse import \
     DocumentParseResult, CompanyInput
-from contract_costs.model.amount import VatRate, Amount, TaxTreatment
+from contract_costs.model.amount import VatRate, Amount, TaxTreatment, AmountInputType
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 from contract_costs.model.financial_record import (
     PaymentMethod,
@@ -201,13 +201,14 @@ class DocumentParseNormalizer:
                 value=_safe_decimal(amount_data.get("value"), Decimal("0.00")),
                 vat_rate=self._parse_vat(amount_data.get("vat_rate")),
                 tax_treatment=TaxTreatment.TAX_DEDUCTIBLE,
+                input_type=AmountInputType.NET
             ),
 
-            contract_code=data.get("contract_code"),
-            contract_node_code=data.get("contract_node_code"),
-            value_type_code=data.get("value_type_code"),
-            agreement_code=data.get("agreement_code"),
-            agreement_node_code=data.get("agreement_node_code"),
+            contract_reference=data.get("contract_code"),
+            contract_node_reference=data.get("contract_node_code"),
+            value_type_reference=data.get("value_type_code"),
+            agreement_reference=data.get("agreement_code"),
+            agreement_node_reference=data.get("agreement_node_code"),
 
         )
 

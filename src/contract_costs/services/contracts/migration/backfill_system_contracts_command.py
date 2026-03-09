@@ -5,7 +5,7 @@ from contract_costs.action_bus.action import Action
 from contract_costs.action_bus.action_type import ActionType, action_type
 
 
-@action_type(ActionType.SYSTEM_CREATE_ORGANIZATION_NEW_USER)
+@action_type(ActionType.SYSTEM)
 @dataclass(frozen=True, slots=True)
 class BackfillSystemContractsCommand(Action):
     organization_id: UUID

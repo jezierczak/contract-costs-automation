@@ -48,7 +48,7 @@ class ActionType(Enum):
     #Snapshots
     CREATE_SNAPSHOT = "create_snapshot"
 
-    SYSTEM_CREATE_ORGANIZATION_NEW_USER = "system_create_organization_new_user"
+    SYSTEM = "system_create_organization_new_user"
 
 
 

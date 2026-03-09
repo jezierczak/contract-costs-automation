@@ -107,21 +107,30 @@ class FinancialRecordLineUpdateService:
             contract_id = resolve_or_none(
                 contract_repo.get_by_code,
                 organization_id,
-                update.contract_code,
+                update.contract_reference,
                 "Contract",
             )
-
-            contract_node_id = resolve_or_none(
-                contract_node_repo.get_by_code,
-                organization_id,
-                update.contract_node_code,
-                "ContractNode",
-            )
+            # logger.info(f"OrganizationID: {organization_id}, contract_code: {update.contract_node_code}")
+            # contract_node_id = resolve_or_none(
+            #     contract_node_repo.get_by_code,
+            #     organization_id,
+            #     update.contract_node_code,
+            #     "ContractNode",
+            # )
+            contract_node_id = None
+            if contract_id:
+                contract_node = contract_node_repo.get_by_code(
+                    organization_id=organization_id,
+                    contract_id=contract_id,
+                    contract_node_code=update.contract_node_reference
+                )
+                if contract_node:
+                    contract_node_id = contract_node.id
 
             value_type_id = resolve_or_none(
                 value_type_repo.get_by_code,
                 organization_id,
-                update.value_type_code,
+                update.value_type_reference,
                 "ValueType",
             )
 
@@ -129,14 +138,14 @@ class FinancialRecordLineUpdateService:
             agreement_id = resolve_or_none(
                 contract_repo.get_by_code,
                 organization_id,
-                update.agreement_code,
+                update.agreement_reference,
                 "AgreementContract",
             )
 
             agreement_node_id = resolve_or_none(
                 contract_node_repo.get_by_code,
                 organization_id,
-                update.agreement_node_code,
+                update.agreement_node_reference,
                 "AgreementContractNode",
             )
 
@@ -274,6 +283,7 @@ class FinancialRecordLineUpdateService:
         agreement_node_id: UUID | None,
 
     ) -> UUID:
+
         line = FinancialRecordLine(
             id=self._id_generator(),
             organization_id=organization_id,

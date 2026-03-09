@@ -68,6 +68,21 @@ class FinancialRecordActionService(
                     actor_user_id=action.actor_user_id,
                 )
 
+            case FinancialRecordAction.DELETE:
+                self._delete(
+                    uow=uow,
+                    record_ids=record_ids,
+                    organization_id=action.organization_id,
+                    actor_user_id=action.actor_user_id,
+                )
+            case FinancialRecordAction.TO_IN_PROGRESS:
+                self._to_in_progress(
+                    uow=uow,
+                    record_ids=record_ids,
+                    organization_id=action.organization_id,
+                    actor_user_id=action.actor_user_id,
+                )
+
             case _:
                 raise NotImplementedError(f"Action {action.action} not implemented")
 
@@ -140,6 +155,71 @@ class FinancialRecordActionService(
             )
             uow.financial_records.update(updated)
 
+    def _delete(
+            self,
+            *,
+            uow: UnitOfWork,
+            organization_id: UUID,
+            actor_user_id: UUID,
+            record_ids: list[UUID],
+    ) -> None:
+
+        for record_id in record_ids:
+            record = self._require_record(
+                uow=uow,
+                organization_id=organization_id,
+                record_id=record_id,
+            )
+
+            # ===== VALIDATION =====
+            if record.status in (
+                    FinancialRecordStatus.PROCESSED,
+                    FinancialRecordStatus.SENT_TO_ACCOUNTANT,
+            ):
+                raise ValueError(
+                    f"Invoice {record.reference} cannot be deleted from status {record.status}"
+                )
+
+            # już usunięty -> skip (idempotent)
+            if record.status == FinancialRecordStatus.DELETED:
+                continue
+
+            # ===== DOMAIN ACTION =====
+            updated = record.delete(
+                updated_at=self._clock(),
+                updated_by_user_id=actor_user_id,
+            )
+
+            uow.financial_records.update(updated)
+
+    def _to_in_progress(
+            self,
+            *,
+            uow: UnitOfWork,
+            organization_id: UUID,
+            actor_user_id: UUID,
+            record_ids: list[UUID],
+    ) -> None:
+
+        for record_id in record_ids:
+            record = self._require_record(
+                uow=uow,
+                organization_id=organization_id,
+                record_id=record_id,
+            )
+
+            # walidacja — tylko DELETED można przywrócić
+            if record.status != FinancialRecordStatus.DELETED:
+                raise ValueError(
+                    f"Invoice {record.reference} is not deleted"
+                )
+
+            updated = record.to_in_progress(
+                updated_at=self._clock(),
+                updated_by_user_id=actor_user_id,
+            )
+
+            uow.financial_records.update(updated)
 
     def _reopen(self,
                 *,

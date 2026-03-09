@@ -28,6 +28,7 @@ class ListDocumentsQueryService(ActionHandler[ListDocumentsQueryCommand, list[Do
             has_payload=action.has_payload,
             has_record=action.has_record,
             document_source=action.source,
+            document_status=action.status,
         )
 
         documents = sorted(
@@ -49,10 +50,15 @@ class ListDocumentsQueryService(ActionHandler[ListDocumentsQueryCommand, list[Do
                     document_type=d.document_type.value if d.document_type else "unknown",
                     document_number=d.document_number,
                     seller_nip=d.seller_nip,
+                    document_status=d.document_status.value,
+                    financial_record_id=d.financial_record_id,
                     has_payload=d.parsed_payload is not None,
                     has_record=d.financial_record_id is not None,
+                    confidence_score=d.scoring.score if d.scoring else None,
+                    confidence_breakdown=d.scoring.breakdown if d.scoring else None,
                     created_at=d.created_at,
                     file_path=d.file_path,
+
                 )
             )
 

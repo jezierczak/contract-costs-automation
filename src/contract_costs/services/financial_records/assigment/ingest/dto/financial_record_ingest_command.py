@@ -8,8 +8,6 @@ from contract_costs.services.financial_records.assigment.invoice_sources.dto.com
 
 @dataclass(frozen=True, slots=True)
 class BaseFinancialRecordIngestCommand(Command):
-    organization_id: UUID
-    actor_user_id: UUID
     batch: RecordIngestBatch
 
 @action_type(ActionType.FINANCIAL_RECORD_MANAGEMENT)
@@ -22,4 +20,8 @@ class IngestFinancialRecordFromDocumentCommand(
 class IngestFinancialRecordFromExcelCommand(
     BaseFinancialRecordIngestCommand
 ):
+    pass
+
+@action_type(ActionType.FINANCIAL_RECORD_MANAGEMENT)
+class IngestFinancialRecordFromUICommand(BaseFinancialRecordIngestCommand):
     pass

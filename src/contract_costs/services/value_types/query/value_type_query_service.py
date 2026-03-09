@@ -26,6 +26,9 @@ class ValueTypeQueryService(
             direction = ValueDirection(action.direction)
             items = [v for v in items if v.direction == direction]
 
+        if action.id:
+            items = [v for v in items if v.id == action.id]
+
         if action.code:
             items = [v for v in items if v.code == action.code]
 

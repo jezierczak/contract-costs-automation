@@ -1,0 +1,54 @@
+
+{% set labels = {
+    "buyer": "Nabywca",
+    "seller": "Sprzedawca"
+} %}
+
+<div id="company-slot-{{ target }}"
+     class="grid grid-cols-[100px_1fr_auto] items-center gap-3
+            border rounded-lg p-3 bg-gray-50">
+
+    <!-- LABEL -->
+    <div class="text-sm font-medium text-gray-600">
+        {{ target|capitalize }}
+    </div>
+
+    <!-- CONTENT -->
+    <div>
+
+        {% if company %}
+
+            <div class="font-medium text-gray-900 leading-tight">
+                {{ company.name }}
+            </div>
+
+            <div class="text-sm text-gray-500 leading-tight">
+                NIP: {{ company.tax_number }}
+            </div>
+
+            <input type="hidden"
+                   name="{{ target }}_tax_number"
+                   value="{{ company.tax_number }}">
+
+        {% else %}
+
+            <div class="text-gray-400 text-sm">
+                Nie wybrano firmy
+            </div>
+
+        {% endif %}
+
+    </div>
+
+    <!-- ACTION -->
+    <button
+        type="button"
+        hx-get="/companies/picker?target={{ target }}"
+        hx-target="#modal-area"
+        hx-swap="innerHTML"
+        class="text-blue-600 text-sm hover:underline"
+    >
+        {% if company %}Zmień{% else %}Wybierz{% endif %}
+    </button>
+
+</div>

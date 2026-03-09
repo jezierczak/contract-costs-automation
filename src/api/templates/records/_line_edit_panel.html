@@ -1,0 +1,167 @@
+<tr>
+<td colspan="10" class="bg-blue-50 p-3 border-b">
+
+<div class="grid gap-2">
+
+    <!-- ===================== -->
+    <!-- ROW 1 ECONOMIC -->
+    <!-- ===================== -->
+    <div class="grid grid-cols-8 gap-2">
+
+        <input autofocus
+            name="lines[{{ idx }}].item_name"
+            value="{{ l.item_name }}"
+            class="border rounded p-1 text-sm"
+            placeholder="Nazwa pozycji"
+            required
+        >
+
+        <input
+            name="lines[{{ idx }}].description"
+            value="{{ l.description or '' }}"
+            class="border rounded p-1 text-sm col-span-2"
+            placeholder="Opis"
+        >
+
+        <input
+            name="lines[{{ idx }}].quantity"
+            value="{{ l.quantity }}"
+            class="border rounded p-1 text-sm"
+            required
+        >
+
+        <select
+            name="lines[{{ idx }}].unit"
+            class="border rounded p-1 text-sm"
+            required
+        >
+            {% for u in units %}
+            <option value="{{ u.value }}"
+                {% if l.unit == u.value %}selected{% endif %}
+            >
+                {{ u.value }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <input
+            name="lines[{{ idx }}].amount"
+            value="{{ l.net }}"
+            class="border rounded p-1 text-sm"
+            required
+        >
+
+        <select
+            name="lines[{{ idx }}].vat_rate"
+            class="border rounded p-1 text-sm"
+            required
+        >
+            {% for v in vat_rates %}
+            <option value="{{ v.value }}">
+                {{ v.value }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <select
+            name="lines[{{ idx }}].amount_type"
+            class="border rounded p-1 text-sm"
+            required
+        >
+            {% for t in amount_types %}
+            <option value="{{ t.value }}">
+                {{ t.value }}
+            </option>
+            {% endfor %}
+        </select>
+
+    </div>
+
+
+    <!-- ===================== -->
+    <!-- ROW 2 INTERNAL -->
+    <!-- ===================== -->
+    <div class="grid grid-cols-5 gap-2">
+
+        <select
+            name="lines[{{ idx }}].contract_id"
+            class="border rounded p-1 text-sm"
+        >
+            <option value="">Kontrakt</option>
+            {% for c in contracts %}
+            <option value="{{ c.id }}">
+                {{ c.code }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <select
+            name="lines[{{ idx }}].contract_node_id"
+            class="border rounded p-1 text-sm"
+        >
+            <option value="">Contract node</option>
+        </select>
+
+        <select
+            name="lines[{{ idx }}].value_type_id"
+            class="border rounded p-1 text-sm"
+        >
+            <option value="">Value type</option>
+            {% for v in value_types %}
+            <option value="{{ v.id }}">
+                {{ v.code }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <select
+            name="lines[{{ idx }}].agreement_id"
+            class="border rounded p-1 text-sm"
+        >
+            <option value="">Agreement</option>
+        </select>
+
+        <select
+            name="lines[{{ idx }}].agreement_node_id"
+            class="border rounded p-1 text-sm"
+        >
+            <option value="">Agreement node</option>
+        </select>
+
+    </div>
+
+
+    <!-- ===================== -->
+    <!-- ACTIONS -->
+    <!-- ===================== -->
+    <div class="flex justify-end gap-2 mt-1">
+
+        <!-- CANCEL -->
+        <button
+            type="button"
+            hx-get="/records/lines/{{ idx }}/view"
+            hx-target="#line-editor-{{ idx }}"
+            hx-swap="innerHTML"
+            class="px-2 py-1 text-sm bg-gray-200 rounded"
+        >
+            ✖
+        </button>
+
+        <!-- APPLY -->
+        <button
+            type="button"
+            hx-post="/records/lines/{{ idx }}/apply"
+            hx-include="#record-edit-form"
+            hx-target="#line-editor-{{ idx }}"
+            hx-swap="innerHTML"
+            class="px-2 py-1 text-sm bg-green-600 text-white rounded"
+        >
+            ✔
+        </button>
+
+    </div>
+
+</div>
+
+</td>
+</tr>

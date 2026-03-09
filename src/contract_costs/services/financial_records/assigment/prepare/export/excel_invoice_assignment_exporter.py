@@ -217,15 +217,15 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
                 l.description,
                 l.quantity,
                 l.unit.value if l.unit else None,
-                l.net,
+                l.amount_value,
                 l.vat_rate.name if isinstance(l.vat_rate, Enum) else l.vat_rate,
                 AmountInputType.NET.value,
                 l.tax_treatment.value,
-                l.contract_code,
-                l.contract_node_code,
-                l.value_type_code,
-                l.agreement_code,
-                l.agreement_node_code,
+                l.contract_reference,
+                l.contract_node_reference,
+                l.value_type_reference,
+                l.agreement_reference,
+                l.agreement_node_reference,
             ])
 
         ws.column_dimensions["A"].hidden = True
@@ -271,17 +271,17 @@ class ExcelInvoiceAssignmentExporter(InvoiceAssignmentExporter):
             "contract_id",
             "parent_id"
         ])
-        cost_nodes.sort(key=lambda c: (c.contract_code,c.code))
+        cost_nodes.sort(key=lambda c: (c.contract_reference, c.code))
 
         for n in cost_nodes:
 
             ws.append([
-                n.contract_code,
+                n.contract_reference,
                 n.code,
                 n.name,
                 n.budget,
                 str(n.id),
-                str(n.contract_code),
+                str(n.contract_reference),
                 str(n.parent_id) if n.parent_id else None
             ])
         ws.column_dimensions["D"].hidden = True  # id

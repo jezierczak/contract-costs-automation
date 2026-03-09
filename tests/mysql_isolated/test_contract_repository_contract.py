@@ -145,5 +145,5 @@ def test_contract_list_by_type(contract_repo_contract):
     contract_repo_contract.add(project)
     contract_repo_contract.add(system)
 
-    listed = contract_repo_contract.list_contracts(org_id, contract_type=ContractType.PROJECT)
+    listed = contract_repo_contract.list_all_by_type(org_id, contract_type=ContractType.PROJECT)
     assert [c.id for c in listed] == [project.id]

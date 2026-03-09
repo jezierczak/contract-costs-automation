@@ -1,0 +1,149 @@
+<div class="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+
+<div class="bg-white rounded-lg shadow-lg w-[800px] p-6">
+
+<h2 class="text-lg font-semibold mb-4">
+Rozbicie wg kategorii
+{% if month %}
+ — {{month}}/{{year}}
+{% else %}
+ — rok {{year}}
+{% endif %}
+</h2>
+
+<table class="w-full text-sm border rounded overflow-hidden">
+
+<thead class="bg-gray-100">
+<tr>
+<th class="text-left px-3 py-2">Kod</th>
+<th class="text-left px-3 py-2">Nazwa</th>
+<th class="text-right px-3 py-2">Net</th>
+<th class="text-right px-3 py-2">Non-deduct</th>
+<th class="text-right px-3 py-2">Total</th>
+<th class="text-right px-3 py-2">% udział</th>
+</tr>
+</thead>
+
+<tbody class="divide-y">
+
+<!-- ===================== -->
+<!-- KOSZTY -->
+<!-- ===================== -->
+
+{% for i in costs %}
+
+<tr class="hover:bg-gray-50">
+
+<td class="px-3 py-2">{{ i.code }}</td>
+<td class="px-3 py-2">{{ i.name }}</td>
+
+<td class="text-right px-3 py-2">
+{{ i.costs }}
+</td>
+
+<td class="text-right px-3 py-2">
+{{ i.non_deductible }}
+</td>
+
+<td class="text-right px-3 py-2 font-medium">
+{{ i.total }}
+</td>
+
+<td class="text-right px-3 py-2 text-xs text-gray-600">
+{{ i.percent_of_direction|round(1) }}%
+</td>
+
+</tr>
+
+{% endfor %}
+
+<tr class="bg-gray-50 font-semibold">
+
+<td class="px-3 py-2 text-right text-red-700">
+SUMA
+</td>
+
+<td class="px-3 py-2 text-left text-red-700">
+(Koszty)
+</td>
+
+<td></td>
+<td></td>
+
+<td class="text-right px-3 py-2 text-red-700">
+{{ cost_total }}
+</td>
+
+<td></td>
+
+</tr>
+
+
+<!-- ===================== -->
+<!-- PRZYCHODY -->
+<!-- ===================== -->
+
+{% for i in revenues %}
+
+<tr class="hover:bg-gray-50">
+
+<td class="px-3 py-2">{{ i.code }}</td>
+<td class="px-3 py-2">{{ i.name }}</td>
+
+<td class="text-right px-3 py-2">
+{{ i.revenue }}
+</td>
+
+<td class="text-right px-3 py-2">0</td>
+
+<td class="text-right px-3 py-2 font-medium">
+{{ i.total }}
+</td>
+
+<td class="text-right px-3 py-2 text-xs text-gray-600">
+{{ i.percent_of_direction|round(1) }}%
+</td>
+
+</tr>
+
+{% endfor %}
+
+<tr class="bg-gray-50 font-semibold">
+
+<td class="px-3 py-2 text-right text-green-700">
+SUMA
+</td>
+
+<td class="px-3 py-2 text-left text-green-700">
+(Przychody)
+</td>
+
+<td></td>
+<td></td>
+
+<td class="text-right px-3 py-2 text-green-700">
+{{ revenue_total }}
+</td>
+
+<td></td>
+
+</tr>
+
+</tbody>
+
+</table>
+
+<div class="mt-5 text-right">
+
+<button
+onclick="document.getElementById('modal-area').innerHTML=''"
+class="px-4 py-1.5 bg-gray-700 hover:bg-gray-800 text-white rounded"
+>
+Zamknij
+</button>
+
+</div>
+
+</div>
+
+</div>

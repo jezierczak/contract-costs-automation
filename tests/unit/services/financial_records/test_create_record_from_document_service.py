@@ -90,11 +90,11 @@ def _make_parse_result() -> DocumentParseResult:
         quantity=Decimal("1"),
         unit=UnitOfMeasure.PIECE,
         amount=Amount(value=Decimal("100"), vat_rate=VatRate.VAT_23),
-        contract_code=None,
-        contract_node_code=None,
-        value_type_code=None,
-        agreement_code=None,
-        agreement_node_code=None
+        contract_reference=None,
+        contract_node_reference=None,
+        value_type_reference=None,
+        agreement_reference=None,
+        agreement_node_reference=None
     )
     buyer = CompanyInput(
         name="Buyer",

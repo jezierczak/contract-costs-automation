@@ -140,11 +140,11 @@ def load_invoice_excel_batch(path: Path) -> InvoiceExcelBatch:
                     ),
                     tax_treatment=TaxTreatment(row["tax_treatment"])
                 ),
-                contract_code=normalize(row.get("contract_code")),  # <-- CODE
-                contract_node_code=normalize(row.get("contract_node_code")),  # <-- CODE
-                value_type_code=normalize(row.get("value_type_code")),  # <-- CODE
-                agreement_code=normalize(row.get("agreement_code")),
-                agreement_node_code=normalize(row.get("agreement_node_code")),
+                contract_reference=normalize(row.get("contract_code")),  # <-- CODE
+                contract_node_reference=normalize(row.get("contract_node_code")),  # <-- CODE
+                value_type_reference=normalize(row.get("value_type_code")),  # <-- CODE
+                agreement_reference=normalize(row.get("agreement_code")),
+                agreement_node_reference=normalize(row.get("agreement_node_code")),
             )
         )
 

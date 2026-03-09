@@ -38,7 +38,7 @@ class CreateOrganizationWithOwnerService(
         *,
         action: CreateOrganizationCommand,
         uow: UnitOfWork,
-    ) -> UUID:
+    ) -> tuple[UUID,UUID]:
         organization_repo =uow.organizations
         user_repo =uow.users
         organization_users_repo = uow.organization_users
@@ -74,6 +74,7 @@ class CreateOrganizationWithOwnerService(
             is_active=True,
             created_at=now,
             created_by_user_id=action.created_by_user_id,
+            password_hash=action.owner_password_hash,
         )
 
         membership = OrganizationUser(
@@ -102,4 +103,4 @@ class CreateOrganizationWithOwnerService(
 
         uow.add_post_commit_hook(_init)
 
-        return org.id
+        return org.id,user.id

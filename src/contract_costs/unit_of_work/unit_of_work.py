@@ -5,6 +5,8 @@ import time
 from abc import ABC, abstractmethod
 from typing import Callable
 
+from contract_costs.repository.business_event_repository import BusinessEventRepository
+from contract_costs.repository.company_dashboard.company_dashboard_repository import CompanyDashboardRepository
 from contract_costs.repository.company_repository import CompanyRepository
 from contract_costs.repository.contract_node_repository import ContractNodeRepository
 from contract_costs.repository.contract_repository import ContractRepository
@@ -15,6 +17,7 @@ from contract_costs.repository.identity.organization_repository import Organizat
 from contract_costs.repository.identity.organization_user_repository import OrganizationUserRepository
 from contract_costs.repository.identity.user_repository import UserRepository
 from contract_costs.repository.number_sequence_repository import NumberSequenceRepository
+from contract_costs.repository.session_repository import SessionRepository
 from contract_costs.repository.snapshot.contract_node_snapshot_repository import ContractNodeSnapshotRepository
 from contract_costs.repository.snapshot.contract_node_value_snapshot_repository import (
     ContractNodeValueSnapshotRepository,
@@ -96,7 +99,22 @@ class UnitOfWork(ABC):
 
     @property
     @abstractmethod
+    def sessions(self) -> SessionRepository:
+        ...
+
+    @property
+    @abstractmethod
     def number_sequences(self) -> NumberSequenceRepository:
+        ...
+
+    @property
+    @abstractmethod
+    def business_events(self) -> BusinessEventRepository:
+        ...
+
+    @property
+    @abstractmethod
+    def company_dashboard(self) -> CompanyDashboardRepository:
         ...
 
     @abstractmethod

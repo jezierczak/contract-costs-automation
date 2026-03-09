@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="w-full max-w-none px-4 flex flex-col gap-3">
+
+    <div id="workspace">
+
+        <!-- ACTION BAR -->
+        <div id="workspace-actions"
+             class="bg-white rounded-xl shadow p-3 sticky top-0 z-30">
+
+            {% if request.state.ctx.workspace_actions %}
+                {% include request.state.ctx.workspace_actions with context %}
+            {% endif %}
+
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div
+            id="workspace-content"
+            class="bg-white rounded-xl shadow p-4"
+        >
+            {% block workspace_content %}{% endblock %}
+        </div>
+
+    </div>
+
+    <!-- BUSINESS EVENTS -->
+    <div
+        id="workspace-messages"
+        class="bg-white rounded-xl shadow p-3 max-h-48 overflow-auto"
+        hx-get="/business-events/latest"
+        hx-trigger="load, every 5s"
+        hx-swap="innerHTML"
+    >
+    </div>
+
+</div>
+
+{% endblock %}

@@ -7,7 +7,7 @@ from contract_costs.action_bus.command import Command
 
 
 @dataclass(frozen=True,slots=True)
-@action_type(ActionType.SYSTEM_CREATE_ORGANIZATION_NEW_USER)
+@action_type(ActionType.SYSTEM)
 class UseOrganizationCommand(Action):
     actor_user_id: UUID
     organization_code: str

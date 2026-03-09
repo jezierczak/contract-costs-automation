@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from uuid import UUID
 
-from contract_costs.model.document import Document
+from contract_costs.model.document import Document, DocumentStatus
 
 
 class DocumentRepository(ABC):
@@ -53,12 +53,12 @@ class DocumentRepository(ABC):
     ) -> None: ...
 
     @abstractmethod
-    def exists_by_hash(
+    def get_by_hash(
         self,
         *,
         organization_id: UUID,
         file_hash: str,
-    ) -> bool: ...
+    ) -> Document | None : ...
 
     @abstractmethod
     def list_all(
@@ -75,4 +75,5 @@ class DocumentRepository(ABC):
             has_payload: bool | None = None,
             has_record: bool | None = None,
             document_source: str | None = None,
+            document_status: DocumentStatus | None = None,
     ) -> list[Document]: ...

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+
+    <a href="/contracts/{{ contract.contract_id }}"
+       class="text-sm text-gray-600 hover:underline">
+        ← Powrót do kontraktu
+    </a>
+
+</div>
+
+<div class="max-w-5xl mx-auto">
+
+    <h1 class="text-2xl font-bold mb-4">
+        Aktualizacja progresu
+    </h1>
+
+    <div class="text-sm text-gray-500 mb-6">
+        {{ contract.code }} — {{ contract.name }}
+    </div>
+
+    {% include "contracts/_progress.html" %}
+
+</div>
+
+{% endblock %}

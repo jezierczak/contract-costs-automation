@@ -1,0 +1,53 @@
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+
+<div class="bg-white w-full max-w-lg rounded-xl shadow-lg p-4">
+
+    <!-- HEADER -->
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-semibold">
+            Dodaj dokument
+        </h2>
+
+        <button
+            type="button"
+            hx-on:click="this.closest('.fixed').remove()"
+            class="text-gray-500 hover:text-black"
+        >
+            ✕
+        </button>
+    </div>
+
+    <!-- FORM -->
+    <form
+        hx-post="/documents/upload"
+        hx-encoding="multipart/form-data"
+        hx-target="#documents-table"
+        hx-swap="innerHTML"
+        hx-trigger="change from:.file-input"
+        class="space-y-3"
+    >
+
+        <!-- DROPZONE -->
+        <div
+            class="dropzone border-2 border-dashed border-gray-300 rounded p-6 text-center
+                   hover:border-green-500 transition cursor-pointer"
+        >
+
+            <p class="text-gray-500 text-sm">
+                Przeciągnij pliki tutaj lub kliknij aby wybrać
+            </p>
+
+            <input
+                type="file"
+                name="files"
+                multiple
+                class="file-input hidden"
+            >
+
+        </div>
+
+    </form>
+
+</div>
+</div>
+

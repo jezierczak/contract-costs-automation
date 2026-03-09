@@ -32,6 +32,7 @@ class ContractNodeRepository(ABC):
     def get_by_code(self,
 
                     organization_id: UUID,
+                    contract_id: UUID,
                     contract_node_code: str) -> ContractNode | None:
         """Get contract node by code"""
         ...
@@ -106,8 +107,18 @@ class ContractNodeRepository(ABC):
         """Check if any values are assigned to this node"""
         ...
 
+    @abstractmethod
+    def list_nodes_with_values(
+            self,
+            *,
+            organization_id: UUID,
+            contract_id: UUID,
+    ) -> list[UUID]:
+        """Return node IDs that have assigned values"""
+        ...
 
     @abstractmethod
     def add_progress(self, progress: ContractNodeProgress) -> None:
         """Add or update progress for contract node"""
         ...
+

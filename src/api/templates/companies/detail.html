@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="max-w-6xl mx-auto space-y-6">
+
+    <!-- ================= HEADER ================= -->
+    <div class="border-b pb-4 bg-white rounded-lg p-4 shadow-sm flex justify-between items-start">
+
+        <!-- LEFT -->
+        <div>
+            <h2 class="text-2xl font-bold text-gray-800">
+                {{ company.name }}
+            </h2>
+
+            <p class="text-gray-500 mt-1">
+                Typ:
+                <span class="font-medium">
+                    {{ company.role.value }}
+                </span>
+            </p>
+
+            {% if not company.is_active %}
+            <span class="inline-block mt-2 px-2 py-1 text-sm bg-red-100 text-red-700 rounded">
+                Nieaktywna
+            </span>
+            {% endif %}
+        </div>
+
+        <!-- RIGHT ACTIONS -->
+        <div class="flex gap-2">
+
+            <a href="/companies"
+               class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-100">
+                ← Powrót
+            </a>
+
+            <a href="/records?seller_nip={{ company.tax_number }}"
+               class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-100">
+                Pokaż rekordy
+            </a>
+
+            <a href="/companies/{{ company.tax_number }}/edit"
+               class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                Edytuj
+            </a>
+
+            {% if company.is_active and company.role.value != "Own" %}
+           <form method="post"
+              action="/companies/{{ company.id }}/deactivate"
+              onsubmit="return confirm('Na pewno dezaktywować?')">
+
+              <button
+                 class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+                 Deaktywuj
+              </button>
+            </form>
+            {% endif %}
+
+        </div>
+    </div>
+
+    <!-- ================= BODY ================= -->
+    <div class="grid grid-cols-3 gap-8">
+
+        <!-- ========= LEFT: METADATA ========= -->
+        <div class="col-span-1 space-y-6">
+
+            <!-- PODSTAWOWE -->
+            <div class="border rounded-lg p-4 bg-white shadow-sm">
+                <h3 class="text-lg font-semibold mb-3">Podstawowe</h3>
+
+                <div class="space-y-3">
+
+                    <div>
+                        <label class="text-sm text-gray-500">Nazwa</label>
+                        <p class="font-medium">{{ company.name }}</p>
+                    </div>
+
+                    <div>
+                        <label class="text-sm text-gray-500">NIP</label>
+                        <p class="font-medium">{{ company.tax_number }}</p>
+                    </div>
+
+                    <div>
+                        <label class="text-sm text-gray-500">Opis</label>
+                        <p>{{ company.description or "—" }}</p>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- ADRES -->
+            <div class="border rounded-lg p-4 bg-white shadow-sm">
+                <h3 class="text-lg font-semibold mb-3">Adres</h3>
+
+                {% if company.address_street or company.address_city or company.address_zip_code or company.address_country %}
+                <div class="space-y-2">
+                    <p>{{ company.address_street or "—" }}</p>
+                    <p>{{ company.address_city or "—" }}</p>
+                    <p>{{ company.address_zip_code or "—" }}</p>
+                    <p>{{ company.address_country or "—" }}</p>
+                </div>
+                {% else %}
+                    <p class="text-gray-400">Brak danych adresowych</p>
+                {% endif %}
+            </div>
+
+            <!-- KONTAKT -->
+            <div class="border rounded-lg p-4 bg-white shadow-sm">
+                <h3 class="text-lg font-semibold mb-3">Kontakt</h3>
+
+                {% if company.phone_number or company.email %}
+                <div class="space-y-2">
+                    <p>{{ company.phone_number or "—" }}</p>
+                    <p>{{ company.email or "—" }}</p>
+                </div>
+                {% else %}
+                    <p class="text-gray-400">Brak danych kontaktowych</p>
+                {% endif %}
+            </div>
+
+            <!-- BANK -->
+            <div class="border rounded-lg p-4 bg-white shadow-sm">
+                <h3 class="text-lg font-semibold mb-3">Konto bankowe</h3>
+
+                {% if  company.bank_account_number %}
+                    <p>
+                        {{  company.bank_account_number }}
+                    </p>
+                  <p>
+                        {{  company.bank_account_country_code }}
+                    </p>
+                {% else %}
+                    <p class="text-gray-400">Brak konta bankowego</p>
+                {% endif %}
+            </div>
+
+            <!-- TAGI -->
+            <div class="border rounded-lg p-4 bg-white shadow-sm">
+                <h3 class="text-lg font-semibold mb-3">Tagi</h3>
+
+                {% if company.tags %}
+                    <div class="flex flex-wrap gap-2">
+                        {% for tag in company.tags %}
+                            <span class="px-2 py-1 text-sm bg-gray-100 rounded">
+                                {{ tag }}
+                            </span>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-gray-400">Brak tagów</p>
+                {% endif %}
+            </div>
+
+        </div>
+
+        <!-- ========= RIGHT: OPERATIONS ========= -->
+        <div class="col-span-2">
+
+            <div class="border rounded-lg p-4 bg-white shadow-sm min-h-[300px]">
+
+                <h3 class="text-lg font-semibold mb-3">
+                    Rekordy / Faktury
+                </h3>
+
+                <p class="text-gray-400">
+                    Tu pojawi się lista rekordów powiązanych z firmą
+                    (seller/buyer NIP).
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

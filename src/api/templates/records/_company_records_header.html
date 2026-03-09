@@ -1,0 +1,18 @@
+<div class="flex items-center gap-4">
+
+    <button
+        hx-get="/own-company-finances?company_id={{company_id}}&year={{year}}"
+        hx-target="#workspace"
+        hx-select="#workspace"
+        hx-swap="innerHTML"
+        hx-push-url="true"
+        class="text-sm text-gray-600 hover:text-black"
+    >
+        ← powrót
+    </button>
+
+    <div class="font-semibold text-sm text-gray-700">
+        {{ company_name }} / {{ year }}{% if month %} / {{ month }}{% endif %}
+    </div>
+
+</div>

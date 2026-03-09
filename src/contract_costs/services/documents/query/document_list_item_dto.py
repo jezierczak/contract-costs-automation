@@ -11,7 +11,11 @@ class DocumentListItemDto:
     document_type: str
     document_number: str | None
     seller_nip: str | None
+    document_status: str
+    financial_record_id: UUID | None
     has_payload: bool
     has_record: bool
     created_at: datetime
     file_path: str
+    confidence_score: int | None
+    confidence_breakdown:dict | None

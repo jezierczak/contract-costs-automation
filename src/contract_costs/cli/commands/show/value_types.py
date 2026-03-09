@@ -39,7 +39,7 @@ def handle_show_value_types(args):
         search=args.search,
     )
 
-    items = services.value_type_query_service.list_contracts(query)
+    items = services.value_type_query_service.list_all_by_type(query)
     items = services.action_bus.execute(
         action=query,
         handler=services.value_type_query_service

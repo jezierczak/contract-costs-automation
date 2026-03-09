@@ -109,7 +109,7 @@ def test_integration_apply_new_creates_contract_with_tree(monkeypatch, contract_
         uow=uow,
     )
 
-    contracts = contract_repo.list_contracts(organization_id, contract_type=ContractType.PROJECT)
+    contracts = contract_repo.list_all_by_type(organization_id, contract_type=ContractType.PROJECT)
     assert len(contracts) == 1
 
     contract = contracts[0]
@@ -170,7 +170,7 @@ def test_integration_apply_update_replaces_structure(monkeypatch, contract_repo,
         uow=uow,
     )
 
-    contract = contract_repo.list_contracts(organization_id, contract_type=ContractType.PROJECT)[0]
+    contract = contract_repo.list_all_by_type(organization_id, contract_type=ContractType.PROJECT)[0]
 
     service.execute(
         action=UpdateContractStructureExcelCommand(

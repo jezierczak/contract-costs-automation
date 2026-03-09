@@ -89,8 +89,8 @@ def test_document_exists_by_hash_scoped_by_org(document_repo_contract):
     )
     document_repo_contract.add(doc)
 
-    assert document_repo_contract.exists_by_hash(organization_id=org_a, file_hash=file_hash) is True
-    assert document_repo_contract.exists_by_hash(organization_id=org_b, file_hash=file_hash) is False
+    assert document_repo_contract.get_by_hash(organization_id=org_a, file_hash=file_hash) is True
+    assert document_repo_contract.get_by_hash(organization_id=org_b, file_hash=file_hash) is False
 
 
 def test_document_update_delete_and_list_by_record(document_repo_contract):

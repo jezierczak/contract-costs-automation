@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="flex items-center justify-center min-h-[70vh]">
+
+    <div class="w-full max-w-md bg-white p-8 rounded-xl shadow">
+
+        <h2 class="text-2xl font-bold mb-6 text-center">
+            Logowanie
+        </h2>
+
+        <form method="post" action="/login" class="space-y-4">
+
+            <input
+                type="text"
+                name="login"
+                placeholder="Login"
+                required
+                class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+
+            <input
+                type="password"
+                name="password"
+                placeholder="Hasło"
+                required
+                class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+
+            <button
+                type="submit"
+                class="w-full bg-blue-600 text-white rounded py-2 hover:bg-blue-700">
+                Zaloguj
+            </button>
+
+        </form>
+
+        <p class="text-sm text-center mt-4">
+            Nie masz konta?
+            <a href="/register" class="text-blue-600 hover:underline">
+                Zarejestruj się
+            </a>
+        </p>
+
+    </div>
+
+</div>
+
+{% endblock %}

@@ -26,10 +26,24 @@ class DocumentSource(Enum):
     IMAGE = "image"
     EMAIL = "email"
 
+class DocumentStatus(Enum):
+    NEW = "NEW"
+    PROCESSING = "PROCESSING"
+    READY = "READY"
+    APPLIED = "APPLIED"
+    FAILED = "FAILED"
+
+@dataclass(frozen=True, slots=True)
+class ScoringResult:
+    score: int
+    breakdown: dict[str, int]
+
 @dataclass(slots=True)
 class Document(BaseEntity):
     id: UUID
     financial_record_id: UUID | None
+
+    document_status: DocumentStatus
 
     document_source: DocumentSource | None
 
@@ -45,6 +59,10 @@ class Document(BaseEntity):
     mime_type: str | None
     size: int | None
 
+    scoring: ScoringResult | None
+
+
+
     def with_document_type(self, document_type: DocumentType) -> "Document":
         return replace(self, document_type=document_type)
 
@@ -53,3 +71,28 @@ class Document(BaseEntity):
 
     def with_seller_nip(self, seller_nip: str) -> "Document":
         return replace(self, seller_nip=seller_nip)
+
+    def with_status(self, status: DocumentStatus) -> "Document":
+        return replace(self, document_status=status)
+
+    def mark_processing(self) -> "Document":
+        return replace(self, document_status=DocumentStatus.PROCESSING)
+
+    def mark_ready(self) -> "Document":
+        if self.document_status != DocumentStatus.PROCESSING:
+            raise RuntimeError("Invalid transition")
+        return replace(self, document_status=DocumentStatus.READY)
+
+    def mark_failed(self) -> "Document":
+        return replace(self, document_status=DocumentStatus.FAILED)
+
+    def mark_applied(self, record_id: UUID) -> "Document":
+        return replace(
+            self,
+            document_status=DocumentStatus.APPLIED,
+            financial_record_id=record_id,
+        )
+
+    @property
+    def is_ready(self) -> bool:
+        return self.document_status == DocumentStatus.READY

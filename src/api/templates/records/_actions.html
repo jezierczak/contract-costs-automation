@@ -1,0 +1,30 @@
+<div class="flex justify-between items-center">
+
+    <div class="flex items-center gap-2">
+{% if request.state.ctx.workspace_subtitle %}
+        <button
+            onclick="history.back()"
+            class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300"
+        >
+            ← Cofnij
+        </button>
+        {%endif%}
+
+        <h1 class="text-xl font-bold">
+            {{ request.state.ctx.workspace_title }}
+            {% if request.state.ctx.workspace_subtitle %}
+                <span class="text-gray-400 font-normal">
+                    → {{ request.state.ctx.workspace_subtitle }}
+                </span>
+            {% endif %}
+        </h1>
+
+    </div>
+
+    <a href="/records/edit"
+        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+    >
+        + Nowy rekord
+    </a>
+
+</div>

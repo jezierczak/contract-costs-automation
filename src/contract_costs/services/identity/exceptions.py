@@ -16,6 +16,11 @@ class UserNotMemberOfOrganization(IdentityServiceError): ...
 class UserNotFound(IdentityServiceError):
     pass
 
+class UserInactive(IdentityServiceError):
+    pass
+
+
+
 class UserAlreadyInOrganization(IdentityServiceError):
     pass
 

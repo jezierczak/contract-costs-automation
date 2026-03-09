@@ -155,7 +155,7 @@ class MySQLValueTypeRepository(ValueTypeRepository):
                         value_type.direction.value,
                         value_type.is_active,
                         value_type.updated_at,
-                        value_type.updated_by_user_id,
+                        str(value_type.updated_by_user_id),
                         str(value_type.id),
                         str(value_type.organization_id),
                     ),

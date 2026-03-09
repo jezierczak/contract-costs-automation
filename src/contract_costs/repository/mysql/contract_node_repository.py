@@ -128,18 +128,19 @@ class MySQLContractNodeRepository(ContractNodeRepository):
         self._attach_progress_history(organization_id, [node])
         return node
 
-    def get_by_code(self, organization_id: UUID, contract_node_code: str) -> ContractNode | None:
+    def get_by_code(self, organization_id: UUID,contract_id: UUID, contract_node_code: str) -> ContractNode | None:
         sql = """
         SELECT *
         FROM contract_nodes
         WHERE code = %s
+            AND contract_id = %s
           AND organization_id = %s
         """
 
         conn = self._get_connection()
         try:
             with conn.cursor(dictionary=True) as cur:
-                cur.execute(sql, (contract_node_code, str(organization_id)))
+                cur.execute(sql, (contract_node_code,str(contract_id), str(organization_id)))
                 row = cur.fetchone()
         finally:
             self._maybe_close(conn)
@@ -238,6 +239,36 @@ class MySQLContractNodeRepository(ContractNodeRepository):
         nodes = [self._map_row(r) for r in rows]
         self._attach_progress_history(organization_id, nodes)
         return nodes
+
+    def list_nodes_with_values(
+            self,
+            *,
+            organization_id: UUID,
+            contract_id: UUID,
+    ) -> list[UUID]:
+
+        conn = self._get_connection()
+
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT DISTINCT contract_node_id
+                    FROM financial_record_lines
+                    WHERE organization_id = %s
+                      AND contract_id = %s
+                      AND contract_node_id IS NOT NULL
+                    """,
+                    (str(organization_id), str(contract_id)),
+                )
+
+                rows = cur.fetchall()
+
+        finally:
+            self._maybe_close(conn)
+
+        return [UUID(row[0]) for row in rows]
+
 
     def update(self, contract_node: ContractNode) -> None:
         sql = """

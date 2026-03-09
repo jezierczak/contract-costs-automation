@@ -6,6 +6,7 @@ from decimal import Decimal
 class TaxTreatment(Enum):
     TAX_DEDUCTIBLE = "tax_deductible"
     NON_DEDUCTIBLE = "non_deductible"
+    NON_CASH_COST = "non_cash_cost"
 
 class AmountInputType(Enum):
     NET = "net"
@@ -19,35 +20,103 @@ class VatRate(Enum):
     VAT_ZW = Decimal("0.00")
 
 
+@dataclass
+class AmountSummary:
+
+    net: Decimal
+    vat: Decimal
+    gross: Decimal
+    cashflow: Decimal
+    non_tax_cost: Decimal
+    non_cash_cost: Decimal
+
 @dataclass(frozen=True)
 class Amount:
     value: Decimal
+    input_type: AmountInputType
     vat_rate: VatRate
     tax_treatment: TaxTreatment = TaxTreatment.TAX_DEDUCTIBLE
 
+    # @property
+    # def net(self) -> Decimal :
+    #     if self.tax_treatment != TaxTreatment.TAX_DEDUCTIBLE:
+    #         return Decimal("0.00")
+    #     return self.value
+    # @property
+    # def net(self):
+    #     if self.tax_treatment == TaxTreatment.NON_DEDUCTIBLE:
+    #         return Decimal("0.00")
+    #
+    #     return self.value
     @property
-    def net(self) -> Decimal :
-        if self.tax_treatment != TaxTreatment.TAX_DEDUCTIBLE:
+    def net(self) -> Decimal:
+
+        if self.tax_treatment == TaxTreatment.NON_DEDUCTIBLE:
             return Decimal("0.00")
-        return self.value
+
+        if self.tax_treatment == TaxTreatment.NON_CASH_COST:
+            return self.value
+
+        if self.input_type == AmountInputType.NET:
+            return self.value
+
+        if self.input_type == AmountInputType.GROSS:
+            return (
+                    self.value / (Decimal("1") + self.vat_rate.value)
+            ).quantize(Decimal("0.01"))
+
+        return Decimal("0.00")
+
+    # @property
+    # def tax(self) -> Decimal:
+    #     if self.tax_treatment != TaxTreatment.TAX_DEDUCTIBLE:
+    #         return Decimal("0.00")
+    #     if self.vat_rate.value is None:
+    #         return Decimal("0.00")
+    #     return (self.value * self.vat_rate.value).quantize(Decimal("0.01"))
 
     @property
     def tax(self) -> Decimal:
+
         if self.tax_treatment != TaxTreatment.TAX_DEDUCTIBLE:
             return Decimal("0.00")
-        if self.vat_rate.value is None:
+
+        if self.vat_rate.value == Decimal("0.00"):
             return Decimal("0.00")
-        return (self.value * self.vat_rate.value).quantize(Decimal("0.01"))
+
+        return (self.net * self.vat_rate.value).quantize(Decimal("0.01"))
+
+    # @property
+    # def gross(self) -> Decimal:
+    #     return self.value + self.tax
 
     @property
     def gross(self) -> Decimal:
-        return self.value + self.tax
+        if self.tax_treatment == TaxTreatment.NON_DEDUCTIBLE:
+            return Decimal("0.00")
+        if self.input_type == AmountInputType.GROSS:
+            return self.value
+        return self.net + self.tax
 
     @property
     def non_tax_cost(self) -> Decimal:
         if self.tax_treatment == TaxTreatment.NON_DEDUCTIBLE:
             return self.value
         return Decimal("0.00")
+
+
+
+    @property
+    def non_cash_cost(self):
+        if self.tax_treatment == TaxTreatment.NON_CASH_COST:
+            return self.value
+        return Decimal("0.00")
+
+    @property
+    def cashflow(self):
+        if self.tax_treatment == TaxTreatment.NON_CASH_COST:
+            return Decimal("0.00")
+        return self.value
 
     @property
     def net_or_zero(self) -> Decimal:
@@ -62,30 +131,76 @@ class Amount:
             vat_rate: VatRate,
             tax_treatment: TaxTreatment,
     ) -> "Amount":
-        # NON_DEDUCTIBLE ignores VAT and input_type by design
-        # 1️⃣ NON_DEDUCTIBLE ma absolutny priorytet
-        if tax_treatment == TaxTreatment.NON_DEDUCTIBLE:
-            net = value
 
-        # 2️⃣ TAX_DEDUCTIBLE + NET
-        elif input_type == AmountInputType.NET:
-            net = value
-
-        # 3️⃣ TAX_DEDUCTIBLE + GROSS
-        elif input_type == AmountInputType.GROSS:
-            if vat_rate.value is None:
-                net = value
-            else:
-                net = (value / (Decimal("1") + vat_rate.value)).quantize(
-                    Decimal("0.01")
-                )
-
-        else:
-            raise ValueError(f"Unsupported input type: {input_type}")
+        if tax_treatment == TaxTreatment.NON_CASH_COST:
+            vat_rate = VatRate.VAT_0
 
         return cls(
-            value=net,
+            value=value.quantize(Decimal("0.01")),
+            input_type=input_type,
             vat_rate=vat_rate,
             tax_treatment=tax_treatment,
+        )
+    # @classmethod
+    # def from_input(
+    #         cls,
+    #         *,
+    #         value: Decimal,
+    #         input_type: AmountInputType,
+    #         vat_rate: VatRate,
+    #         tax_treatment: TaxTreatment,
+    # ) -> "Amount":
+    #     # NON_DEDUCTIBLE ignores VAT and input_type by design
+    #     # 1️⃣ NON_DEDUCTIBLE ma absolutny priorytet
+    #     if tax_treatment == TaxTreatment.NON_DEDUCTIBLE:
+    #         net = value
+    #
+    #     # 2️⃣ TAX_DEDUCTIBLE + NET
+    #     elif input_type == AmountInputType.NET:
+    #         net = value
+    #
+    #     # 3️⃣ TAX_DEDUCTIBLE + GROSS
+    #     elif input_type == AmountInputType.GROSS:
+    #         if vat_rate.value is None:
+    #             net = value
+    #         else:
+    #             net = (value / (Decimal("1") + vat_rate.value)).quantize(
+    #                 Decimal("0.01")
+    #             )
+    #
+    #     else:
+    #         raise ValueError(f"Unsupported input type: {input_type}")
+    #
+    #     return cls(
+    #         value=net,
+    #         vat_rate=vat_rate,
+    #         tax_treatment=tax_treatment,
+    #     )
+
+    @classmethod
+    def sum(cls, amounts: list["Amount"]) -> "AmountSummary":
+
+        net = Decimal("0")
+        vat = Decimal("0")
+        gross = Decimal("0")
+        cashflow = Decimal("0")
+        non_tax = Decimal("0")
+        non_cash = Decimal("0")
+
+        for a in amounts:
+            net += a.net
+            vat += a.tax
+            gross += a.gross
+            cashflow += a.cashflow
+            non_tax += a.non_tax_cost
+            non_cash += a.non_cash_cost
+
+        return AmountSummary(
+            net=net,
+            vat=vat,
+            gross=gross,
+            cashflow=cashflow,
+            non_tax_cost=non_tax,
+            non_cash_cost=non_cash,
         )
 

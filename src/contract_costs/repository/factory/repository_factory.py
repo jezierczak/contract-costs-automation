@@ -1,8 +1,11 @@
+from contract_costs.repository.company_dashboard.company_dashboard_repository import CompanyDashboardRepository
 from contract_costs.repository.company_repository import CompanyRepository
 from contract_costs.repository.document_repository import DocumentRepository
 from contract_costs.repository.identity.organization_repository import OrganizationRepository
 from contract_costs.repository.identity.organization_user_repository import OrganizationUserRepository
 from contract_costs.repository.identity.user_repository import UserRepository
+from contract_costs.repository.inmemory.company_dashboard.company_dashboard_repository import \
+    InMemoryCompanyDashboardRepository
 from contract_costs.repository.inmemory.document_repository import InMemoryDocumentRepository
 from contract_costs.repository.inmemory.identity.organization_repository import InMemoryOrganizationRepository
 from contract_costs.repository.inmemory.identity.organization_user_repository import InMemoryOrganizationUserRepository
@@ -12,12 +15,17 @@ from contract_costs.repository.financial_record_line_repository import Financial
 from contract_costs.repository.contract_repository import ContractRepository
 from contract_costs.repository.contract_node_repository import ContractNodeRepository
 from contract_costs.repository.inmemory.number_sequence_repository import InMemoryNumberSequenceRepository
+from contract_costs.repository.inmemory.session_repository import InMemorySessionRepository
+from contract_costs.repository.mysql.company_dashboard.company_dashboard_repository import \
+    MySQLCompanyDashboardRepository
 from contract_costs.repository.mysql.document_repository import MySQLDocumentRepository
 from contract_costs.repository.mysql.identity.organization_repository import MySqlOrganizationRepository
 from contract_costs.repository.mysql.identity.organization_user_repository import MySqlOrganizationUserRepository
 from contract_costs.repository.mysql.identity.user_repository import MySqlUserRepository
 from contract_costs.repository.mysql.number_sequence_repository import MySQLNumberSequenceRepository
+from contract_costs.repository.mysql.session_repository import MySQLSessionRepository
 from contract_costs.repository.number_sequence_repository import NumberSequenceRepository
+from contract_costs.repository.session_repository import SessionRepository
 from contract_costs.repository.value_type_repository import ValueTypeRepository
 from contract_costs.repository.snapshot.contract_node_snapshot_repository import ContractNodeSnapshotRepository
 from contract_costs.repository.snapshot.contract_node_value_snapshot_repository import \
@@ -165,9 +173,23 @@ class RepositoryFactory:
             else InMemoryNumberSequenceRepository()
         )
 
+    def session_repository(self) -> SessionRepository:
+        return (
+            MySQLSessionRepository()
+            if self.backend == RepoBackend.MYSQL
+            else InMemorySessionRepository()
+                )
+
     def unit_of_work(self) -> UnitOfWork:
         return (
             MySQLUnitOfWork()
             if self.backend == RepoBackend.MYSQL
             else InMemoryUnitOfWork()
+        )
+
+    def company_dashboard_repository(self) -> CompanyDashboardRepository:
+        return (
+            MySQLCompanyDashboardRepository()
+            if self.backend == RepoBackend.MYSQL
+            else InMemoryCompanyDashboardRepository()
         )

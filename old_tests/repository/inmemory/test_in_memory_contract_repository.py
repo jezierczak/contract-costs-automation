@@ -22,7 +22,7 @@ class TestInMemoryContractRepository:
         repo.add(contract_1)
         repo.add(contract_2)
 
-        result = repo.list_contracts()
+        result = repo.list_all_by_type()
 
         assert len(result) == 2
         assert contract_1 in result

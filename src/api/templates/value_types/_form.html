@@ -1,0 +1,48 @@
+<form
+    hx-post="/value_types/save"
+    hx-target="#modal-area"
+    hx-swap="innerHTML"
+    class="flex flex-col gap-3"
+>
+
+    <input type="hidden" name="id" value="{{ item.id if item else '' }}">
+
+    <input
+        name="code"
+        value="{{ item.code if item else '' }}"
+        placeholder="Code"
+        class="border rounded p-2"
+    >
+
+    <input
+        name="name"
+        value="{{ item.name if item else '' }}"
+        placeholder="Name"
+        class="border rounded p-2"
+    >
+
+    <textarea
+        name="description"
+        class="border rounded p-2"
+    >{{ item.description if item else '' }}</textarea>
+
+    <select name="direction" class="border rounded p-2">
+
+    {% for d in directions %}
+        <option
+            value="{{ d }}"
+            {% if item and item.direction == d %}selected{% endif %}
+        >
+            {{ d }}
+        </option>
+    {% endfor %}
+
+</select>
+
+    <button
+        class="bg-blue-600 text-white px-4 py-2 rounded"
+    >
+        Zapisz
+    </button>
+
+</form>

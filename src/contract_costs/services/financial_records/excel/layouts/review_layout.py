@@ -2,7 +2,7 @@ from contract_costs.infrastructure.excel.excel_column import ExcelColumn, ExcelC
 from contract_costs.services.financial_records.review.dto.invoice_review_item_view import FinancialRecordReviewItemView
 
 REVIEW_COLUMNS: list[ExcelColumn[FinancialRecordReviewItemView]] = [
-    ExcelColumn("INVOICE_ID", lambda x: str(x.invoice_id), ExcelColumnType.HIDDEN),
+    ExcelColumn("INVOICE_ID", lambda x: str(x.record_id), ExcelColumnType.HIDDEN),
     ExcelColumn("Invoice No", lambda x: x.reference),
     ExcelColumn("Invoice Date", lambda x: x.invoice_date),
     ExcelColumn("Buyer", lambda x: x.buyer_name),

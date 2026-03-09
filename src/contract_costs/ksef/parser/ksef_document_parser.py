@@ -5,6 +5,7 @@ from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
+
 from contract_costs.model.amount import Amount, AmountInputType, TaxTreatment, VatRate
 from contract_costs.model.company import CompanyType
 from contract_costs.model.document import DocumentType
@@ -126,6 +127,7 @@ class KsefDocumentParser(DocumentParser):
             status=FinancialRecordStatus.DRAFT,
         )
 
+
         return DocumentParseResult(
             document_type=document_type,
             record=record,
@@ -226,11 +228,11 @@ class KsefDocumentParser(DocumentParser):
             quantity=quantity,
             unit=self._map_unit(self._text(row, unit_path)),
             amount=amount,
-            contract_code=None,
-            contract_node_code=None,
-            value_type_code=None,
-            agreement_code=None,
-            agreement_node_code=None
+            contract_reference=None,
+            contract_node_reference=None,
+            value_type_reference=None,
+            agreement_reference=None,
+            agreement_node_reference=None
         )
 
     def _text(self, element, path):

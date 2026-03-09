@@ -38,8 +38,8 @@ class CreateCompanyService(ActionHandler[BaseCreateCompanyCommand, Company]):
         ):
             raise ValueError("Company with this tax number already exists in organization")
 
-        if action.role == CompanyType.OWN and repo.exists_owner(action.organization_id):
-            raise ValueError("Organization already has OWN company")
+        # if action.role == CompanyType.OWN and repo.exists_owner(action.organization_id):
+        #     raise ValueError("Organization already has OWN company")
 
         now = self._clock()
 

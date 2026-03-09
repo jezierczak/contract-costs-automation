@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% if not has_owner %}
+<!--    {% include "companies/owner_company_form.html" %}-->
+    {% set title = "Dodaj pierwszą firmę" %}
+    {% set subtitle = "Aby rozpocząć pracę, dodaj firmę własną" %}
+    {% set action_url = "/companies/create-own" %}
+    {% set submit_label = "Zapisz i rozpocznij" %}
+    {% set show_role = False %}
+    {% set use_htmx = False %}
+    {% set next = "/" %}
+
+    {% include "companies/_form.html" %}
+{% else %}
+
+<h1 class="text-2xl font-bold">
+Dashboard
+</h1>
+
+<p>Witaj 🙂</p>
+
+{% endif %}
+
+{% endblock %}

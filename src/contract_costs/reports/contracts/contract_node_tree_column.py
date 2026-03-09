@@ -29,11 +29,11 @@ def contract_node_tree_columns() -> list[ExcelColumn[ContractNodeDetailsDTO]]:
                 if n.progress is not None
                 else None
             ),
-            lambda n: n.net,
+            lambda n: n.amount_value,
             lambda n: n.non_deductible,
-            lambda n: n.net + n.non_deductible,
+            lambda n: n.amount_value + n.non_deductible,
             lambda n: (
-                (n.planned_budget * n.progress) - (n.net + n.non_deductible)
+                (n.planned_budget * n.progress) - (n.amount_value + n.non_deductible)
                 if n.progress is not None
                 else None
             ),

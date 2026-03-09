@@ -1,6 +1,10 @@
 from typing import Any
 
 from contract_costs.infrastructure.db.mysql_connection import get_connection
+from contract_costs.repository.business_event_repository import BusinessEventRepository
+from contract_costs.repository.mysql.business_event_repository import MySQLBusinessEventRepository
+from contract_costs.repository.mysql.company_dashboard.company_dashboard_repository import \
+    MySQLCompanyDashboardRepository
 from contract_costs.repository.mysql.company_repository import MySQLCompanyRepository
 from contract_costs.repository.mysql.contract_node_repository import MySQLContractNodeRepository
 from contract_costs.repository.mysql.contract_repository import MySQLContractRepository
@@ -11,6 +15,7 @@ from contract_costs.repository.mysql.identity.organization_repository import MyS
 from contract_costs.repository.mysql.identity.organization_user_repository import MySqlOrganizationUserRepository
 from contract_costs.repository.mysql.identity.user_repository import MySqlUserRepository
 from contract_costs.repository.mysql.number_sequence_repository import MySQLNumberSequenceRepository
+from contract_costs.repository.mysql.session_repository import MySQLSessionRepository
 from contract_costs.repository.mysql.snapshot.contract_node_snapshot_repository import (
     MySQLContractNodeSnapshotRepository,
 )
@@ -19,6 +24,7 @@ from contract_costs.repository.mysql.snapshot.contract_node_value_snapshot_repos
 )
 from contract_costs.repository.mysql.snapshot.contract_snapshot_repository import MySQLContractSnapshotRepository
 from contract_costs.repository.mysql.value_type_repository import MySQLValueTypeRepository
+from contract_costs.repository.session_repository import SessionRepository
 from contract_costs.unit_of_work.unit_of_work import UnitOfWork
 
 
@@ -46,6 +52,10 @@ class MySQLUnitOfWork(UnitOfWork):
         self._users = MySqlUserRepository(connection=self._conn)
         self._documents = MySQLDocumentRepository(connection=self._conn)
         self._number_sequences = MySQLNumberSequenceRepository(connection=self._conn)
+        self._business_events = MySQLBusinessEventRepository(connection=self._conn)
+        self._sessions = MySQLSessionRepository(connection=self._conn)
+        self._company_dashboard = MySQLCompanyDashboardRepository(connection=self._conn)
+
 
     @property
     def companies(self):
@@ -102,6 +112,18 @@ class MySQLUnitOfWork(UnitOfWork):
     @property
     def number_sequences(self):
         return self._number_sequences
+
+    @property
+    def company_dashboard(self):
+        return self._company_dashboard
+
+    @property
+    def business_events(self) -> BusinessEventRepository:
+        return self._business_events
+
+    @property
+    def sessions(self) -> SessionRepository:
+        return self._sessions
 
     def commit(self) -> None:
         self._conn.commit()

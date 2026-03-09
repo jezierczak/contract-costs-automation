@@ -57,7 +57,7 @@ def test_resolver_owner_always_allowed():
     allowed = resolver.has_permission(
         organization_id=uuid4(),
         user_id=uuid4(),
-        action_type=ActionType.SYSTEM_CREATE_ORGANIZATION_NEW_USER,
+        action_type=ActionType.SYSTEM,
     )
 
     assert allowed is True
@@ -72,7 +72,7 @@ def test_resolver_returns_false_for_action_without_mapping_for_non_owner():
     allowed = resolver.has_permission(
         organization_id=uuid4(),
         user_id=uuid4(),
-        action_type=ActionType.SYSTEM_CREATE_ORGANIZATION_NEW_USER,
+        action_type=ActionType.SYSTEM,
     )
 
     assert allowed is False

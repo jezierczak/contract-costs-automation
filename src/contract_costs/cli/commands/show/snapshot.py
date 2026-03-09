@@ -61,7 +61,7 @@ def handle_show_snapshot(args):
     header = {
         "Snapshot ID": [str(dto.snapshot_id)],
         "Snapshot Date": [str(dto.snapshot_date)],
-        "Contract": [dto.contract_code],
+        "Contract": [dto.contract_reference],
         "Generated": [datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
     }
 
@@ -70,7 +70,7 @@ def handle_show_snapshot(args):
 
         fm = SnapshotShowFileManager(
             organization_id=organization_id,
-            contract_code=dto.contract_code,
+            contract_code=dto.contract_reference,
             contract_date=dto.snapshot_date,
         )
         output_path = fm.create_output_file()

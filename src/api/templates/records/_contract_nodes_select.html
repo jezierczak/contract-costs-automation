@@ -1,0 +1,29 @@
+<!--<select-->
+<!--    name="lines[{{ idx }}].contract_node_id"-->
+<!--    class="border rounded p-1 text-sm"-->
+<!--&gt;-->
+<!--    <option value="">Contract node</option>-->
+
+<!--    {% for n in nodes %}-->
+<!--    <option value="{{ n.node_id }}">-->
+<!--        {{ "— " * n.depth }}{{ n.code }}-->
+<!--    </option>-->
+<!--    {% endfor %}-->
+<!--</select>-->
+
+<select
+    name="lines[{{ idx }}].{{ field_name }}"
+    class="border rounded p-1 text-sm"
+>
+    <div class="bg-red-200">DEBUG NODES {{ nodes|length }}</div>
+    <option value="">{{ label }}</option>
+
+    {% for n in nodes %}
+    <option
+        value="{{ n.id }}"
+        {% if selected_node_id|string == n.id|string %}selected{% endif %}
+    >
+        {{ "--" * n.depth }} {{ n.code }}
+    </option>
+    {% endfor %}
+</select>

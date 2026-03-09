@@ -1,0 +1,83 @@
+{% extends "workspace.html" %}
+
+
+{% block workspace_content %}
+    <div class="mb-4 flex gap-2">
+
+    <button
+        hx-get="/documents/table"
+        hx-target="#documents-table"
+        hx-swap="innerHTML"
+        hx-on:click="
+document.getElementById('documents-status-filter').value=''
+"
+        class="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
+    >
+        Wszystkie
+    </button>
+
+    <button
+        hx-get="/documents/table?status=READY"
+        hx-target="#documents-table"
+        hx-swap="innerHTML"
+        hx-on:click="
+document.getElementById('documents-status-filter').value='READY'
+"
+        class="px-3 py-1 rounded bg-green-100 hover:bg-green-200"
+    >
+        READY
+    </button>
+
+    <button
+        hx-get="/documents/table?status=PROCESSING"
+        hx-target="#documents-table"
+        hx-swap="innerHTML"
+        hx-on:click="
+document.getElementById('documents-status-filter').value='PROCESSING'
+"
+        class="px-3 py-1 rounded bg-blue-100 hover:bg-blue-200"
+    >
+        PROCESSING
+    </button>
+
+    <button
+        hx-get="/documents/table?status=FAILED"
+        hx-target="#documents-table"
+        hx-swap="innerHTML"
+        hx-on:click="
+document.getElementById('documents-status-filter').value='FAILED'
+"
+        class="px-3 py-1 rounded bg-red-100 hover:bg-red-200"
+    >
+        FAILED
+    </button>
+
+    <button
+        hx-get="/documents/table?status=APPLIED"
+        hx-target="#documents-table"
+        hx-swap="innerHTML"
+        hx-on:click="
+document.getElementById('documents-status-filter').value='APPLIED'
+"
+        class="px-3 py-1 rounded bg-gray-100 hover:bg-gray-200"
+    >
+        APPLIED
+    </button>
+
+        <input
+    type="hidden"
+    id="documents-status-filter"
+    name="status"
+    value="{{ current_status or '' }}"
+>
+</div>
+    <!-- TABLE CONTAINER -->
+    <div id="documents-table"
+      hx-get="/documents/table?status={{ current_status or '' }}"
+     hx-trigger="load, every 2s"
+     hx-include="#documents-status-filter"
+     hx-swap="innerHTML">
+        {% include "documents/_table.html" %}
+    </div>
+{% endblock %}
+

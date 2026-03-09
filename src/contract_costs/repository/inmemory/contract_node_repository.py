@@ -53,11 +53,13 @@ class InMemoryContractNodeRepository(ContractNodeRepository):
     def get_by_code(
         self,
         organization_id: UUID,
+        contract_id:UUID,
         contract_node_code: str,
     ) -> ContractNode | None:
         for node in self._nodes.values():
             if (
                 node.organization_id == organization_id
+                and node.contract_id == contract_id
                 and node.code == contract_node_code
             ):
                 return node
@@ -73,6 +75,26 @@ class InMemoryContractNodeRepository(ContractNodeRepository):
             for node in self._nodes.values()
             if node.organization_id == organization_id
         ]
+
+    def list_nodes_with_values(
+            self,
+            *,
+            organization_id: UUID,
+            contract_id: UUID,
+    ) -> list[UUID]:
+        raise  NotImplementedError("ListNodes requires InvoiceLineRepository (not available in-memory)")
+
+        # result = []
+        #
+        # for line in self._record_lines.values():
+        #     if (
+        #             line.organization_id == organization_id
+        #             and line.contract_id == contract_id
+        #             and line.contract_node_id is not None
+        #     ):
+        #         result.append(line.contract_node_id)
+        #
+        # return list(set(result))
 
     def list_by_parent(
         self,

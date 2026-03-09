@@ -50,7 +50,13 @@ class BankAccount:
     account_number: str | None
     country_code: str | None = None
 
+
     def __post_init__(self):
+        if not self.account_number:
+            object.__setattr__(self, "account_number", None)
+            object.__setattr__(self, "country_code", None)
+            return
+
         number = self.account_number.replace(" ", "")
         object.__setattr__(self, "account_number", number)
 

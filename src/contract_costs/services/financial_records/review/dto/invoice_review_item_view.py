@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 
 class FinancialRecordReviewItemView(BaseModel):
-    invoice_id: UUID
+    record_id: UUID
     reference: str
     invoice_date: date | None
 

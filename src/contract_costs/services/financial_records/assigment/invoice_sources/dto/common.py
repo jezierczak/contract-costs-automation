@@ -76,11 +76,11 @@ class FinancialRecordLineUpdate:
     unit: UnitOfMeasure
     amount: Amount
 
-    contract_code: str | None
-    contract_node_code: str | None
-    value_type_code: str | None
-    agreement_code: str | None
-    agreement_node_code: str | None
+    contract_reference: str | None
+    contract_node_reference: str | None
+    value_type_reference: str | None
+    agreement_reference: str | None
+    agreement_node_reference: str | None
 
 
 @dataclass(frozen=True)

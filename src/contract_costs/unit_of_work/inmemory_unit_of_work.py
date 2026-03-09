@@ -1,3 +1,6 @@
+from contract_costs.repository.inmemory.business_event_repository import InMemoryBusinessEventRepository
+from contract_costs.repository.inmemory.company_dashboard.company_dashboard_repository import \
+    InMemoryCompanyDashboardRepository
 from contract_costs.repository.inmemory.company_repository import InMemoryCompanyRepository
 from contract_costs.repository.inmemory.contract_node_repository import InMemoryContractNodeRepository
 from contract_costs.repository.inmemory.contract_repository import InMemoryContractRepository
@@ -9,6 +12,7 @@ from contract_costs.repository.inmemory.identity.organization_repository import 
 from contract_costs.repository.inmemory.identity.organization_user_repository import InMemoryOrganizationUserRepository
 from contract_costs.repository.inmemory.identity.user_repository import InMemoryUserRepository
 from contract_costs.repository.inmemory.number_sequence_repository import InMemoryNumberSequenceRepository
+from contract_costs.repository.inmemory.session_repository import InMemorySessionRepository
 from contract_costs.repository.inmemory.snapshot.contract_node_snapshot_repository import (
     InMemoryContractNodeSnapshotRepository,
 )
@@ -17,6 +21,7 @@ from contract_costs.repository.inmemory.snapshot.contract_node_value_snapshot_re
 )
 from contract_costs.repository.inmemory.snapshot.contract_snapshot_repository import InMemoryContractSnapshotRepository
 from contract_costs.repository.inmemory.value_type_repository import InMemoryValueTypeRepository
+from contract_costs.repository.session_repository import SessionRepository
 from contract_costs.unit_of_work.unit_of_work import UnitOfWork
 
 
@@ -39,6 +44,9 @@ class InMemoryUnitOfWork(UnitOfWork):
         self._users = InMemoryUserRepository(identity_storage)
         self._documents = InMemoryDocumentRepository()
         self._number_sequences = InMemoryNumberSequenceRepository()
+        self._business_events = InMemoryBusinessEventRepository()
+        self._sessions =InMemorySessionRepository()
+        self._company_dashboard = InMemoryCompanyDashboardRepository()
 
     @property
     def companies(self):
@@ -95,6 +103,17 @@ class InMemoryUnitOfWork(UnitOfWork):
     @property
     def number_sequences(self):
         return self._number_sequences
+    @property
+    def business_events(self):
+        return self._business_events
+
+    @property
+    def company_dashboard(self):
+        return self._company_dashboard
+
+    @property
+    def sessions(self) -> SessionRepository:
+        return self._sessions
 
     def commit(self) -> None:
         return None

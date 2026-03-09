@@ -1,0 +1,42 @@
+<tr
+    class="border-t hover:bg-gray-50 cursor-pointer select-none"
+    hx-get="/records/{{ record.id }}/lines/{{ idx }}/edit"
+    hx-target="closest tr"
+    hx-swap="outerHTML"
+>
+
+    <td class="p-2">
+        <div class="font-medium">{{ l.item_name }}</div>
+        {% if l.description %}
+        <div class="text-xs text-gray-500">{{ l.description }}</div>
+        {% endif %}
+    </td>
+
+    <td class="p-2">{{ l.quantity }}</td>
+    <td class="p-2">{{ l.unit or "—" }}</td>
+    <td class="p-2">{{ l.net }}</td>
+    <td class="p-2">{{ l.vat }}</td>
+    <td class="p-2 font-semibold">{{ l.gross }}</td>
+
+    <td class="p-2">{{ l.contract_code or "—" }}</td>
+    <td class="p-2">{{ l.cost_node_code or "—" }}</td>
+    <td class="p-2">{{ l.cost_type_code or "—" }}</td>
+
+    <td class="p-2">{{ l.agreement_code or "—" }}</td>
+    <td class="p-2">{{ l.agreement_node_code or "—" }}</td>
+
+    <td class="p-2 text-right">
+        <button
+            onclick="event.stopPropagation()"
+            hx-post="/records/lines/{{ idx }}/delete"
+            hx-target="#record-lines"
+            hx-swap="innerHTML"
+            hx-include="#record-edit-form"
+            hx-confirm="Usunąć linię?"
+            class="text-red-600 hover:underline text-sm"
+        >
+            🗑
+        </button>
+    </td>
+
+</tr>

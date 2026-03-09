@@ -1,0 +1,41 @@
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+
+    <div
+        class="
+            bg-white
+            rounded-xl
+            shadow
+            w-[95vw]
+            h-[90vh]
+            overflow-hidden
+            flex
+            flex-col
+        "
+    >
+
+        <!-- HEADER -->
+        <div class="flex justify-between items-center p-4 border-b">
+
+            <h2 class="text-lg font-bold">
+                Review rekordu
+            </h2>
+
+            <button
+                onclick="this.closest('.fixed').remove()"
+                class="text-gray-500 hover:text-black"
+            >
+                ✕
+            </button>
+
+        </div>
+
+        <!-- BODY -->
+        <div class="flex-1 overflow-auto p-5">
+
+            {% include "records/_record_details.html" %}
+
+        </div>
+
+    </div>
+
+</div>

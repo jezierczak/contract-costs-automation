@@ -60,7 +60,7 @@ def handle_report_costs(args) -> None:
     )
 
     runner = ContractCostReportRunner(
-        rows
+        row_service=rows
     )
 
     df = runner.run(

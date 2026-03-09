@@ -10,8 +10,9 @@ import contract_costs.config as cfg
 from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.common.ids import new_uuid
 from contract_costs.common.time import utc_now
-from contract_costs.model.document import Document, DocumentSource
+from contract_costs.model.document import Document, DocumentSource, DocumentStatus
 from contract_costs.services.catalogues.document_file_organizer import DocumentFileOrganizer
+from contract_costs.services.documents.exeptions import DuplicateDocument
 from contract_costs.services.documents.upload.dto.upload_document_command import UploadDocumentCommand
 from contract_costs.services.queue.document_queue import document_queue
 from contract_costs.services.workers.dto.document_process_queue_item import DocumentProcessQueueItem
@@ -44,15 +45,17 @@ class UploadDocumentService(ActionHandler[UploadDocumentCommand, UUID | None]):
         file_hash = self._calculate_hash(file_path)
         org_root = cfg.WORK_DIR / str(action.organization_id)
 
-        if documents.exists_by_hash(
+        existing = documents.get_by_hash(
             organization_id=action.organization_id,
             file_hash=file_hash,
-        ):
+        )
+
+        if existing:
             DocumentFileOrganizer.move_to_duplicates(
                 root=org_root,
                 file_path=file_path,
             )
-            return None
+            raise DuplicateDocument(existing.id)
 
         document_type = self._resolve_source(file_path)
         size = file_path.stat().st_size
@@ -70,6 +73,7 @@ class UploadDocumentService(ActionHandler[UploadDocumentCommand, UUID | None]):
             organization_id=action.organization_id,
             financial_record_id=None,
             document_source=document_type,
+            document_status=DocumentStatus.NEW,
             document_type=None,
             document_number=None,
             seller_nip=None,
@@ -83,6 +87,7 @@ class UploadDocumentService(ActionHandler[UploadDocumentCommand, UUID | None]):
             created_by_user_id=action.actor_user_id,
             updated_at=None,
             updated_by_user_id=None,
+            scoring=None
         )
 
         documents.add(document)
@@ -102,6 +107,10 @@ class UploadDocumentService(ActionHandler[UploadDocumentCommand, UUID | None]):
                     document_id,
                 )
             )
+        )
+        logger.info(
+            "DOCUMENT NEW -> QUEUED %s",
+            document_id
         )
 
         return document_id

@@ -318,25 +318,216 @@ class MySQLFinancialRecordRepository(FinancialRecordRepository):
         finally:
             self._maybe_close(conn)
 
-    def list_for_review(self, *, organization_id: UUID, query: FinancialRecordReviewQuery) -> list[FinancialRecord]:
+    # def list_for_review(self, *, organization_id: UUID, query: FinancialRecordReviewQuery) -> list[FinancialRecord]:
+    #     conditions = ["financial_records.organization_id = %s"]
+    #     params: list[object] = [str(organization_id)]
+    #
+    #     needs_contract_join = bool(query.contract_codes)
+    #
+    #     if query.buyer_query:
+    #         self._apply_company_query(alias="buyer", query=query.buyer_query, conditions=conditions, params=params)
+    #
+    #     if query.seller_query:
+    #         self._apply_company_query(alias="seller", query=query.seller_query, conditions=conditions, params=params)
+    #
+    #     if query.only_ready_for_accountant:
+    #         conditions.append("financial_records.status = %s")
+    #         # params.append(FinancialRecordStatus.PROCESSED.value)
+    #     elif query.statuses:
+    #         placeholders = ", ".join(["%s"] * len(query.statuses))
+    #         conditions.append(f"financial_records.status IN ({placeholders})")
+    #         params.extend(s.value for s in query.statuses)
+    #     else:
+    #         conditions.append("financial_records.status != %s")
+    #         params.append(FinancialRecordStatus.DELETED.value)
+    #
+    #     if query.contract_codes:
+    #         placeholders = ", ".join(["%s"] * len(query.contract_codes))
+    #         conditions.append(f"contracts.code IN ({placeholders})")
+    #         params.extend(query.contract_codes)
+    #
+    #     if query.payment_statuses:
+    #         placeholders = ", ".join(["%s"] * len(query.payment_statuses))
+    #         conditions.append(f"financial_records.payment_status IN ({placeholders})")
+    #         params.extend(p.value for p in query.payment_statuses)
+    #
+    #     if query.from_date:
+    #         conditions.append("financial_records.invoice_date >= %s")
+    #         params.append(query.from_date)
+    #
+    #     if query.to_date:
+    #         conditions.append("financial_records.invoice_date <= %s")
+    #         params.append(query.to_date)
+    #
+    #     if query.direction:
+    #         conditions.append(
+    #             """
+    #             CASE
+    #                 WHEN buyer.role = 'Own' AND seller.role != 'Own' THEN 'COST'
+    #                 WHEN buyer.role != 'Own' AND seller.role = 'Own' THEN 'REVENUE'
+    #                 WHEN buyer.role = 'Own' AND seller.role = 'Own' THEN 'INTERNAL'
+    #             END = %s
+    #             """
+    #         )
+    #         params.append(query.direction.value)
+    #
+    #     sql = """
+    #           SELECT DISTINCT financial_records.*
+    #           FROM financial_records
+    #           """
+    #
+    #     if query.seller_query or query.buyer_query or query.direction:
+    #         sql += """
+    #             JOIN companies buyer ON buyer.id = financial_records.buyer_id
+    #             JOIN companies seller ON seller.id = financial_records.seller_id
+    #         """
+    #
+    #     if needs_contract_join:
+    #         sql += """
+    #             JOIN financial_record_lines il ON il.financial_record_id = financial_records.id
+    #             JOIN contracts ON contracts.id = il.contract_id
+    #         """
+    #
+    #     if conditions:
+    #         sql += " WHERE " + " AND ".join(conditions)
+    #
+    #     if not query.payment_statuses:
+    #         sql += " ORDER BY financial_records.invoice_date DESC, financial_records.timestamp DESC"
+    #     else:
+    #         sql += " ORDER BY financial_records.due_date, financial_records.timestamp"
+    #
+    #     if query.limit:
+    #         sql += " LIMIT %s"
+    #         params.append(query.limit)
+    #
+    #     conn = self._get_connection()
+    #     try:
+    #         with conn.cursor(dictionary=True) as cur:
+    #             logger.info(sql)
+    #             logger.info(params)
+    #             cur.execute(sql, params)
+    #             rows = cur.fetchall()
+    #     finally:
+    #         self._maybe_close(conn)
+    #
+    #     records = [self._map_row(r) for r in rows]
+    #     self._attach_documents(organization_id=organization_id, records=records)
+    #     return records
+
+    def list_for_review(
+            self,
+            *,
+            organization_id: UUID,
+            query: FinancialRecordReviewQuery,
+    ) -> list[FinancialRecord]:
+
+        sql, params, has_payment_filter = self._build_review_sql(
+            organization_id=organization_id,
+            query=query,
+            select_clause="DISTINCT financial_records.*",
+        )
+
+        if not has_payment_filter:
+            sql += " ORDER BY financial_records.invoice_date DESC, financial_records.timestamp DESC"
+        else:
+            sql += " ORDER BY financial_records.due_date, financial_records.timestamp"
+
+        if query.limit:
+            sql += " LIMIT %s"
+            params.append(query.limit)
+
+        conn = self._get_connection()
+        try:
+            with conn.cursor(dictionary=True) as cur:
+                logger.info(sql)
+                logger.info(params)
+                cur.execute(sql, params)
+                rows = cur.fetchall()
+        finally:
+            self._maybe_close(conn)
+
+        records = [self._map_row(r) for r in rows]
+        self._attach_documents(organization_id=organization_id, records=records)
+        return records
+
+    def count_for_review(
+            self,
+            *,
+            organization_id: UUID,
+            query: FinancialRecordReviewQuery,
+    ) -> int:
+
+        sql, params, _ = self._build_review_sql(
+            organization_id=organization_id,
+            query=query,
+            select_clause="COUNT(DISTINCT financial_records.id) AS cnt",
+        )
+
+        conn = self._get_connection()
+        try:
+            with conn.cursor(dictionary=True) as cur:
+                cur.execute(sql, params)
+                row = cur.fetchone()
+                return row["cnt"] if row else 0
+        finally:
+            self._maybe_close(conn)
+
+    def _build_review_sql(
+            self,
+            *,
+            organization_id: UUID,
+            query: FinancialRecordReviewQuery,
+            select_clause: str,
+    ) -> tuple[str, list[object], bool]:
+
         conditions = ["financial_records.organization_id = %s"]
         params: list[object] = [str(organization_id)]
 
         needs_contract_join = bool(query.contract_codes)
 
-        if query.buyer_query:
-            self._apply_company_query(alias="buyer", query=query.buyer_query, conditions=conditions, params=params)
+        if query.buyer_query and query.seller_query and query.buyer_query == query.seller_query:
 
-        if query.seller_query:
-            self._apply_company_query(alias="seller", query=query.seller_query, conditions=conditions, params=params)
+            values = query.buyer_query.get("id")
+
+            if values:
+                values = values if isinstance(values, list) else [values]
+                placeholders = ", ".join(["%s"] * len(values))
+
+                conditions.append(
+                    f"(financial_records.buyer_id IN ({placeholders}) "
+                    f"OR financial_records.seller_id IN ({placeholders}))"
+                )
+
+                params.extend(values)
+                params.extend(values)
+
+        else:
+
+            if query.buyer_query:
+                self._apply_company_query(
+                    alias="buyer",
+                    query=query.buyer_query,
+                    conditions=conditions,
+                    params=params,
+                )
+
+            if query.seller_query:
+                self._apply_company_query(
+                    alias="seller",
+                    query=query.seller_query,
+                    conditions=conditions,
+                    params=params,
+                )
 
         if query.only_ready_for_accountant:
             conditions.append("financial_records.status = %s")
             params.append(FinancialRecordStatus.PROCESSED.value)
+
         elif query.statuses:
             placeholders = ", ".join(["%s"] * len(query.statuses))
             conditions.append(f"financial_records.status IN ({placeholders})")
             params.extend(s.value for s in query.statuses)
+
         else:
             conditions.append("financial_records.status != %s")
             params.append(FinancialRecordStatus.DELETED.value)
@@ -360,21 +551,19 @@ class MySQLFinancialRecordRepository(FinancialRecordRepository):
             params.append(query.to_date)
 
         if query.direction:
-            conditions.append(
-                """
+            conditions.append("""
                 CASE
                     WHEN buyer.role = 'Own' AND seller.role != 'Own' THEN 'COST'
                     WHEN buyer.role != 'Own' AND seller.role = 'Own' THEN 'REVENUE'
                     WHEN buyer.role = 'Own' AND seller.role = 'Own' THEN 'INTERNAL'
                 END = %s
-                """
-            )
+            """)
             params.append(query.direction.value)
 
-        sql = """
-              SELECT DISTINCT financial_records.*
-              FROM financial_records
-              """
+        sql = f"""
+            SELECT {select_clause}
+            FROM financial_records
+        """
 
         if query.seller_query or query.buyer_query or query.direction:
             sql += """
@@ -391,28 +580,7 @@ class MySQLFinancialRecordRepository(FinancialRecordRepository):
         if conditions:
             sql += " WHERE " + " AND ".join(conditions)
 
-        if not query.payment_statuses:
-            sql += " ORDER BY financial_records.invoice_date DESC, financial_records.timestamp DESC"
-        else:
-            sql += " ORDER BY financial_records.due_date, financial_records.timestamp"
-
-        if query.limit:
-            sql += " LIMIT %s"
-            params.append(query.limit)
-
-        conn = self._get_connection()
-        try:
-            with conn.cursor(dictionary=True) as cur:
-                logger.info(sql)
-                logger.info(params)
-                cur.execute(sql, params)
-                rows = cur.fetchall()
-        finally:
-            self._maybe_close(conn)
-
-        records = [self._map_row(r) for r in rows]
-        self._attach_documents(organization_id=organization_id, records=records)
-        return records
+        return sql, params, bool(query.payment_statuses)
 
     @staticmethod
     def _map_row(row: dict) -> FinancialRecord:

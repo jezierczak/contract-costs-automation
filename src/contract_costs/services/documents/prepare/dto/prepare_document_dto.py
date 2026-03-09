@@ -15,5 +15,7 @@ class PreparedDocumentDto:
     seller_nip: str | None
 
     file_path: str         # relative path (ważne!)
+    confidence_score: int | None
+    confidence_breakdown:dict | None
 
     candidates: list[CandidateRecordDto]

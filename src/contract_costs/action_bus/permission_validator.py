@@ -17,7 +17,7 @@ class PermissionValidator:
             raise RuntimeError("Missing action_type")
 
         # 1️⃣ PUBLIC
-        if action_type == ActionType.SYSTEM_CREATE_ORGANIZATION_NEW_USER:
+        if action_type == ActionType.SYSTEM:
             return
 
         # 2️⃣ AUTHENTICATED (bez org)

@@ -1,0 +1,111 @@
+<div class="w-full max-w-xl mx-auto box-border">
+
+<h2 class="text-xl font-bold mb-3">
+    {{ title }}
+</h2>
+
+<p class="mb-4 text-gray-600">
+    {{ subtitle }}
+</p>
+
+<form
+{% if use_htmx %}
+    hx-post="{{ action_url }}"
+    hx-target="#companies-table"
+    hx-swap="outerHTML"
+{% else %}
+    method="post"
+    action="{{ action_url }}"
+{% endif %}
+    class="space-y-3">
+{% if company and company.id %}
+<input type="hidden" name="company_id" value="{{ company.id }}">
+{% endif %}
+<input type="hidden" name="next_page" value="{{ next or '' }}">
+<input name="name"
+       value="{{ company.name if company.name else '' }}"
+       placeholder="Nazwa firmy"
+       class="w-full border rounded px-3 py-2">
+
+<input name="tax_number"
+       value="{{ company.tax_number if company.tax_number else '' }}"
+       placeholder="NIP"
+       class="w-full border rounded px-3 py-2">
+
+<textarea
+    name="description"
+    placeholder="Opis firmy"
+    class="w-full border rounded px-3 py-2"
+>{{ company.description if company.description else '' }}</textarea>
+
+<hr class="my-3">
+
+<input name="street"
+       value="{{ company.address_street if company.address_street else '' }}"
+       placeholder="Ulica"
+       class="w-full border rounded px-3 py-2">
+
+<input name="city"
+       value="{{ company.address_city if company.address_city else '' }}"
+       placeholder="Miasto"
+       class="w-full border rounded px-3 py-2">
+
+<input name="zip_code"
+       value="{{ company.address_zip_code if company.address_zip_code else '' }}"
+       placeholder="Kod pocztowy"
+       class="w-full border rounded px-3 py-2">
+
+<input name="country"
+       value="{{ company.address_country if company.address_country else '' }}"
+       placeholder="Kraj"
+       class="w-full border rounded px-3 py-2">
+
+<hr class="my-3">
+
+<input name="phone_number"
+       value="{{ company.phone_number if company.phone_number else '' }}"
+       placeholder="Telefon"
+       class="w-full border rounded px-3 py-2">
+
+<input name="email"
+       value="{{ company.email if company.email else '' }}"
+       placeholder="Email"
+       class="w-full border rounded px-3 py-2">
+
+<hr class="my-3">
+
+<input name="account_number"
+       value="{{ company.bank_account_number if company.bank_account_number else '' }}"
+       placeholder="Numer konta"
+       class="w-full border rounded px-3 py-2">
+
+<input name="country_code"
+       value="{{ company.bank_account_country_code if company.bank_account_country_code else '' }}"
+       placeholder="Kod kraju konta"
+       class="w-full border rounded px-3 py-2">
+
+{% if show_role %}
+<select name="role"
+        class="w-full border rounded px-3 py-2">
+
+    {% for r in company_roles %}
+        <option value="{{ r }}"
+            {% if company and company.role.value == r %}
+                selected
+            {% endif %}
+        >
+            {{ r }}
+        </option>
+    {% endfor %}
+
+</select>
+{% endif %}
+
+<button
+class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 w-full">
+    {{ submit_label }}
+</button>
+
+</form>
+
+</div>

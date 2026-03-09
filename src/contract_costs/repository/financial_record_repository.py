@@ -136,3 +136,12 @@ class FinancialRecordRepository(ABC):
             query: FinancialRecordReviewQuery,
     ) -> list[FinancialRecord]:
         ...
+
+    @abstractmethod
+    def count_for_review(
+            self,
+            *,
+            organization_id: UUID,
+            query: FinancialRecordReviewQuery,
+    ) -> int:
+        ...

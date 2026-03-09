@@ -1,0 +1,26 @@
+{% if events %}
+
+{% set e = events[0] %}
+
+<div
+    class="flex justify-between items-center cursor-pointer hover:bg-gray-50 rounded p-1"
+    hx-get="/business-events/modal"
+    hx-target="#modal-area"
+    hx-swap="innerHTML"
+>
+    <div class="text-sm font-medium truncate">
+        {{ e.message }}
+    </div>
+
+    <span class="text-xs text-gray-500 ml-3">
+        {{ e.created_at.strftime("%H:%M") }}
+    </span>
+</div>
+
+{% else %}
+
+<div class="text-sm text-gray-400">
+    Brak eventów
+</div>
+
+{% endif %}

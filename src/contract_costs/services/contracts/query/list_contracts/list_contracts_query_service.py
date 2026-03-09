@@ -2,7 +2,6 @@ from decimal import Decimal
 from uuid import UUID
 
 from contract_costs.action_bus.action_handler import ActionHandler
-from contract_costs.model.contract import ContractType
 from contract_costs.model.value_direction import ValueDirection
 from contract_costs.repository.financial_record_line_repository import FinancialRecordLineRepository
 from contract_costs.repository.value_type_repository import ValueTypeRepository
@@ -13,19 +12,6 @@ from contract_costs.unit_of_work import UnitOfWork
 
 
 class ListContractsQueryService(ActionHandler[ListContractsQuery, list[ContractListDTO]]):
-
-    # def __init__(
-    #     self,
-    #     *,
-    #     contract_repo: ContractRepository,
-    #     contract_node_repo: ContractNodeRepository,
-    #     record_line_repo: FinancialRecordLineRepository,
-    #     value_type_repo: ValueTypeRepository,
-    # ) -> None:
-    #     self._contract_repo = contract_repo
-    #     self._node_repo = contract_node_repo
-    #     self._record_line_repo = record_line_repo
-    #     self._value_type_repo = value_type_repo
 
     def execute(
         self,
@@ -39,14 +25,21 @@ class ListContractsQueryService(ActionHandler[ListContractsQuery, list[ContractL
         record_line_repo = uow.financial_record_lines
         value_type_repo = uow.value_types
 
-        contracts = contract_repo.list_contracts(
-            organization_id=action.organization_id,
-            contract_type=action.contract_type or ContractType.PROJECT,
-        )
+        # contracts = contract_repo.list_contracts(
+        #     organization_id=action.organization_id,
+        #     contract_type=action.contract_type or ContractType.PROJECT,
+        # )
 
         vt_direction = self._load_value_type_directions(
             organization_id=action.organization_id,
             value_type_repo=value_type_repo
+        )
+
+        contracts = contract_repo.list_contracts(
+            organization_id=action.organization_id,
+            contract_type=action.contract_type,
+            status=action.status,
+            search=action.search,
         )
 
         result: list[ContractListDTO] = []
@@ -56,20 +49,28 @@ class ListContractsQueryService(ActionHandler[ListContractsQuery, list[ContractL
                 contract_id=contract.id,
                 organization_id=action.organization_id,
             )
+            financials: dict[str, Decimal] = {}
 
             if not nodes:
-                continue
+                planned_budget = Decimal("0")
+                progress = None
+                financials["net"] = Decimal("0")
+                financials["gross"] = Decimal("0")
+                financials["non_deduction"] = Decimal("0")
+                financials["revenue"] = Decimal("0")
+                financials["revenue_non_deductible"] = Decimal("0")
+            else:
 
-            tree = ContractNodeTreeIndex(nodes)
-            planned_budget = self._calculate_planned_budget(tree)
-            progress = self._calculate_root_progress(tree)
+                tree = ContractNodeTreeIndex(nodes)
+                planned_budget = self._calculate_planned_budget(tree)
+                progress = self._calculate_root_progress(tree)
 
-            financials = self._aggregate_financials(
-                organization_id=action.organization_id,
-                contract_id=contract.id,
-                vt_direction=vt_direction,
-                record_line_repo=record_line_repo,
-            )
+                financials = self._aggregate_financials(
+                    organization_id=action.organization_id,
+                    contract_id=contract.id,
+                    vt_direction=vt_direction,
+                    record_line_repo=record_line_repo,
+                )
 
             result.append(
                 self._build_dto(

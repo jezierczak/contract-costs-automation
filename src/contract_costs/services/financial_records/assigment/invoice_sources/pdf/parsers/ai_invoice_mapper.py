@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Any, Type, TypeVar
 from uuid import uuid4
 
-from contract_costs.model.amount import Amount, VatRate
+from contract_costs.model.amount import Amount, VatRate, AmountInputType
 from contract_costs.model.company import CompanyType
 from contract_costs.model.document import DocumentType
 from contract_costs.model.financial_record import (
@@ -148,12 +148,13 @@ class AIDocumentMapper:
                     amount=Amount(
                         value=net_total,
                         vat_rate=vat_rate,
+                        input_type=AmountInputType.NET
                     ),
-                    contract_code=None,
-                    contract_node_code=None,
-                    value_type_code=None,
-                    agreement_code=None,
-                    agreement_node_code=None
+                    contract_reference=None,
+                    contract_node_reference=None,
+                    value_type_reference=None,
+                    agreement_reference=None,
+                    agreement_node_reference=None
                 )
             )
 

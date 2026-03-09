@@ -1,0 +1,49 @@
+
+<table class="w-full text-sm">
+
+<thead class="sticky top-0 bg-gray-100 z-10">
+<tr>
+    <th class="p-3 text-left">Nazwa</th>
+    <th class="p-3 text-left">Miasto</th>
+    <th class="p-3 text-left">NIP</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for company in companies %}
+<tr
+    class="hover:bg-gray-100 cursor-pointer border-t"
+
+    hx-get="/companies/select"
+    hx-trigger="click"
+
+    hx-vals='js:{
+        tax_number:"{{ company.tax_number }}",
+        target:"{{ target }}"
+    }'
+
+    hx-target="#company-slot-{{ target }}"
+    hx-swap="outerHTML"
+
+    hx-on::after-request="
+        document.getElementById('modal-area').innerHTML=''
+    "
+>
+
+ <td class="p-3">{{ company.name }}</td>
+
+    <td class="p-3 text-gray-600">
+        {{ company.address_city or "-" }}
+    </td>
+
+    <td class="p-3 text-gray-600">
+        {{ company.tax_number or "-" }}
+    </td>
+
+</tr>
+{% endfor %}
+
+</tbody>
+
+</table>

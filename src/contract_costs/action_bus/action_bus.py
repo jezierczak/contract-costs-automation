@@ -52,7 +52,14 @@ class ActionBus:
         # 🔥 TU JEST TRANSAKCJA
         with self._uow_factory() as uow:
             try:
-                return handler.execute(action=action, uow=uow)
+                result = handler.execute(action=action, uow=uow)
+
+                logger.info(
+                    "ACTION SUCCESS: %s",
+                    type(action).__name__
+                )
+
+                return result
             except Exception:
                 logger.exception("ACTION FAILED: %s", type(action).__name__)
                 raise

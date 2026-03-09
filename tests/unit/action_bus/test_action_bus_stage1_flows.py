@@ -146,7 +146,7 @@ def test_action_bus_apply_contract_structure_creates_contract(monkeypatch, uow):
         handler=handler,
     )
 
-    contracts = uow.contracts.list_contracts(org_id, contract_type=ContractType.PROJECT)
+    contracts = uow.contracts.list_all_by_type(org_id, contract_type=ContractType.PROJECT)
     nodes = uow.contract_nodes.list_nodes(organization_id=org_id)
     assert len(contracts) == 1
     assert contracts[0].code == "AB-1"
@@ -285,11 +285,11 @@ def test_action_bus_apply_financial_records_batch_creates_record(services_memory
                 quantity=Decimal("1"),
                 unit=UnitOfMeasure.PIECE,
                 amount=Amount(value=Decimal("100"), vat_rate=VatRate.VAT_23),
-                contract_code=None,
-                contract_node_code=None,
-                value_type_code=None,
-                agreement_code=None,
-                agreement_node_code=None,
+                contract_reference=None,
+                contract_node_reference=None,
+                value_type_reference=None,
+                agreement_reference=None,
+                agreement_node_reference=None,
             )
         ],
         buyers=[],

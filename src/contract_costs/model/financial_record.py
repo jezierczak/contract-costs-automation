@@ -115,3 +115,29 @@ class FinancialRecord(BaseEntity):
             updated_by_user_id=updated_by_user_id,
             updated_at=updated_at
         )
+
+    def delete(
+            self,
+            *,
+            updated_at: datetime,
+            updated_by_user_id: UUID,
+    ) -> "FinancialRecord":
+        return replace(
+            self,
+            status=FinancialRecordStatus.DELETED,
+            updated_by_user_id=updated_by_user_id,
+            updated_at=updated_at,
+        )
+
+    def to_in_progress(
+            self,
+            *,
+            updated_at: datetime,
+            updated_by_user_id: UUID,
+    ) -> "FinancialRecord":
+        return replace(
+            self,
+            status=FinancialRecordStatus.IN_PROGRESS,
+            updated_by_user_id=updated_by_user_id,
+            updated_at=updated_at,
+        )

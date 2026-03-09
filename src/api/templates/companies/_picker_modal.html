@@ -1,0 +1,96 @@
+<div class="fixed inset-0 bg-black/40 z-50 flex justify-center pt-10">
+
+    <div class="bg-white w-[1000px] max-h-[90vh] rounded-xl shadow-xl flex flex-col">
+
+        <!-- HEADER -->
+        <div class="p-4 border-b flex justify-between items-center">
+
+            <h2 class="text-lg font-semibold">
+                Wybierz firmę
+            </h2>
+
+            <button
+                type="button"
+                onclick="document.getElementById('modal-area').innerHTML=''"
+                class="text-gray-500 hover:text-black text-xl leading-none"
+            >
+                ×
+            </button>
+
+        </div>
+
+        <!-- SEARCH + FILTERS -->
+        <div class="p-4 border-b">
+
+            <!-- shared filters scope -->
+          <div id="picker-filters" class="flex gap-3 items-center">
+
+    <!-- SEARCH -->
+    <input
+        name="search"
+        placeholder="Szukaj firmy..."
+        class="flex-1 border rounded-lg px-3 py-2"
+
+        hx-get="/companies/picker/table"
+        hx-trigger="keyup changed delay:300ms"
+        hx-target="#picker-table"
+        hx-swap="innerHTML"
+        hx-include="#picker-filters"
+        hx-vals='js:{target:"{{ target }}"}'
+    >
+
+    <!-- COMPANY TYPE -->
+    <select
+        name="company_type"
+        class="border rounded-lg px-3 py-2 text-sm"
+
+        hx-get="/companies/picker/table"
+        hx-trigger="change"
+        hx-target="#picker-table"
+        hx-swap="innerHTML"
+        hx-include="#picker-filters"
+        hx-vals='js:{target:"{{ target }}"}'
+    >
+        <option value="">Wszystkie typy</option>
+
+        {% for t in company_types %}
+        <option
+            value="{{ t.value }}"
+            {% if selected_company_type == t.value %}selected{% endif %}
+        >
+            {{ t.value }}
+        </option>
+        {% endfor %}
+    </select>
+
+    <!-- INACTIVE -->
+    <label class="flex items-center gap-2 whitespace-nowrap text-sm">
+        <input
+            type="checkbox"
+            name="include_inactive"
+            value="1"
+
+            hx-get="/companies/picker/table"
+            hx-trigger="change"
+            hx-target="#picker-table"
+            hx-swap="innerHTML"
+            hx-include="#picker-filters"
+            hx-vals='js:{target:"{{ target }}"}'
+        >
+        Pokaż nieaktywne
+    </label>
+
+</div>
+
+        </div>
+
+        <!-- TABLE -->
+        <div id="picker-table" class="overflow-auto">
+
+            {% include "companies/_picker_table.html" %}
+
+        </div>
+
+    </div>
+
+</div>
