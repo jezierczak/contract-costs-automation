@@ -4,15 +4,18 @@ from decimal import Decimal
 from uuid import UUID
 
 from contract_costs.infrastructure.db.mysql_connection import get_connection
-from contract_costs.repository.company_dashboard.company_dashboard_raw_data import (
+from contract_costs.repository.company_dashboard.dto.company_dashboard_raw_data import (
     CompanyDashboardRawData,
     CompanyDashboardMonthRaw,
 )
 from contract_costs.repository.company_dashboard.company_dashboard_repository import (
     CompanyDashboardRepository,
 )
-from contract_costs.repository.company_dashboard.company_fixed_cost_raw import CompanyFixedCostRaw
-from contract_costs.repository.company_dashboard.company_month_breakdown_raw import CompanyMonthBreakdownRaw
+from contract_costs.repository.company_dashboard.dto.company_fixed_cost_raw import CompanyFixedCostRaw
+from contract_costs.repository.company_dashboard.dto.company_month_breakdown_raw import CompanyMonthBreakdownRaw
+from contract_costs.repository.company_dashboard.dto.counterparty_ledger_line_raw import CounterpartyLedgerLineRaw
+from contract_costs.repository.company_dashboard.dto.counterparty_summary_raw import CounterpartySummaryRaw
+from contract_costs.repository.company_dashboard.dto.counterparty_year_raw import CounterpartyYearRaw
 
 logger = logging.getLogger(__name__)
 
@@ -71,44 +74,61 @@ class MySQLCompanyDashboardRepository(CompanyDashboardRepository):
         year_start, year_end = _period_range(year, None)
 
         sql = """
-              SELECT MONTH(fl.record_date) AS month, \
+              SELECT MONTH(fl.record_date) AS month, 
 
-                     SUM( \
-                             CASE \
-                                 WHEN fl.direction = 'REVENUE' \
-                                     THEN fl.amount_value \
-                                 ELSE 0 \
-                                 END \
-                     )                     AS revenue, \
+                     SUM( 
+                             CASE 
+                                 WHEN fl.direction = 'REVENUE' 
+                                     THEN fl.amount_value 
+                                 ELSE 0 
+                                 END 
+                     )                     AS revenue, 
 
-                     SUM( \
-                             CASE \
-                                 WHEN fl.direction = 'COST' \
-                                     AND fl.tax_treatment = 'tax_deductible' \
-                                     THEN fl.amount_value \
-                                 ELSE 0 \
-                                 END \
-                     )                     AS costs, \
+                     SUM( 
+                             CASE 
+                                 WHEN fl.direction = 'COST' 
+                                     AND fl.tax_treatment = 'tax_deductible' 
+                                     THEN fl.amount_value 
+                                 ELSE 0 
+                                 END 
+                     )                     AS costs, 
 
-                     SUM( \
-                             CASE \
-                                 WHEN fl.direction = 'COST' \
-                                     AND fl.tax_treatment = 'non_deductible' \
-                                     THEN fl.amount_value \
-                                 ELSE 0 \
-                                 END \
-                     )                     AS non_deductible, \
-
-                     SUM( \
-                             CASE \
-                                 WHEN fl.direction = 'COST' \
-                                     AND fl.contract_type = 'system' \
-                                     AND fl.contract_owner_id = %(company)s \
-                                     THEN fl.amount_value \
-                                 ELSE 0 \
-                                 END \
+                     SUM( 
+                             CASE 
+                                 WHEN fl.direction = 'COST' 
+                                     AND fl.tax_treatment = 'non_deductible' 
+                                     THEN fl.amount_value 
+                                 ELSE 0 
+                                 END 
+                     )                     AS non_deductible, 
+                   SUM(
+                        CASE
+                            WHEN fl.direction = 'INTERNAL'
+                            AND fl.seller_id = %(company)s
+                            THEN fl.amount_value
+                            ELSE 0
+                        END
+                    ) AS internal_revenue,
+                    
+                    SUM(
+                        CASE
+                            WHEN fl.direction = 'INTERNAL'
+                            AND fl.buyer_id = %(company)s
+                            THEN fl.amount_value
+                            ELSE 0
+                        END
+                    ) AS internal_cost,
+                     SUM( 
+                             CASE 
+                                 WHEN (fl.direction = 'FIXED' 
+                                     OR fl.contract_type = 'system') 
+                                     AND fl.contract_owner_id = %(company)s 
+                                     THEN fl.amount_value 
+                                 ELSE 0 
+                                 END 
                      )                     AS fixed_costs
-
+        
+                    
               FROM financial_ledger fl
 
               WHERE fl.organization_id = %(org)s
@@ -120,7 +140,7 @@ class MySQLCompanyDashboardRepository(CompanyDashboardRepository):
                   )
 
               GROUP BY month
-              ORDER BY month DESC \
+              ORDER BY month DESC 
               """
 
         conn = self._get_connection()
@@ -156,6 +176,10 @@ class MySQLCompanyDashboardRepository(CompanyDashboardRepository):
             costs = r["costs"] or Decimal("0")
             non_deductible = r["non_deductible"] or Decimal("0")
             fixed_costs = r["fixed_costs"] or Decimal("0")
+            internal_revenue = r["internal_revenue"] or Decimal("0")
+            revenue+=internal_revenue
+            internal_cost = r["internal_cost"] or Decimal("0")
+            costs += internal_cost
 
             year_revenue += revenue
             year_costs += costs
@@ -193,34 +217,45 @@ class MySQLCompanyDashboardRepository(CompanyDashboardRepository):
         start, end = _period_range(year, month)
 
         sql = """
-              SELECT fl.value_type_id, \
-                     fl.value_type_code, \
-                     fl.value_type_name, \
+              SELECT fl.value_type_id, 
+                     fl.value_type_code, 
+                     fl.value_type_name, 
 
-                     SUM( \
-                             CASE \
-                                 WHEN fl.direction = 'REVENUE' \
-                                     THEN fl.amount_value \
-                                 ELSE 0 \
-                                 END \
-                     ) AS revenue, \
+                    SUM(
+                        CASE
+                            WHEN fl.direction = 'REVENUE'
+                            OR (
+                                fl.direction = 'INTERNAL'
+                                AND fl.seller_id = %(company)s
+                            )
+                            THEN fl.amount_value
+                            ELSE 0
+                        END
+                    ) AS revenue,
 
-                     SUM( \
-                             CASE \
-                                 WHEN fl.direction = 'COST' \
-                                     AND fl.tax_treatment = 'tax_deductible' \
-                                     THEN fl.amount_value \
-                                 ELSE 0 \
-                                 END \
-                     ) AS costs, \
+                     SUM(
+                        CASE
+                            WHEN (
+                                fl.direction = 'COST'
+                                OR fl.direction = 'FIXED'
+                                OR (
+                                    fl.direction = 'INTERNAL'
+                                    AND fl.buyer_id = %(company)s
+                                )
+                            )
+                            AND fl.tax_treatment = 'tax_deductible'
+                            THEN fl.amount_value
+                            ELSE 0
+                        END
+                    ) AS costs,
 
-                     SUM( \
-                             CASE \
-                                 WHEN fl.direction = 'COST' \
-                                     AND fl.tax_treatment = 'non_deductible' \
-                                     THEN fl.amount_value \
-                                 ELSE 0 \
-                                 END \
+                     SUM( 
+                             CASE 
+                                 WHEN fl.direction = 'COST' 
+                                     AND fl.tax_treatment = 'non_deductible' 
+                                     THEN fl.amount_value 
+                                 ELSE 0 
+                                 END 
                      ) AS non_deductible
 
               FROM financial_ledger fl
@@ -233,11 +268,11 @@ class MySQLCompanyDashboardRepository(CompanyDashboardRepository):
                       OR fl.seller_id = %(company)s
                   )
 
-              GROUP BY fl.value_type_id, \
-                       fl.value_type_code, \
+              GROUP BY fl.value_type_id, 
+                       fl.value_type_code, 
                        fl.value_type_name
 
-              ORDER BY costs DESC \
+              ORDER BY costs DESC 
               """
 
         conn = self._get_connection()
@@ -286,32 +321,30 @@ class MySQLCompanyDashboardRepository(CompanyDashboardRepository):
         start, end = _period_range(year, month)
 
         sql = """
-              SELECT fl.record_id, \
-                     fl.record_date, \
+              SELECT fl.record_id, 
+                     fl.record_date, 
 
-                     fl.contract_id, \
-                     fl.contract_code, \
+    
 
-                     fl.value_type_code, \
-                     fl.value_type_name, \
-
-                     fl.description, \
-                     fl.amount_value AS amount, \
+                     fl.value_type_code, 
+                     fl.value_type_name, 
+                    
+                    fl.item_name,
+                     fl.description, 
+                     fl.amount_value AS amount, 
                      fl.tax_treatment
 
               FROM financial_ledger fl
 
               WHERE fl.organization_id = %(org)s
-                AND fl.contract_type = 'system'
-                AND fl.contract_owner_id = %(company)s
-                AND fl.record_date >= %(start)s
-                AND fl.record_date < %(end)s
-                AND (
-                  fl.buyer_id = %(company)s
-                      OR fl.seller_id = %(company)s
-                  )
-
-              ORDER BY fl.record_date DESC \
+                    AND (
+                            fl.direction = 'FIXED'
+                            OR fl.contract_type = 'system'   -- legacy
+                    )
+                    AND fl.contract_owner_id = %(company)s
+                    AND fl.record_date >= %(start)s
+                    AND fl.record_date < %(end)s
+                    ORDER BY fl.record_date DESC
               """
 
         conn = self._get_connection()
@@ -339,10 +372,11 @@ class MySQLCompanyDashboardRepository(CompanyDashboardRepository):
                 CompanyFixedCostRaw(
                     record_id=r["record_id"],
                     record_date=r["record_date"],
-                    contract_id=r["contract_id"],
-                    contract_code=r["contract_code"],
+                    # contract_id=r["contract_id"],
+                    # contract_code=r["contract_code"],
                     value_type_code=r["value_type_code"],
                     value_type_name=r["value_type_name"],
+                    item_name=r["item_name"],
                     description=r["description"],
                     amount=r["amount"] or Decimal("0"),
                     tax_treatment=r["tax_treatment"],
@@ -350,3 +384,81 @@ class MySQLCompanyDashboardRepository(CompanyDashboardRepository):
             )
 
         return result
+
+    def fetch_counterparty_lines(
+            self,
+            *,
+            organization_id: UUID,
+            counterparty_id: UUID,
+            owner_company_id: UUID | None,
+    ) -> list[CounterpartyLedgerLineRaw]:
+
+        sql = """
+              SELECT fl.record_id, 
+                     fl.record_date, 
+                     fl.buyer_id, 
+                     fl.seller_id, 
+                     fl.amount_value, 
+                     fl.amount_input_type, 
+                     fl.vat_rate, 
+                     fl.tax_treatment, 
+                     fl.payment_status
+
+              FROM financial_ledger fl
+
+              WHERE fl.organization_id = %(org)s
+                AND (
+                  fl.buyer_id = %(counterparty)s
+                      OR fl.seller_id = %(counterparty)s
+                  )
+                  AND (
+                        %(owner_company)s IS NULL
+                        OR (
+                            fl.buyer_id = %(counterparty)s
+                            AND fl.seller_id = %(owner_company)s
+                        )
+                        OR (
+                            fl.seller_id = %(counterparty)s
+                            AND fl.buyer_id = %(owner_company)s
+                        )
+                    )
+                AND fl.status != 'deleted' 
+              """
+
+        conn = self._get_connection()
+
+        try:
+            with conn.cursor(dictionary=True) as cur:
+
+                params = {
+                    "org": str(organization_id),
+                    "counterparty": str(counterparty_id),
+                    "owner_company": str(owner_company_id) if owner_company_id else None
+                }
+
+                cur.execute(sql, params)
+                rows = cur.fetchall()
+
+        finally:
+            self._maybe_close(conn)
+
+        result: list[CounterpartyLedgerLineRaw] = []
+
+        for r in rows:
+            result.append(
+                CounterpartyLedgerLineRaw(
+                    record_id=r["record_id"],
+                    record_date=r["record_date"],
+                    buyer_id=r["buyer_id"],
+                    seller_id=r["seller_id"],
+                    amount_value=r["amount_value"],
+                    amount_input_type=r["amount_input_type"],
+                    vat_rate=r["vat_rate"],
+                    tax_treatment=r["tax_treatment"],
+                    payment_status=r["payment_status"],
+
+                )
+            )
+
+        return result
+

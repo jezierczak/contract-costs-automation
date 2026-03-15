@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 from datetime import datetime
 from typing import Callable
@@ -18,6 +19,7 @@ from contract_costs.services.contracts.apply.command.apply_contract_progerss_com
 from contract_costs.services.contracts.prepare.contract_node_tree_index import ContractNodeTreeIndex
 from contract_costs.unit_of_work import UnitOfWork
 
+logger= logging.getLogger(__name__)
 
 class ApplyContractProgressService(ActionHandler[ApplyContractProgressCommand, None]):
 
@@ -97,7 +99,7 @@ class ApplyContractProgressService(ActionHandler[ApplyContractProgressCommand, N
             raise ValueError(f"Progress cannot decrease for node {node.code}")
 
         if node.progress_history.get(update.progress_date) is not None:
-            raise ValueError(f"Progress already set for node {node.code} on {update.progress_date}")
+            logger.info(f"Node {node.code} already has progress {update.progress_date}, overwriting")
 
         progress_entity = ContractNodeProgress(
             id=self._id_generator(),

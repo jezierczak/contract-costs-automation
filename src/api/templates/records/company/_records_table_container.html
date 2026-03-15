@@ -1,0 +1,10 @@
+
+<div id="records-table"
+     hx-get="/records/company?company_id={{company_id}}&year={{year}}{% if month %}&month={{month}}{% endif %}"
+     hx-trigger="load, every 8s, recordsUpdated from:body"
+     hx-swap="innerHTML"
+     hx-target = "this"
+
+
+>
+</div>

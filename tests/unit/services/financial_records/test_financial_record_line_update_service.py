@@ -121,7 +121,7 @@ def test_apply_creates_line_and_returns_assignment_facts():
     facts = facts_map[record_id]
     assert len(facts.invoice_lines) == 1
     assert facts.buyer_role == CompanyType.OWN
-    assert facts.value_type_directions[value_type_id] == ValueDirection.COST
+    assert facts.value_type_directions_map[value_type_id] == ValueDirection.COST
 
 
 def test_apply_skips_line_when_reference_not_found_in_batch():

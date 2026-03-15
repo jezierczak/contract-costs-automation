@@ -125,10 +125,10 @@ def _print_record_lines(rec):
             f"{fmt(l.item_name, 40)} "
             f"{fmt(l.quantity, 6)} "
             f"{fmt(l.unit, 6)} "
-            f"{fmt(l.amount_value, 10)} "
+            f"{fmt(l.net, 10)} "
             f"{fmt(l.vat, 6)} "
             f"{fmt(l.gross, 10)} "
-            f"{fmt(l.contract_reference, 12)} "
+            f"{fmt(l.contract_code, 12)} "
             f"{fmt(l.cost_node_code, 12)}"
             f"{fmt(l.cost_type_code, 12)}"
         )

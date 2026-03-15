@@ -12,4 +12,4 @@ class FinancialRecordAssignmentFacts:
     invoice_lines: list[FinancialRecordLine]
     buyer_role: CompanyType
     seller_role: CompanyType
-    value_type_directions: dict[UUID, ValueDirection]
+    value_type_directions_map: dict[UUID, ValueDirection]

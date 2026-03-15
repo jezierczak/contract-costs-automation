@@ -250,7 +250,7 @@ def test_invoice_not_complete_without_invoice_direction():
         invoice_lines=[line],
         buyer_role=CompanyType.CLIENT,
         seller_role=CompanyType.CLIENT,
-        value_type_directions={
+        value_type_directions_map={
             line.value_type_id: ValueDirection.COST
         }
     )
@@ -269,7 +269,7 @@ def test_invoice_not_complete_when_line_missing_assignments():
         invoice_lines=[line],
         buyer_role=CompanyType.OWN,
         seller_role=CompanyType.CLIENT,
-        value_type_directions={}
+        value_type_directions_map={}
     )
 
     assert RecordCompletionValidator().validate(facts) is False
@@ -285,7 +285,7 @@ def test_invoice_not_complete_without_line_directions():
         invoice_lines=[line],
         buyer_role=CompanyType.OWN,
         seller_role=CompanyType.CLIENT,
-        value_type_directions={}
+        value_type_directions_map={}
     )
 
     assert RecordCompletionValidator().validate(facts) is False
@@ -305,7 +305,7 @@ def test_invoice_not_complete_with_mixed_line_directions():
         invoice_lines=[line1, line2],
         buyer_role=CompanyType.OWN,
         seller_role=CompanyType.CLIENT,
-        value_type_directions={
+        value_type_directions_map={
             vt1: ValueDirection.COST,
             vt2: ValueDirection.REVENUE,
         }
@@ -325,7 +325,7 @@ def test_invoice_not_complete_when_direction_mismatch():
         invoice_lines=[line],
         buyer_role=CompanyType.OWN,
         seller_role=CompanyType.CLIENT,  # COST
-        value_type_directions={
+        value_type_directions_map={
             vt: ValueDirection.REVENUE
         }
     )
@@ -344,7 +344,7 @@ def test_invoice_complete_when_all_conditions_met():
         invoice_lines=[line],
         buyer_role=CompanyType.OWN,
         seller_role=CompanyType.CLIENT,
-        value_type_directions={
+        value_type_directions_map={
             vt: ValueDirection.COST
         }
     )
@@ -362,7 +362,7 @@ def test_internal_invoice_is_valid():
         invoice_lines=[line],
         buyer_role=CompanyType.OWN,
         seller_role=CompanyType.OWN,
-        value_type_directions={
+        value_type_directions_map={
             vt: ValueDirection.INTERNAL
         }
     )

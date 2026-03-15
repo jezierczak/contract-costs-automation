@@ -8,6 +8,7 @@ from uuid import UUID
 class FixedCostRecordDTO:
     record_id: UUID
     record_date: date
+    item_name:str
     description: str | None
     amount: Decimal
     tax_treatment: str
@@ -22,16 +23,16 @@ class FixedCostValueTypeDTO:
     total: Decimal
 
 
-@dataclass(slots=True)
-class FixedCostContractDTO:
-    contract_id: UUID
-    contract_code: str
-
-    value_types: list[FixedCostValueTypeDTO]
-    total: Decimal
+# @dataclass(slots=True)
+# class FixedCostContractDTO:
+#     contract_id: UUID
+#     contract_code: str
+#
+#     value_types: list[FixedCostValueTypeDTO]
+#     total: Decimal
 
 
 @dataclass(slots=True)
 class CompanyFixedCostsDTO:
-    contracts: list[FixedCostContractDTO]
+    value_types: list[FixedCostValueTypeDTO]
     total: Decimal

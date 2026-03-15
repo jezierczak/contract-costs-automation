@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import date
+from decimal import Decimal
 from uuid import UUID
 
 from contract_costs.model.company import Company
@@ -17,5 +18,13 @@ class ContractDetailsDTO:
     status: str
     start_date: date | None
     end_date: date | None
+    budget:Decimal | None
+    time_progress: Decimal | None
+    overall_progress: Decimal | None
+    executed_value: Decimal | None
+    cost_total: Decimal | None
+    revenue_total: Decimal | None
+    margin: Decimal | None
+    margin_percent: Decimal | None
 
     nodes: list[ContractNodeDetailsDTO]

@@ -4,3 +4,4 @@ class ValueDirection(Enum):
     COST = "COST"
     REVENUE = "REVENUE"
     INTERNAL = "INTERNAL"
+    FIXED = "FIXED"

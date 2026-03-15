@@ -5,7 +5,7 @@ from uuid import UUID
 from contract_costs.repository.company_dashboard.company_dashboard_repository import (
     CompanyDashboardRepository,
 )
-from contract_costs.repository.company_dashboard.company_dashboard_raw_data import (
+from contract_costs.repository.company_dashboard.dto.company_dashboard_raw_data import (
     CompanyDashboardRawData,
 )
 

@@ -1,0 +1,35 @@
+
+{% set back_url = "/contracts/" ~ contract.contract_id if contract|default(None) else "/contracts" %}
+<div class="grid grid-cols-3 items-center">
+
+    <!-- LEFT -->
+        <button
+        hx-get="{{back_url}}"
+        hx-target="#content-area"
+        hx-swap="innerHTML"
+        hx-push-url="true"
+        hx-indicator="#global-indicator"
+        class="inline-flex items-center gap-2 px-3 py-2 rounded text-sm text-gray-600 hover:bg-gray-100"
+    >
+        ← Cofnij
+    </button>
+
+    <!-- CENTER -->
+    <div class="text-center">
+        <h1 class="text-xl font-bold text-gray-800">
+
+            {% if contract and contract.name %}
+                {{ contract.name }}
+            {% else %}
+                Nowy kontrakt
+            {% endif %}
+
+        </h1>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="flex justify-end">
+        <!-- przyszłe akcje -->
+    </div>
+
+</div>

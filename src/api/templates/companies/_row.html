@@ -1,0 +1,66 @@
+{% if mode == "picker" %}
+
+<tr
+    class="hover:bg-gray-50 cursor-pointer border-t"
+
+    hx-get="/companies/select"
+    hx-trigger="click"
+
+    hx-vals='js:{
+        tax_number:"{{ company.tax_number }}",
+        target:"{{ target }}"
+    }'
+
+    hx-target="#company-slot-{{ target }}"
+    hx-swap="outerHTML"
+
+    hx-on::after-request="
+        document.getElementById('modal-area').innerHTML=''
+    "
+>
+
+{% else %}
+
+<tr
+    class="hover:bg-gray-50 cursor-pointer border-t"
+    hx-get="/companies/{{ company.tax_number }}"
+    hx-target="#workspace"
+    hx-push-url="true"
+    hx-trigger="click"
+>
+
+{% endif %}
+
+<td class="p-3 font-medium text-gray-900">
+    {{ company.name }}
+</td>
+
+<td class="p-3">
+    {{ company.address_city or "-" }}
+</td>
+
+<td class="p-3">
+    {{ company.tax_number }}
+</td>
+
+<td class="p-3">
+    {{ company.role.value }}
+</td>
+
+<td class="p-3">
+{% if company.is_active %}
+<span class="px-2 py-1 text-xs rounded bg-green-100 text-green-700">
+Active
+</span>
+{% else %}
+<span class="px-2 py-1 text-xs rounded bg-gray-100 text-gray-500">
+Inactive
+</span>
+{% endif %}
+</td>
+
+<td class="p-3">
+{{ company.quality_score }}
+</td>
+
+</tr>

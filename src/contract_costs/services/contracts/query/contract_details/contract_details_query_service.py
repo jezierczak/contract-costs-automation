@@ -89,6 +89,40 @@ class ContractDetailsQueryService(ActionHandler[ContractDetailsQuery,ContractDet
             breakdown_map=breakdown_map,
         )
 
+        roots = tree.roots()
+        root = roots[0] if roots else None
+
+        contract_budget = None
+        contract_progress = None
+        executed_value = None
+        cost_total = None
+        revenue_total = None
+        margin=None
+        margin_percent = None
+
+
+        if root:
+            contract_budget = planned_budget.get(root.id)
+            contract_progress = progress_map.get(root.id)
+
+            if contract_budget and contract_progress:
+                executed_value = contract_budget * contract_progress
+
+            vals = values.get(root.id, {})
+
+            cost_total = vals.get("net", 0) + vals.get("non_deductible", 0)
+            revenue_total = vals.get("revenue", 0)
+
+            margin = revenue_total - cost_total
+            margin_percent = margin / contract_budget
+
+        time_progress = self._calculate_time_progress(
+            start_date=contract.start_date,
+            end_date=contract.end_date,
+        )
+
+
+
         return ContractDetailsDTO(
             contract_id=contract.id,
             code=contract.code,
@@ -100,6 +134,14 @@ class ContractDetailsQueryService(ActionHandler[ContractDetailsQuery,ContractDet
             nodes=node_dtos,
             owner=contract.owner,
             client=contract.client,
+            budget=contract_budget,
+            time_progress=time_progress,
+            overall_progress=contract_progress,
+            executed_value = executed_value,
+            cost_total = cost_total,
+            revenue_total = revenue_total,
+            margin = margin,
+            margin_percent =margin_percent
 
         )
 
@@ -424,6 +466,35 @@ class ContractDetailsQueryService(ActionHandler[ContractDetailsQuery,ContractDet
                 )
 
         return output
+
+
+    @staticmethod
+    def _calculate_time_progress(
+            *,
+            start_date: date | None,
+            end_date: date | None
+    ) -> Decimal | None:
+
+        if not start_date or not end_date:
+            return None
+
+        today = date.today()
+
+        total_days = (end_date - start_date).days
+
+        if total_days <= 0:
+            return None
+
+        elapsed_days = (today - start_date).days
+
+        if elapsed_days <= 0:
+            return Decimal("0")
+
+        if elapsed_days >= total_days:
+            return Decimal("1")
+
+        return Decimal(elapsed_days) / Decimal(total_days)
+
     # @staticmethod
     # def _aggregate_by_value_type_all_nodes(
     #         *,

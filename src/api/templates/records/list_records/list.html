@@ -1,0 +1,24 @@
+{% extends "workspace.html" %}
+
+{% block workspace_actions %}
+    {% include "records/list_records/_actions_list.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+
+<div class="max-w-[95vw] mx-auto">
+
+    <div
+        id="records-table"
+        hx-get="/records/table/{{ view.value }}"
+        hx-trigger="load, every 3s, recordsUpdated from:body"
+        hx-swap="innerHTML"
+    >
+
+        {% include "records/list_records/_table.html" %}
+
+    </div>
+
+</div>
+
+{% endblock %}

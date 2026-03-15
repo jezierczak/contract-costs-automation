@@ -21,9 +21,6 @@ def own_company_dashboard(
 
     ctx = request.state.ctx
 
-    # 🔹 nadpisujemy actions dla tego widoku
-    ctx.workspace_actions = "own_company_dashboard/_actions.html"
-
     company_uuid = UUID(company_id) if company_id else None
 
     action = CompanyDashboardQuery(
@@ -55,7 +52,7 @@ def own_company_dashboard(
 
     # normalny request → pełny widok
     return request.app.state.templates.TemplateResponse(
-        "own_company_dashboard/company_dashboard.html",
+        "own_company_dashboard/page.html",
         template_data,
     )
 

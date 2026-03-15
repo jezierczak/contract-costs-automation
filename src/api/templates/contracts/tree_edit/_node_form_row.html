@@ -1,0 +1,72 @@
+<div class="node-form-row flex items-center gap-2 py-2 px-2 bg-green-50 rounded">
+
+<form
+    hx-post="/contracts/{{ contract_id }}/nodes/create"
+    hx-target="#contract-tree"
+    hx-swap="outerHTML"
+    class="flex items-center gap-2 w-full"
+>
+{% if parent_id %}
+    <input type="hidden" name="parent_id" value="{{ parent_id }}">
+{% endif %}
+    <!-- CODE -->
+    <input name="code"
+           placeholder="Kod"
+           class="border rounded px-2 py-1 w-28">
+
+    <!-- NAME -->
+    <input name="name"
+           placeholder="Nazwa"
+           class="border rounded px-2 py-1 flex-1">
+
+    <!-- QTY -->
+    <input
+    name="quantity"
+    inputmode="decimal"
+    pattern="[0-9]+([.,][0-9]+)?"
+    placeholder="Ilość"
+    oninput="this.value = this.value.replace(',', '.')"
+    class="border rounded px-2 py-1 w-24"
+/>
+
+    <!-- UNIT -->
+<select
+    name="unit"
+    class="border rounded px-2 py-1 w-20 bg-white"
+>
+    <option value="">—</option>
+
+    {% for u in units %}
+    <option value="{{ u }}">
+        {{ u }}
+    </option>
+    {% endfor %}
+</select>
+
+    <!-- BUDGET -->
+    <input
+    name="planned_budget"
+    inputmode="decimal"
+    pattern="[0-9]+([.,][0-9]+)?"
+    placeholder="Budżet"
+    oninput="this.value = this.value.replace(',', '.')"
+    class="border rounded px-2 py-1 w-28"
+/>
+
+<button class="text-green-700 font-bold">
+    ✔
+</button>
+
+<button
+    type="button"
+    hx-get="/contracts/{{ contract_id }}/nodes/tree"
+    hx-target="#contract-tree"
+    hx-swap="outerHTML"
+    class="text-red-600 font-bold"
+>
+✕
+</button>
+
+</form>
+
+</div>

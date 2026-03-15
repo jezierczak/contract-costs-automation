@@ -1,0 +1,110 @@
+{% extends "workspace.html" %}
+
+{% block workspace_actions %}
+    {% include "documents/_actions.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+
+<!-- FILTERS -->
+<div class="mb-4 flex gap-2">
+
+<button
+    hx-get="/documents/"
+    hx-target="#content-area"
+    hx-swap="innerHTML"
+    hx-on:click="document.getElementById('documents-status-filter').value=''"
+    class="px-3 py-1 rounded
+    {% if not current_status %}
+        bg-gray-400 text-white
+    {% else %}
+        bg-gray-200 hover:bg-gray-300
+    {% endif %}
+"
+>
+    Wszystkie
+</button>
+
+<button
+    hx-get="/documents/?status=READY"
+    hx-target="#content-area"
+    hx-swap="innerHTML"
+    hx-on:click="document.getElementById('documents-status-filter').value='READY'"
+    class="px-3 py-1 rounded
+    {% if current_status == 'READY' %}
+        bg-green-500 text-white
+    {% else %}
+        bg-green-100 hover:bg-green-200
+    {% endif %}
+"
+>
+    READY
+</button>
+
+<button
+    hx-get="/documents/?status=PROCESSING"
+        hx-target="#content-area"
+    hx-swap="innerHTML"
+    hx-on:click="document.getElementById('documents-status-filter').value='PROCESSING'"
+    class="px-3 py-1 rounded
+{% if current_status == 'PROCESSING' %}
+    bg-blue-500 text-white
+{% else %}
+    bg-blue-100 hover:bg-blue-200
+{% endif %}"
+>
+    PROCESSING
+</button>
+
+<button
+    hx-get="/documents/?status=FAILED"
+        hx-target="#content-area"
+    hx-swap="innerHTML"
+    hx-on:click="document.getElementById('documents-status-filter').value='FAILED'"
+   class="px-3 py-1 rounded
+{% if current_status == 'FAILED' %}
+    bg-red-500 text-white
+{% else %}
+    bg-red-100 hover:bg-red-200
+{% endif %}"
+>
+    FAILED
+</button>
+
+<button
+    hx-get="/documents/?status=APPLIED"
+        hx-target="#content-area"
+    hx-swap="innerHTML"
+    hx-on:click="document.getElementById('documents-status-filter').value='APPLIED'"
+    class="px-3 py-1 rounded
+{% if current_status == 'APPLIED' %}
+    bg-gray-500 text-white
+{% else %}
+    bg-gray-100 hover:bg-gray-200
+{% endif %}"
+>
+    APPLIED
+</button>
+
+<input
+    type="hidden"
+    id="documents-status-filter"
+    name="status"
+    value="{{ current_status or '' }}"
+>
+
+</div>
+
+
+<!-- TABLE -->
+<div
+    id="documents-table"
+    hx-get="/documents/table?status={{ current_status or '' }}"
+    hx-trigger="load, every 5s"
+    hx-include="#documents-status-filter"
+    hx-swap="innerHTML"
+>
+    {% include "documents/_table.html" %}
+</div>
+
+{% endblock %}

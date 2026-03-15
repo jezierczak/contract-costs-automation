@@ -1,41 +1,16 @@
 <div class="flex justify-between items-center">
 
-    <!-- LEFT -->
-    <div class="flex items-center gap-2">
+    <h1 class="text-xl font-bold">
+        Kategorie finansowe
+    </h1>
 
-        {% if request.state.ctx.workspace_subtitle %}
-        <button
-            onclick="history.back()"
-            class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300"
-        >
-            ← Cofnij
-        </button>
-        {% endif %}
-
-        <h1 class="text-xl font-bold">
-            {{ request.state.ctx.workspace_title }}
-            {% if request.state.ctx.workspace_subtitle %}
-                <span class="text-gray-400 font-normal">
-                    → {{ request.state.ctx.workspace_subtitle }}
-                </span>
-            {% endif %}
-        </h1>
-
-    </div>
-    <div class="flex items-center gap-2">
-
-
-
-</div>
-    <!-- RIGHT -->
     <button
-    hx-get="/value_types/edit"
-    hx-boost="false"
-    hx-target="#modal-area"
-    hx-swap="innerHTML"
-    class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
->
-    + Nowa Kategoria finansowa
-</button>
+        hx-get="/value_types/edit"
+        hx-target="#modal-area"
+        hx-swap="innerHTML"
+        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+    >
+        + Nowa Kategoria finansowa
+    </button>
 
 </div>

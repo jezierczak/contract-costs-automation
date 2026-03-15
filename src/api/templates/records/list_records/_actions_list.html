@@ -1,0 +1,49 @@
+<div class="grid grid-cols-3 items-center">
+
+    <!-- LEFT -->
+    <div>
+        <button
+            hx-get="/records"
+            hx-target="#content-area"
+            hx-swap="innerHTML"
+            hx-push-url="true"
+            hx-indicator="#global-indicator"
+            class="inline-flex items-center gap-2 px-2 py-1 rounded text-sm text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+        >
+            ← Powrót
+        </button>
+    </div>
+
+    <!-- CENTER -->
+    <div class="text-center">
+
+        <h1 class="text-2xl font-bold text-gray-800">
+
+            Financial Records
+
+            {% if view_label %}
+            <span class="text-gray-400 font-normal">
+                → {{ view_label }}
+            </span>
+            {% endif %}
+
+        </h1>
+
+    </div>
+
+    <!-- RIGHT -->
+    <div class="flex justify-end gap-2">
+
+        <button
+            hx-get="/records/edit"
+            hx-target="#content-area"
+            hx-swap="innerHTML"
+            hx-push-url="true"
+            class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+            + Nowy rekord
+        </button>
+
+    </div>
+
+</div>

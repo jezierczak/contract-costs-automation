@@ -3,7 +3,7 @@
 {% block content %}
 <h2>Wybierz organizację</h2>
 
-<form method="post" action="/select-organization">
+<form method="post" action="/select-organization"  hx-boost="false">
     <select name="organization_id">
         {% for org in organizations %}
             <option value="{{ org.organization_id }}">

@@ -17,6 +17,13 @@ class CompanyQueryService(ActionHandler[CompanyQuery, list[CompanyDTO]]):
 
     def _load_companies(self,*,uow:UnitOfWork, query: CompanyQuery) -> list[Company]:
         repo = uow.companies
+        if query.company_id:
+            company = repo.get(
+                company_id=query.company_id,
+                organization_id=query.organization_id,
+            )
+            return [company] if company else []
+
         if query.tax_number:
             company = repo.get_by_tax_number(
                 tax_number=query.tax_number,

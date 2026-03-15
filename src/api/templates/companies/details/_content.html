@@ -1,0 +1,214 @@
+<div class="w-full space-y-6">
+
+    <!-- ================================================= -->
+    <!-- METADATA -->
+    <!-- ================================================= -->
+<div
+    id="company-metadata"
+    hx-get="/companies/{{ company.id }}/metadata"
+    hx-trigger="load, companyUpdated from:body"
+    hx-swap="outerHTML"
+></div>
+
+    <!-- ================================================= -->
+<!-- OWNER FILTER -->
+<!-- ================================================= -->
+
+<div class="flex items-center">
+
+    <div class="text-sm text-gray-500 mr-3">
+        Firma własna:
+    </div>
+
+    <select
+        name="owner_company_id"
+        class="border rounded px-2 py-1 text-sm"
+
+        hx-get="/companies/{{ company.tax_number }}/content"
+        hx-trigger="change"
+        hx-target="#company-content"
+        hx-swap="innerHTML"
+    >
+        <option value="">
+            Wszystkie
+        </option>
+
+        {% for c in owner_companies %}
+
+        <option
+            value="{{ c.id }}"
+            {% if c.id|string == selected_owner_company_id|string %}selected{% endif %}
+        >
+            {{ c.name }}
+        </option>
+
+        {% endfor %}
+
+    </select>
+
+</div>
+
+    <!-- ================================================= -->
+    <!-- SUMMARY KPI -->
+    <!-- ================================================= -->
+
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+
+        <div class="bg-white border rounded-xl shadow-sm p-4">
+            <div class="text-xs text-gray-500 uppercase">Faktury</div>
+            <div class="text-2xl font-semibold mt-1">
+                {{ dashboard.invoice_count }}
+            </div>
+        </div>
+
+        <div class="bg-white border rounded-xl shadow-sm p-4">
+            <div class="text-xs text-gray-500 uppercase">Przychód</div>
+            <div class="text-2xl font-semibold text-green-600 mt-1">
+                {{ dashboard.revenue }}
+            </div>
+        </div>
+
+        <div class="bg-white border rounded-xl shadow-sm p-4">
+            <div class="text-xs text-gray-500 uppercase">Koszty</div>
+            <div class="text-2xl font-semibold text-red-600 mt-1">
+                {{ dashboard.costs }}
+            </div>
+        </div>
+
+        <div class="bg-white border rounded-xl shadow-sm p-4">
+            <div class="text-xs text-gray-500 uppercase">Saldo</div>
+            <div class="text-2xl font-semibold mt-1">
+                {{ dashboard.balance }}
+            </div>
+        </div>
+
+        <div
+            class="bg-white border rounded-xl shadow-sm p-4 cursor-pointer hover:bg-gray-50"
+            hx-get="/records/unpaid_costs"
+            hx-target="#content-area"
+            hx-swap="innerHTML"
+            hx-push-url="true"
+        >
+
+          <div class="flex items-center justify-between">
+
+            <div>
+                <div class="text-xs text-gray-500 uppercase">
+                    Nieopłacone
+                </div>
+
+                <div class="text-2xl font-semibold text-red-600 mt-1">
+                    {{ dashboard.unpaid_invoices }}
+                </div>
+            </div>
+
+            <div class="text-gray-400 text-xl group-hover:translate-x-1 transition">
+                →
+            </div>
+
+        </div>
+
+        </div>
+
+        <div class="bg-white border rounded-xl shadow-sm p-4">
+            <div class="text-xs text-gray-500 uppercase">Ostatnia faktura</div>
+            <div class="text-sm font-semibold mt-1">
+                {{ dashboard.last_invoice_date or "—" }}
+            </div>
+        </div>
+
+    </div>
+
+
+    <!-- ================================================= -->
+    <!-- HISTORIA WSPÓŁPRACY -->
+    <!-- ================================================= -->
+
+    <div class="bg-white rounded-xl shadow-sm border p-6">
+
+        <h3 class="text-lg font-semibold text-gray-800 mb-6">
+            Aktywność finansowa
+        </h3>
+
+        <!-- header -->
+        <div class="grid grid-cols-5 text-xs text-gray-400 uppercase pb-2 border-b mb-2">
+
+            <div>Rok</div>
+            <div>Faktury</div>
+            <div class="text-right">Przychód</div>
+            <div class="text-right">Koszty</div>
+            <div class="text-right">Saldo</div>
+
+        </div>
+
+        {% for year in dashboard.years %}
+
+        <div
+            class="year-row grid grid-cols-5 items-center py-3 px-2 cursor-pointer rounded transition hover:bg-gray-50
+                   {% if loop.first %}bg-blue-50 border-l-4 border-blue-500{% endif %}"
+
+            hx-get="/records/company?company_id={{ company.id }}&year={{ year.year }}"
+            hx-target="#company-records"
+            hx-swap="innerHTML"
+
+            hx-on:click="
+                document.querySelectorAll('.year-row').forEach(r=>{
+                    r.classList.remove('bg-blue-50','border-blue-500','border-l-4')
+                });
+                this.classList.add('bg-blue-50','border-blue-500','border-l-4')
+            "
+        >
+
+            <div class="font-semibold">
+                {{ year.year }}
+            </div>
+
+            <div class="text-sm text-gray-600">
+                {{ year.invoice_count }}
+            </div>
+
+            <div class="text-sm text-green-600 text-right font-medium">
+                {{ year.revenue }}
+            </div>
+
+            <div class="text-sm text-red-600 text-right font-medium">
+                {{ year.costs }}
+            </div>
+
+            <div class="text-sm text-right font-semibold">
+                {{ year.balance }}
+            </div>
+
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+
+    <!-- ================================================= -->
+    <!-- RECORDS -->
+    <!-- ================================================= -->
+
+   {% if dashboard.years %}
+
+<div
+    id="company-records"
+    class="bg-white rounded-xl shadow-sm border p-6 min-h-[200px]"
+    hx-get="/records/company?company_id={{ company.id }}&year={{ dashboard.years[0].year }}"
+    hx-trigger="load"
+>
+</div>
+
+{% else %}
+
+<div
+    id="company-records"
+    class="bg-white rounded-xl shadow-sm border p-6 min-h-[200px] text-gray-400"
+>
+    Brak faktur dla tej firmy
+</div>
+
+{% endif %}
+
+</div>

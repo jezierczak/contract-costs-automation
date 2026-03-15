@@ -26,6 +26,7 @@ from contract_costs.services.companies.providers.excact_nip import ExactNipCandi
 from contract_costs.services.companies.providers.name import NameCandidateProvider
 from contract_costs.services.companies.providers.phone import PhoneCandidateProvider
 from contract_costs.services.companies.query.company_query_service import CompanyQueryService
+from contract_costs.services.companies.query.company_detail_query_service import CompanyDetailQueryService
 from contract_costs.services.companies.update_company_service import UpdateCompanyService
 from contract_costs.services.company_dashboard.company_dashboard_query_service import CompanyDashboardQueryService
 from contract_costs.services.company_dashboard.company_fixed_costs_query_service import CompanyFixedCostsQueryService
@@ -295,6 +296,7 @@ class Services:
 
         self._company_month_breakdown_service = None
         self._company_fixed_costs_query_service = None
+        self._company_detail_query_service = None
 
         self._normalizer = DocumentParseNormalizer()
 
@@ -1168,6 +1170,11 @@ class Services:
             self._company_fixed_costs_query_service = CompanyFixedCostsQueryService()
         return self._company_fixed_costs_query_service
 
+    @property
+    def company_detail_query_service(self):
+        if self._company_detail_query_service is None:
+            self._company_detail_query_service = CompanyDetailQueryService()
+        return self._company_detail_query_service
 
 _services: Dict[str, Services] = {}
 

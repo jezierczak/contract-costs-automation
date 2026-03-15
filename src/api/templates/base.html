@@ -5,15 +5,56 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        @keyframes flashReady {
+            0%   { background-color: #dcfce7; }   /* zielony */
+            100% { background-color: transparent; }
+        }
+
+        .flash-ready {
+            animation: flashReady 1.5s ease-out;
+        }
+       .tree-code {
+    position: relative;
+}
+
+.tree-code::before {
+    content: "";
+    position: absolute;
+    left: -14px;
+    top: 50%;
+    width: 10px;
+    border-top: 1px solid #cbd5e1;
+}
+
+.tree-code::after {
+    content: "";
+    position: absolute;
+    left: -14px;
+    top: -8px;
+    bottom: -8px;
+    border-left: 1px solid #e2e8f0;
+}
+            .tree-leaf::before {
+                content: "•";
+                margin-right: 6px;
+                color: #9ca3af;
+            }
+</style>
 </head>
 
-<body class="m-0 font-sans bg-gray-100">
+<body class="h-screen overflow-hidden">
 
 {% if request.state.ctx.user_id %}
 
 <!-- TOP BAR -->
 <div class="bg-gray-800 text-white px-4 py-2 flex items-center">
-
+        <button
+    onclick="toggleSidebar()"
+    class="mr-4 text-gray-300 hover:text-white"
+    >
+    ☰
+    </button>
     <div>
         🏢 {{ request.state.ctx.organization.name }}
         [ {{ request.state.ctx.organization.code }} ]
@@ -41,68 +82,110 @@
 
 <div class="flex h-[calc(100vh-44px)]">
 
+
     <!-- SIDEBAR -->
-    <aside class="w-56 bg-gray-900 text-white p-5 flex flex-col">
+    <aside id="sidebar" class="w-56 bg-gray-900 text-white p-5 flex flex-col transition-all duration-200">
 
         <h3 class="text-xl font-bold mb-6">
             Contract Costs
         </h3>
 
-    <nav class="space-y-4 flex-1">
+   <nav class="space-y-4 flex-1">
 
-    <!-- DASHBOARD -->
-    <div>
-        <a href="/" class="block px-3 py-2 rounded hover:bg-gray-800">
-            Dashboard
-        </a>
+<!-- DASHBOARD -->
+<div>
+    <button
+        hx-get="/dashboard"
+        hx-target="#content-area"
+        hx-swap="innerHTML"
+        hx-push-url="true"
+        class="w-full text-left px-3 py-2 rounded hover:bg-gray-800"
+    >
+        Dashboard
+    </button>
+</div>
+
+<!-- FINANSE -->
+<div>
+    <div class="text-xs uppercase text-gray-400 mb-2">
+        Finanse
     </div>
 
-    <!-- FINANSE -->
-    <div>
-        <div class="text-xs uppercase text-gray-400 mb-2">
-            Finanse
-        </div>
+    <button
+        hx-get="/contracts"
+        hx-target="#content-area"
+        hx-swap="innerHTML"
+        hx-push-url="true"
+        class="w-full text-left px-3 py-2 rounded hover:bg-gray-800"
+    >
+        📊 Kontrakty
+    </button>
 
-        <a href="/own-company-finances"
-           class="block px-3 py-2 rounded hover:bg-gray-800">
-            💰 Finanse firm
-        </a>
+    <button
+        hx-get="/own-company-finances"
+        hx-target="#content-area"
+        hx-swap="innerHTML"
+        hx-push-url="true"
+        class="w-full text-left px-3 py-2 rounded hover:bg-gray-800"
+    >
+        💰 Finanse firm
+    </button>
 
-        <a href="/contracts"
-           class="block px-3 py-2 rounded hover:bg-gray-800">
-            📊 Kontrakty
-        </a>
+    <button
+        hx-get="/companies"
+        hx-target="#content-area"
+        hx-swap="innerHTML"
+        hx-push-url="true"
+        class="w-full text-left px-3 py-2 rounded hover:bg-gray-800"
+    >
+        🏢 Kontrahenci
+    </button>
+</div>
+
+<!-- DANE -->
+<div>
+    <div class="text-xs uppercase text-gray-400 mb-2">
+        Dane
     </div>
 
-    <!-- DANE -->
-    <div>
-        <div class="text-xs uppercase text-gray-400 mb-2">
-            Dane
-        </div>
+    <button
+        hx-get="/documents"
+        hx-target="#content-area"
+        hx-swap="innerHTML"
+        hx-push-url="true"
+        class="w-full text-left px-3 py-2 rounded hover:bg-gray-800"
+    >
+        Dokumenty
+    </button>
 
-        <a href="/documents" class="block px-3 py-2 rounded hover:bg-gray-800">
-            Dokumenty
-        </a>
+    <button
+        hx-get="/records"
+        hx-target="#content-area"
+        hx-swap="innerHTML"
+        hx-push-url="true"
+        class="w-full text-left px-3 py-2 rounded hover:bg-gray-800"
+    >
+        Rekordy
+    </button>
+</div>
 
-        <a href="/records" class="block px-3 py-2 rounded hover:bg-gray-800">
-            Rekordy
-        </a>
+<!-- SŁOWNIKI -->
+<div>
+    <div class="text-xs uppercase text-gray-400 mb-2">
+        Słowniki
     </div>
 
-    <!-- SŁOWNIKI -->
-    <div>
-        <div class="text-xs uppercase text-gray-400 mb-2">
-            Słowniki
-        </div>
 
-        <a href="/companies" class="block px-3 py-2 rounded hover:bg-gray-800">
-            Firmy
-        </a>
-
-        <a href="/value_types" class="block px-3 py-2 rounded hover:bg-gray-800">
-            Kategorie finansowe
-        </a>
-    </div>
+    <button
+        hx-get="/value_types"
+        hx-target="#content-area"
+        hx-swap="innerHTML"
+        hx-push-url="true"
+        class="w-full text-left px-3 py-2 rounded hover:bg-gray-800"
+    >
+        Kategorie finansowe
+    </button>
+</div>
 
 </nav>
 
@@ -111,22 +194,37 @@
 {% endif %}
 
     <!-- MAIN -->
-    <main
-        class="
-            flex-1
-            bg-gray-50
-            overflow-auto
-            rounded-xl
-            m-3
-            {% if request.state.ctx.user_id %}p-5{% else %}p-10{% endif %}
-            h-full
-            shadow-sm
-        "
+  <main
+    class="
+        flex-1
+        flex flex-col
+        bg-gray-50
+        rounded-xl
+        m-3
+        p-5
+        overflow-hidden
+        shadow-sm
+    "
+>
+
+
+    <!-- CONTENT -->
+    <div
+        id="content-area"
+        class="flex-1 min-h-0"
     >
-
         {% block content %}{% endblock %}
+    </div>
 
-
+    <!-- FOOTER -->
+    <div
+        id="workspace-messages"
+        class="bg-white border-t shadow-inner p-3 max-h-40 overflow-auto"
+        hx-get="/business-events/latest"
+        hx-trigger="load, every 5s"
+        hx-swap="innerHTML"
+    >
+    </div>
 
     </main>
         <!-- HTMX MODALS -->
@@ -228,8 +326,46 @@ document.body.addEventListener("click", function(e) {
     // NIE klikaj jeśli user kliknął button/link/input
     if (e.target.closest("a, button, input, select, textarea")) return;
 
+    window.location.href = row.dataset.href;
+    //window.location.assign(row.dataset.href);
 
-    window.location.assign(row.dataset.href);
+});
+document.body.addEventListener("showMessage", function(e) {
+
+    const msg = e.detail;
+
+    const box = document.createElement("div");
+
+   box.className = `
+    fixed bottom-6 right-6
+    px-4 py-3
+    rounded shadow-lg
+    text-white
+    z-[9999]
+    transition-opacity
+    ${msg.type === "success" ? "bg-green-600" : "bg-red-600"}
+`;
+
+    box.innerText = msg.text;
+
+    document.body.appendChild(box);
+
+    setTimeout(() => {
+        box.remove();
+    }, 3000);
+
+});
+document.body.addEventListener("click", function(e){
+
+    const row = e.target.closest(".year-row");
+    if (!row) return;
+
+    document.querySelectorAll(".year-row").forEach(r => {
+        r.classList.remove("bg-blue-50","border-blue-400");
+    });
+
+    row.classList.add("bg-blue-50","border-blue-400");
+
 });
 </script>
 <script>
@@ -237,6 +373,8 @@ document.body.addEventListener("click", function(e){
 
     const row = e.target.closest(".contract-node-row");
     if (!row) return;
+
+       if (e.target.closest(".tree-toggle")) return;
 
     const nodeId = row.dataset.nodeId;
     const script = document.getElementById("node-data-" + nodeId);
@@ -344,17 +482,66 @@ function closeNodeModal(){
     document.getElementById("node-modal").classList.add("hidden");
 }
 </script>
+
+<div id="global-indicator"
+     class="fixed top-0 left-0 right-0 h-1 bg-blue-500 opacity-0 transition-all duration-200">
+</div>
+
+<script>
+document.body.addEventListener("htmx:beforeRequest", () => {
+    document.getElementById("global-indicator").style.opacity = "1";
+});
+
+document.body.addEventListener("htmx:afterRequest", () => {
+    document.getElementById("global-indicator").style.opacity = "0";
+});
+</script>
+<script>
+function toggleSidebar() {
+
+    const sidebar = document.getElementById("sidebar");
+
+    if (sidebar.classList.contains("hidden")) {
+        sidebar.classList.remove("hidden");
+    } else {
+        sidebar.classList.add("hidden");
+    }
+
+}
+</script>
+<script>
+document.body.addEventListener("click", function(e){
+
+    const toggle = e.target.closest(".tree-toggle");
+    if (!toggle) return;
+
+    e.stopPropagation();   // ← KLUCZ
+
+    const row = toggle.closest(".contract-node-row");
+    const level = Number(row.dataset.level);
+
+    let next = row.nextElementSibling;
+
+    const collapsed = toggle.textContent === "▼";
+
+    toggle.textContent = collapsed ? "▶" : "▼";
+
+    while(next){
+
+        const nextLevel = Number(next.dataset.level);
+
+        if(nextLevel <= level) break;
+
+        next.style.display = collapsed ? "none" : "";
+
+        next = next.nextElementSibling;
+    }
+
+});
+</script>
+
 </body>
 </html>
-<style>
-@keyframes flashReady {
-    0%   { background-color: #dcfce7; }   /* zielony */
-    100% { background-color: transparent; }
-}
 
-.flash-ready {
-    animation: flashReady 1.5s ease-out;
-}
-</style>
 
 

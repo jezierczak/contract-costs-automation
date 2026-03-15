@@ -1,0 +1,256 @@
+{% extends "workspace.html" %}
+
+{% block workspace_actions %}
+    {% include "contracts/details/_actions_detail_contract.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+
+<div class="w-full">
+
+<!-- ===================================================== -->
+<!-- HEADER -->
+<!-- ===================================================== -->
+
+<div class="flex items-start justify-between mb-6">
+
+    <div>
+        <h2 class="text-2xl font-bold text-gray-800">
+            {{ contract.code }} — {{ contract.name }}
+        </h2>
+
+        {% if contract.description %}
+        <div class="text-sm text-gray-500 mt-1">
+            {{ contract.description }}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- STATUS -->
+    <form
+        hx-post="/contracts/{{ contract.contract_id }}/status"
+        hx-target="#content-area"
+        hx-swap="innerHTML"
+        hx-indicator="#global-indicator"
+    >
+        <select
+            name="status"
+            onchange="this.form.requestSubmit()"
+            class="
+                border rounded px-3 py-1 text-sm
+                {% if contract.status == 'ACTIVE' %}
+                    bg-green-50 text-green-700
+                {% elif contract.status == 'PLANNED' %}
+                    bg-blue-50 text-blue-700
+                {% elif contract.status == 'DONE' %}
+                    bg-gray-100 text-gray-600
+                {% endif %}
+            "
+        >
+            {% for s in statuses %}
+            <option value="{{ s }}" {% if s == contract.status %}selected{% endif %}>
+                {{ s }}
+            </option>
+            {% endfor %}
+        </select>
+    </form>
+
+</div>
+
+<!-- ===================================================== -->
+<!-- METADATA -->
+<!-- ===================================================== -->
+
+<div class="bg-white rounded-xl shadow p-4 mb-6">
+
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 text-sm">
+
+        <div>
+            <div class="text-gray-500">Firma (Owner)</div>
+            <div class="font-medium">
+                {{ contract.owner.name if contract.owner else "—" }}
+            </div>
+        </div>
+
+        <div>
+            <div class="text-gray-500">Kontrahent</div>
+            <div class="font-medium">
+                {{ contract.client.name if contract.client else "—" }}
+            </div>
+        </div>
+
+        <div>
+            <div class="text-gray-500">Rozpoczęcie</div>
+            <div class="font-medium">
+                {{ contract.start_date or "—" }}
+            </div>
+        </div>
+
+        <div>
+            <div class="text-gray-500">Zakończenie</div>
+            <div class="font-medium">
+                {{ contract.end_date or "—" }}
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ===================================================== -->
+<!-- PROGRESS BARS -->
+<!-- ===================================================== -->
+
+<div class="grid md:grid-cols-2 gap-6 mb-6">
+
+{% if contract.time_progress is not none %}
+
+<div class="bg-white rounded-xl shadow p-4">
+
+    <div class="flex justify-between text-sm mb-2">
+        <span class="text-gray-500">Postęp czasu</span>
+        <span class="font-medium">
+            {{ (contract.time_progress * 100)|round(1) }}%
+        </span>
+    </div>
+
+    <div class="w-full bg-gray-200 rounded-full h-2">
+
+        <div
+            class="
+                h-2
+                {% if contract.time_progress >= 1 %}
+                    bg-gray-500
+                {% elif contract.time_progress > 0.9 %}
+                    bg-red-500
+                {% elif contract.time_progress > 0.7 %}
+                    bg-yellow-500
+                {% else %}
+                    bg-blue-500
+                {% endif %}
+            "
+            style="width: {{ (contract.time_progress * 100)|round(2) }}%;"
+        ></div>
+
+    </div>
+
+</div>
+
+{% endif %}
+
+
+{% if contract.overall_progress is not none %}
+
+<div class="bg-white rounded-xl shadow p-4">
+
+    <div class="flex justify-between text-sm mb-2">
+        <span class="text-gray-500">Postęp prac</span>
+        <span class="font-medium">
+            {{ (contract.overall_progress * 100)|round(1) }}%
+        </span>
+    </div>
+
+    <div class="w-full bg-gray-200 rounded-full h-2">
+
+        <div
+            class="
+                h-2
+                {% if contract.overall_progress >= 1 %}
+                    bg-green-700
+                {% elif contract.overall_progress > 0.9 %}
+                    bg-green-500
+                {% elif contract.overall_progress > 0.7 %}
+                    bg-yellow-500
+                {% else %}
+                    bg-blue-500
+                {% endif %}
+            "
+            style="width: {{ (contract.overall_progress * 100)|round(2) }}%;"
+        ></div>
+
+    </div>
+
+</div>
+
+{% endif %}
+
+</div>
+
+
+<!-- ===================================================== -->
+<!-- FINANCIAL SUMMARY -->
+<!-- ===================================================== -->
+
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+
+<div class="bg-white rounded-xl shadow p-4">
+    <div class="text-xs text-gray-500">Budżet</div>
+    <div class="text-lg font-semibold">
+        {{ contract.budget | round(2) if contract.budget else "—" }}
+    </div>
+</div>
+
+<div class="bg-white rounded-xl shadow p-4">
+    <div class="text-xs text-gray-500">Wykonanie prac</div>
+    <div class="text-lg font-semibold text-blue-700">
+        {{ contract.executed_value | round(2) if contract.executed_value else "—" }}
+    </div>
+</div>
+
+<div class="bg-white rounded-xl shadow p-4">
+    <div class="text-xs text-gray-500">Koszty</div>
+    <div class="text-lg font-semibold text-red-700">
+        {{ contract.cost_total | round(2) if contract.cost_total else "—" }}
+    </div>
+</div>
+
+<div class="bg-white rounded-xl shadow p-4">
+    <div class="text-xs text-gray-500">Zapłacono</div>
+    <div class="text-lg font-semibold text-green-700">
+        {{ contract.revenue_total | round(2) if contract.revenue_total else "—" }}
+    </div>
+</div>
+
+<div class="bg-white rounded-xl shadow p-4">
+    <div class="text-xs text-gray-500">Marża</div>
+    <div class="text-lg font-semibold
+        {% if contract.margin is not none and contract.margin >= 0 %}
+            text-green-700
+        {% else %}
+            text-red-700
+        {% endif %}
+    ">
+        {{ contract.margin | round(2) if contract.margin else "—" }}
+    </div>
+</div>
+
+<div class="bg-white rounded-xl shadow p-4">
+    <div class="text-xs text-gray-500">Marża %</div>
+    <div class="text-lg font-semibold
+        {% if contract.margin_percent is not none and contract.margin_percent >= 0 %}
+            text-green-700
+        {% else %}
+            text-red-700
+        {% endif %}
+    ">
+        {{ (contract.margin_percent * 100) | round(1) if contract.margin_percent else "—" }}%
+    </div>
+</div>
+
+</div>
+
+
+<!-- ===================================================== -->
+<!-- TREE -->
+<!-- ===================================================== -->
+
+<h3 class="text-lg font-semibold mb-3">
+    Struktura kontraktu
+</h3>
+
+{% include "contracts/details/_details_tree.html" %}
+
+</div>
+
+{% endblock %}

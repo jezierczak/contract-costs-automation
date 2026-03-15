@@ -1,0 +1,74 @@
+<div id="progress-section" class="bg-white rounded-xl shadow p-4">
+
+{% if error %}
+<div class="mb-3 p-3 bg-red-100 text-red-700 rounded text-sm">
+    ⚠️ {{ error }}
+</div>
+{% endif %}
+
+{% if success %}
+<div class="mb-3 p-3 bg-green-100 text-green-700 rounded text-sm">
+    ✔ Progress zapisany
+</div>
+{% endif %}
+
+<form
+    hx-post="/contracts/{{ contract.contract_id }}/progress/update"
+    hx-target="#progress-section"
+    hx-swap="outerHTML"
+    hx-indicator="#global-indicator"
+>
+
+{% for n in contract.nodes if n.is_leaf %}
+
+<div class="flex items-center gap-3 border-t py-2">
+
+    <!-- NODE ID -->
+    <input
+        type="hidden"
+        name="node_ids"
+        value="{{ n.node_id }}"
+    >
+
+    <!-- CODE -->
+    <div class="w-24 text-xs font-mono text-gray-600">
+        {{ n.code }}
+    </div>
+
+    <!-- NAME -->
+    <div class="flex-1">
+        {{ n.name }}
+    </div>
+
+    <!-- PROGRESS -->
+    <input
+            type="text"
+            inputmode="decimal"
+            pattern="[0-9]+([.,][0-9]+)?"
+            name="progress_{{ n.node_id }}"
+            value="{{ (n.progress * 100)|round(1) if n.progress is not none else '' }}"
+            class="border rounded px-2 py-1 w-20 text-right"
+            placeholder="0-100"
+        />
+
+    <span class="text-sm text-gray-500">%</span>
+
+</div>
+
+{% endfor %}
+
+<!-- SAVE BUTTON -->
+<div class="sticky bottom-0 bg-white border-t pt-3 mt-3 flex justify-end">
+
+<button
+    type="submit"
+    class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 shadow"
+>
+    ✔ Zatwierdź progress
+</button>
+
+</div>
+
+</form>
+
+</div>

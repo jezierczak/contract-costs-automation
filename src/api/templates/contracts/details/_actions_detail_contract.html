@@ -1,0 +1,49 @@
+<div class="grid grid-cols-3 items-center">
+
+    <!-- LEFT -->
+    <div>
+        <button
+            hx-get="/contracts"
+            hx-target="#content-area"
+            hx-swap="innerHTML"
+            hx-push-url="true"
+            hx-indicator="#global-indicator"
+            class="inline-flex items-center gap-2 px-2 py-1 rounded text-sm text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+        >
+            ← Powrót do kontraktów
+        </button>
+    </div>
+
+    <!-- CENTER -->
+    <div class="text-center">
+        <h1 class="text-2xl font-bold text-gray-800">
+            {{ contract.code }} — {{ contract.name }}
+        </h1>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="flex justify-end gap-2">
+
+        <button
+            hx-get="/contracts/{{ contract.contract_id }}/edit"
+            hx-target="#content-area"
+            hx-swap="innerHTML"
+            hx-push-url="true"
+            class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+            ✏️ Edytuj
+        </button>
+
+        <button
+            hx-get="/contracts/{{ contract.contract_id }}/progress"
+            hx-target="#content-area"
+            hx-swap="innerHTML"
+            hx-push-url="true"
+            class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+        >
+            📊 Progress
+        </button>
+
+    </div>
+
+</div>

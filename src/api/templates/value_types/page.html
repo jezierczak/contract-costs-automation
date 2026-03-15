@@ -1,0 +1,21 @@
+{% extends "workspace.html" %}
+
+{% block workspace_actions %}
+    {% include "value_types/_actions.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+
+<div
+    id="value-types-table"
+    class="bg-white rounded-xl shadow"
+    hx-get="/value_types/table"
+    hx-trigger="load, valueTypesUpdated from:body"
+    hx-swap="innerHTML"
+>
+
+    Ładowanie...
+
+</div>
+
+{% endblock %}

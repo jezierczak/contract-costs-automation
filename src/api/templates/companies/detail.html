@@ -1,5 +1,4 @@
-{% extends "base.html" %}
-{% block content %}
+
 
 <div class="max-w-6xl mx-auto space-y-6">
 
@@ -34,26 +33,35 @@
                 ← Powrót
             </a>
 
-            <a href="/records?seller_nip={{ company.tax_number }}"
-               class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-100">
-                Pokaż rekordy
+            <a
+                hx-get="/records?seller_nip={{ company.tax_number }}"
+                hx-target="#workspace-content"
+                hx-swap="innerHTML"
+                hx-push-url="true"
+                class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-100"
+            >
+            Pokaż rekordy
             </a>
 
-            <a href="/companies/{{ company.tax_number }}/edit"
-               class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                Edytuj
-            </a>
+            <button
+                hx-get="/companies/{{ company.tax_number }}/edit"
+                hx-target="#modal-area"
+                hx-swap="innerHTML"
+                class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            >
+            Edytuj
+            </button>
 
             {% if company.is_active and company.role.value != "Own" %}
-           <form method="post"
-              action="/companies/{{ company.id }}/deactivate"
-              onsubmit="return confirm('Na pewno dezaktywować?')">
-
-              <button
-                 class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
-                 Deaktywuj
-              </button>
-            </form>
+           <button
+                hx-post="/companies/{{ company.id }}/deactivate"
+                hx-confirm="Na pewno dezaktywować?"
+                hx-target="#workspace-content"
+                hx-swap="innerHTML"
+                class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+            >
+            Deaktywuj
+            </button>
             {% endif %}
 
         </div>
@@ -175,5 +183,3 @@
     </div>
 
 </div>
-
-{% endblock %}

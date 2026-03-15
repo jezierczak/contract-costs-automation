@@ -4,7 +4,6 @@ from decimal import Decimal
 from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.services.company_dashboard.dto.company_fixed_costs_dto import (
     CompanyFixedCostsDTO,
-    FixedCostContractDTO,
     FixedCostValueTypeDTO,
     FixedCostRecordDTO,
 )
@@ -34,24 +33,15 @@ class CompanyFixedCostsQueryService(
             month=action.month,
         )
 
-        # ------------------------------------------------
-        # group structure
-        # contract_id -> value_type_code -> records
-        # ------------------------------------------------
+        # ----------------------------------------
+        # value_type -> records
+        # ----------------------------------------
 
-        contracts: dict = {}
+        value_types: dict = {}
 
         for r in rows:
 
-            contract = contracts.setdefault(
-                r.contract_id,
-                {
-                    "contract_code": r.contract_code,
-                    "value_types": {},
-                },
-            )
-
-            value_type = contract["value_types"].setdefault(
+            vt = value_types.setdefault(
                 r.value_type_code,
                 {
                     "value_type_name": r.value_type_name,
@@ -63,50 +53,47 @@ class CompanyFixedCostsQueryService(
             record = FixedCostRecordDTO(
                 record_id=r.record_id,
                 record_date=r.record_date,
+                item_name=r.item_name,
                 description=r.description,
                 amount=r.amount,
                 tax_treatment=r.tax_treatment,
             )
 
-            value_type["records"].append(record)
-            value_type["total"] += r.amount
+            vt["records"].append(record)
+            vt["total"] += r.amount
 
-        # ------------------------------------------------
-        # convert to DTOs
-        # ------------------------------------------------
+        # ----------------------------------------
+        # sort records by date
+        # ----------------------------------------
 
-        contract_dtos: list[FixedCostContractDTO] = []
+        for vt in value_types.values():
+            vt["records"].sort(key=lambda rr: rr.record_date)
+        # ----------------------------------------
+        # convert to DTO
+        # ----------------------------------------
+
+        value_type_dtos: list[FixedCostValueTypeDTO] = []
         company_total = Decimal("0")
 
-        for contract_id, c in contracts.items():
+        for vt_code, vt in value_types.items():
 
-            value_type_dtos: list[FixedCostValueTypeDTO] = []
-            contract_total = Decimal("0")
-
-            for vt_code, vt in c["value_types"].items():
-
-                value_type_dto = FixedCostValueTypeDTO(
-                    value_type_code=vt_code,
-                    value_type_name=vt["value_type_name"],
-                    records=vt["records"],
-                    total=vt["total"],
-                )
-
-                value_type_dtos.append(value_type_dto)
-                contract_total += vt["total"]
-
-            contract_dtos.append(
-                FixedCostContractDTO(
-                    contract_id=contract_id,
-                    contract_code=c["contract_code"],
-                    value_types=value_type_dtos,
-                    total=contract_total,
-                )
+            dto = FixedCostValueTypeDTO(
+                value_type_code=vt_code,
+                value_type_name=vt["value_type_name"],
+                records=vt["records"],
+                total=vt["total"],
             )
 
-            company_total += contract_total
+            value_type_dtos.append(dto)
+            company_total += vt["total"]
+
+        # ----------------------------------------
+        # sort value types by total
+        # ----------------------------------------
+
+        value_type_dtos.sort(key=lambda x: x.total, reverse=True)
 
         return CompanyFixedCostsDTO(
-            contracts=contract_dtos,
+            value_types=value_type_dtos,
             total=company_total,
         )

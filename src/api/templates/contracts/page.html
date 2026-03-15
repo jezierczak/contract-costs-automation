@@ -1,0 +1,20 @@
+{% extends "workspace.html" %}
+
+{% block workspace_actions %}
+    {% include "contracts/_actions.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+
+<div
+    id="contracts-table"
+    class="bg-white rounded-xl shadow"
+    hx-get="/contracts/table"
+    hx-target="this"
+    hx-trigger="load, contractsUpdated from:body"
+    hx-swap="innerHTML"
+>
+    Ładowanie...
+</div>
+
+{% endblock %}

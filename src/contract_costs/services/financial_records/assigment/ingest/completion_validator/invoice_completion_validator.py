@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from contract_costs.model.company import CompanyType
 from contract_costs.model.financial_record_line import FinancialRecordLine
 from contract_costs.model.value_direction import ValueDirection
@@ -8,21 +10,7 @@ from contract_costs.services.financial_records.assigment.ingest.dto.invoice_assi
 
 class RecordCompletionValidator:
 
-    # @staticmethod
-    # def validate( facts: InvoiceAssignmentFacts) -> bool:
-    #     if facts.invoice_direction is None:
-    #         return False
-    #
-    #     if not facts.all_lines_complete:
-    #         return False
-    #
-    #     if len(facts.line_directions) != 1:
-    #         return False
-    #
-    #     if facts.invoice_direction not in facts.line_directions:
-    #         return False
-    #
-    #     return True
+
     def validate(self, facts: FinancialRecordAssignmentFacts) -> bool:
         return FinancialRecordCompletionReason.OK in self.status(facts)
 
@@ -33,7 +21,7 @@ class RecordCompletionValidator:
         issues: list[FinancialRecordCompletionReason] = []
 
         for line in facts.invoice_lines:
-            if line.value_type_id is not None and line.value_type_id not in facts.value_type_directions:
+            if line.value_type_id is not None and line.value_type_id not in facts.value_type_directions_map:
                 raise RuntimeError(
                     f"Missing value_type_direction for value_type_id={line.value_type_id}"
                 )
@@ -50,13 +38,16 @@ class RecordCompletionValidator:
         if not facts.invoice_lines:
             issues.append(FinancialRecordCompletionReason.NO_LINES)
 
-        all_lines_complete = all(self._is_line_complete(line) for line in facts.invoice_lines)
+        all_lines_complete = all(
+            self._is_line_complete(line, facts.value_type_directions_map)
+            for line in facts.invoice_lines
+        )
 
         if not all_lines_complete:
             issues.append(FinancialRecordCompletionReason.INCOMPLETE_LINES)
 
         line_directions = {
-            facts.value_type_directions.get(line.value_type_id)
+            facts.value_type_directions_map.get(line.value_type_id)
             for line in facts.invoice_lines
             if line.value_type_id is not None
         }
@@ -64,19 +55,31 @@ class RecordCompletionValidator:
         if None in line_directions:
             issues.append(FinancialRecordCompletionReason.UNKNOWN_LINE_DIRECTION)
 
-        if not line_directions:
+        elif not line_directions:
             issues.append(FinancialRecordCompletionReason.NO_LINE_DIRECTIONS)
 
-        elif len(line_directions) != 1:
-            issues.append(FinancialRecordCompletionReason.MIXED_LINE_DIRECTIONS)
+        else:
+            normalized_lines = {
+                self.normalize_direction(d)
+                for d in line_directions
+            }
 
-        elif invoice_direction not in line_directions:
-            issues.append(FinancialRecordCompletionReason.DIRECTION_MISMATCH)
+            if len(normalized_lines) != 1:
+                issues.append(FinancialRecordCompletionReason.MIXED_LINE_DIRECTIONS)
+
+            elif self.normalize_direction(invoice_direction) not in normalized_lines:
+                issues.append(FinancialRecordCompletionReason.DIRECTION_MISMATCH)
 
         if len(issues) == 0:
             issues.append(FinancialRecordCompletionReason.OK)
 
         return issues
+
+    @staticmethod
+    def normalize_direction(direction: ValueDirection) -> ValueDirection:
+        if direction == ValueDirection.FIXED:
+            return ValueDirection.COST
+        return direction
 
     @staticmethod
     def resolve_financial_record_direction(
@@ -92,9 +95,27 @@ class RecordCompletionValidator:
         return None
 
     @staticmethod
-    def _is_line_complete(line: FinancialRecordLine) -> bool:
-        return (
-                line.contract_id is not None and
-                line.contract_node_id is not None and
-                line.value_type_id is not None
-        )
+    def _is_line_complete(line: FinancialRecordLine,value_type_directions: dict[UUID, ValueDirection]) -> bool:
+        value_type_id = line.value_type_id
+
+        if value_type_id is None:
+            return False
+
+        direction = value_type_directions.get(value_type_id)
+        if direction is None:
+            return False
+
+        if direction in (ValueDirection.COST, ValueDirection.REVENUE):
+            return (
+                    line.contract_id is not None
+                    and line.contract_node_id is not None
+                    and line.value_type_id is not None
+            )
+
+        elif direction in (ValueDirection.FIXED, ValueDirection.INTERNAL):
+            return (
+                    line.contract_id is None
+                    and line.contract_node_id is None
+                    and line.value_type_id is not None
+            )
+        else: return False

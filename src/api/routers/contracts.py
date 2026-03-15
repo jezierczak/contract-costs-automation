@@ -1,3 +1,6 @@
+import json
+from datetime import date
+from decimal import Decimal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request, HTTPException, Form
@@ -40,7 +43,7 @@ def _render_contract_tree(
     )
 
     return request.app.state.templates.TemplateResponse(
-        "contracts/_tree.html",
+        "contracts/tree_edit/_tree.html",
         {
             "request": request,
             "contract_id": contract_id,
@@ -48,7 +51,14 @@ def _render_contract_tree(
             "units": [u.value for u in UnitOfMeasure],
         },
     )
-@router.get("/contracts", response_class=HTMLResponse)
+
+@router.get("/contracts")
+def contracts_page(request: Request):
+    return request.app.state.templates.TemplateResponse(
+        "contracts/page.html",
+        {"request": request}
+    )
+@router.get("/contracts/table", response_class=HTMLResponse)
 def contracts_list(
     request: Request,
     search: str | None = None,
@@ -56,22 +66,22 @@ def contracts_list(
     services=Depends(get_services),
 ):
     ctx = request.state.ctx
-
+    status_enum = ContractStatus(status) if status else None
     contracts = services.action_bus.execute(
         action=ListContractsQuery(
             organization_id=ctx.organization_id,
             actor_user_id=ctx.user_id,
             search=search,
-            status = ContractStatus(status) if status else None,
+            status = status_enum,
             contract_type=ContractType.PROJECT,
         ),
         handler=services.list_contracts_service,
     )
-    status_enum = ContractStatus(status) if status else None
+
 
 
     return request.app.state.templates.TemplateResponse(
-        "contracts/list.html",
+        "contracts/_table.html",
         {
             "request": request,
             "contracts": contracts,
@@ -80,6 +90,8 @@ def contracts_list(
             "title": "Kontrakty",
         },
     )
+
+
 
 @router.get("/contracts/new", response_class=HTMLResponse)
 def contract_new(
@@ -100,7 +112,7 @@ def contract_new(
     counterparties = [c for c in companies if c.role != CompanyType.OWN]
 
     return request.app.state.templates.TemplateResponse(
-        "contracts/new.html",
+        "contracts/new_edit/new.html",
         {
             "request": request,
             "title": "Nowy kontrakt",
@@ -108,6 +120,7 @@ def contract_new(
             "own_companies": own_companies,
             "counterparties": counterparties,
             "action_url": "/contracts/create",
+            "contract": None,
         },
     )
 
@@ -148,7 +161,7 @@ def contract_create(
     counterparties = [c for c in companies if c.role != CompanyType.OWN]
     if error:
         return request.app.state.templates.TemplateResponse(
-            "contracts/new.html",
+            "contracts/new_edit/new.html",
             {
                 "request": request,
                 "title": "Nowy kontrakt",
@@ -171,7 +184,7 @@ def contract_create(
 
     if not owner:
         return request.app.state.templates.TemplateResponse(
-            "contracts/new.html",
+            "contracts/new_edit/new.html",
             {
                 "request": request,
                 "title": "Nowy kontrakt",
@@ -217,7 +230,7 @@ def contract_create(
     except Exception as e:
 
         return request.app.state.templates.TemplateResponse(
-            "contracts/new.html",
+            "contracts/new_edit/new.html",
             {
                 "request": request,
                 "title": "Nowy kontrakt",
@@ -236,10 +249,15 @@ def contract_create(
             }
         )
 
-    return RedirectResponse(
-        url=f"/contracts/{contract.id}/edit",
-        status_code=303,
-    )
+    response = Response()
+
+    response.headers["HX-Location"] = json.dumps({
+        "path": f"/contracts/{contract.id}/edit",
+        "target": "#content-area",
+        "swap": "innerHTML"
+    })
+
+    return response
 
 @router.get("/contracts/{contract_id}/edit", response_class=HTMLResponse)
 def contract_edit(
@@ -284,7 +302,7 @@ def contract_edit(
     counterparties = [c for c in companies if c.role != CompanyType.OWN]
 
     return request.app.state.templates.TemplateResponse(
-        "contracts/edit.html",
+        "contracts/new_edit/edit.html",
         {
             "request": request,
             "contract": details,
@@ -363,7 +381,7 @@ def contract_new_node_form(
     parent_id: str | None = None,
 ):
     return request.app.state.templates.TemplateResponse(
-        "contracts/_node_form_row.html",
+        "contracts/tree_edit/_node_form_row.html",
         {
             "request": request,
             "contract_id": contract_id,
@@ -448,6 +466,21 @@ def contract_update_node(
         contract_id=UUID(contract_id),
     )
 
+@router.get("/contracts/{contract_id}/nodes/tree")
+def contract_tree(
+    request: Request,
+    contract_id: str,
+    services=Depends(get_services),
+):
+    ctx = request.state.ctx
+
+    return _render_contract_tree(
+        request=request,
+        services=services,
+        ctx=ctx,
+        contract_id=UUID(contract_id),
+    )
+
 @router.get("/contracts/{contract_id}", response_class=HTMLResponse)
 def contract_view(
     request: Request,
@@ -466,7 +499,7 @@ def contract_view(
     )
 
     return request.app.state.templates.TemplateResponse(
-        "contracts/view.html",
+        "contracts/details/page.html",
         {
             "request": request,
             "contract": details,
@@ -496,20 +529,38 @@ def contract_progress_view(
         handler=services.contract_details_service,
     )
 
-    leaves = [n for n in details.nodes if n.is_leaf]
-
     return request.app.state.templates.TemplateResponse(
-        "contracts/progress.html",
+        "contracts/progress/page.html",
         {
             "request": request,
             "contract": details,
-            "leaves": leaves,
         },
     )
 
-from datetime import date
-from decimal import Decimal
-from uuid import UUID
+@router.get("/contracts/{contract_id}/progress/edit")
+def contract_progress_table(
+    request: Request,
+    contract_id: str,
+    services=Depends(get_services),
+):
+    ctx = request.state.ctx
+
+    details = services.action_bus.execute(
+        action=ContractDetailsQuery(
+            organization_id=ctx.organization_id,
+            actor_user_id=ctx.user_id,
+            contract_id=UUID(contract_id),
+        ),
+        handler=services.contract_details_service,
+    )
+
+    return request.app.state.templates.TemplateResponse(
+        "contracts/progress/_progress.html",
+        {
+            "request": request,
+            "contract": details,
+        },
+    )
 
 
 @router.post("/contracts/{contract_id}/progress/update")
@@ -525,7 +576,7 @@ async def update_progress(
     updates = []
 
     for node_id in node_ids:
-        value = form.get(f"progress_{node_id}")
+        value = form.get(f"progress_{node_id}").replace(",",".")
 
         if not value:
             continue
@@ -563,7 +614,7 @@ async def update_progress(
         )
 
         return request.app.state.templates.TemplateResponse(
-            "contracts/_progress.html",
+            "contracts/progress/_progress.html",
             {
                 "request": request,
                 "contract": details,
@@ -582,7 +633,7 @@ async def update_progress(
     )
 
     return request.app.state.templates.TemplateResponse(
-        "contracts/_progress.html",
+        "contracts/progress/_progress.html",
         {
             "request": request,
             "contract": details,
@@ -609,9 +660,12 @@ def contract_update_status(
         handler=services.set_contract_status_service,
     )
 
-    response = Response()
-    response.headers["HX-Redirect"] = f"/contracts/{contract_id}"
-    return response
+
+    return contract_view(
+        request=request,
+        contract_id=contract_id,
+        services=services
+    )
 
 
 @router.post("/contracts/{contract_id}/update")
@@ -666,7 +720,7 @@ def contract_update(
 
     if error:
         return request.app.state.templates.TemplateResponse(
-            "contracts/edit.html",
+            "contracts/new_edit/edit.html",
             {
                 "request": request,
                 "contract": details,
@@ -705,7 +759,7 @@ def contract_update(
 
     except Exception as e:
         return request.app.state.templates.TemplateResponse(
-            "contracts/edit.html",
+            "contracts/new_edit/edit.html",
             {
                 "request": request,
                 "contract": details,

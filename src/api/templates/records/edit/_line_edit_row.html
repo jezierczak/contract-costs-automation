@@ -1,0 +1,197 @@
+<tr class="border-t" data-line="{{ idx }}">
+
+<td colspan="11" class="p-3">
+
+<div class="grid gap-3">
+
+<!-- ===================== -->
+<!-- ROW 1 ECONOMIC -->
+<!-- ===================== -->
+<div class="grid grid-cols-12 gap-2">
+
+<!-- NAME (najważniejsze) -->
+<input
+    name="lines[{{ idx }}].item_name"
+    class="border rounded p-1 text-sm col-span-5"
+    placeholder="Nazwa pozycji"
+    required
+>
+
+<!-- QUANTITY -->
+<input
+    name="lines[{{ idx }}].quantity"
+    class="border rounded p-1 text-sm text-right col-span-1"
+    inputmode="decimal"
+    pattern="[0-9]+([.][0-9]+)?"
+    step="0.01"
+    oninput="this.value=this.value.replace(',', '.')"
+>
+
+<!-- UNIT -->
+<select
+    name="lines[{{ idx }}].unit"
+    class="border rounded p-1 text-sm col-span-1"
+>
+{% for u in units %}
+<option value="{{ u.value }}">{{ u.value }}</option>
+{% endfor %}
+</select>
+
+<!-- AMOUNT -->
+<input
+    name="lines[{{ idx }}].amount"
+    class="border rounded p-1 text-sm text-right col-span-2"
+    inputmode="decimal"
+    pattern="[0-9]+([.][0-9]+)?"
+    step="0.01"
+    oninput="this.value=this.value.replace(',', '.')"
+>
+
+<!-- VAT -->
+<select
+    name="lines[{{ idx }}].vat_rate"
+    class="border rounded p-1 text-sm col-span-1"
+>
+{% for v in vat_rates %}
+<option value="{{ v.value }}">{{ v.value }}</option>
+{% endfor %}
+</select>
+
+<!-- AMOUNT TYPE -->
+<select
+    name="lines[{{ idx }}].amount_type"
+    class="border rounded p-1 text-sm col-span-1"
+>
+{% for t in amount_types %}
+<option value="{{ t.value }}">{{ t.value }}</option>
+{% endfor %}
+</select>
+
+<!-- TAX TREATMENT -->
+<select
+    name="lines[{{ idx }}].tax_treatment"
+    class="border rounded p-1 text-sm col-span-1"
+>
+{% for tt in tax_treatments %}
+<option value="{{ tt.value }}">{{ tt.value }}</option>
+{% endfor %}
+</select>
+
+</div>
+
+
+<!-- ===================== -->
+<!-- ROW 2 INTERNAL -->
+<!-- ===================== -->
+<div class="grid grid-cols-12 gap-2">
+
+<!-- CONTRACT -->
+<select
+    name="lines[{{ idx }}].contract_id"
+    class="border rounded p-1 text-sm col-span-3"
+    hx-get="/records/contracts/nodes"
+    hx-trigger="change"
+    hx-target="#contract-node-slot-{{ idx }}"
+    hx-swap="innerHTML"
+    hx-vals='js:{
+        contract_id:this.value,
+        idx:"{{ idx }}",
+        field_name:"contract_node_id",
+        label:"Contract node"
+    }'
+>
+<option value="">Kontrakt</option>
+{% for c in contracts %}
+<option value="{{ c.contract_id }}">{{ c.code }}</option>
+{% endfor %}
+</select>
+
+
+<!-- CONTRACT NODE -->
+<div id="contract-node-slot-{{ idx }}" class="col-span-3">
+<select
+    name="lines[{{ idx }}].contract_node_id"
+    class="border rounded p-1 text-sm w-full"
+>
+<option value="">Contract node</option>
+</select>
+</div>
+
+
+<!-- VALUE TYPE -->
+<select
+    name="lines[{{ idx }}].value_type_id"
+    class="border rounded p-1 text-sm col-span-2"
+>
+<option value="">Value type</option>
+{% for v in value_types %}
+<option value="{{ v.id }}">{{ v.code }}</option>
+{% endfor %}
+</select>
+
+
+<!-- AGREEMENT -->
+<select
+    name="lines[{{ idx }}].agreement_id"
+    class="border rounded p-1 text-sm col-span-2"
+    hx-get="/records/contracts/nodes"
+    hx-trigger="change"
+    hx-target="#agreement-node-slot-{{ idx }}"
+    hx-swap="innerHTML"
+    hx-vals='js:{
+        contract_id:event.target.value,
+        idx:"{{ idx }}",
+        field_name:"agreement_node_id",
+        label:"Agreement node"
+    }'
+>
+<option value="">Agreement</option>
+{% for a in agreements %}
+<option value="{{ a.contract_id }}">{{ a.code }}</option>
+{% endfor %}
+</select>
+
+
+<!-- AGREEMENT NODE -->
+<div id="agreement-node-slot-{{ idx }}" class="col-span-2">
+<select
+    name="lines[{{ idx }}].agreement_node_id"
+    class="border rounded p-1 text-sm w-full"
+>
+<option value="">Agreement node</option>
+</select>
+</div>
+
+</div>
+
+
+<!-- ===================== -->
+<!-- ROW 3 DESCRIPTION -->
+<!-- ===================== -->
+<div class="grid grid-cols-12 gap-2">
+
+<input
+    name="lines[{{ idx }}].description"
+    class="border rounded p-1 text-sm col-span-10"
+    placeholder="Opis dodatkowy"
+>
+
+<div class="flex justify-end col-span-2">
+
+<button
+    type="button"
+    onclick="if(confirm('Usunąć linię?')) this.closest('tr').remove()"
+    class="text-red-600 hover:underline text-sm"
+>
+🗑 Usuń linię
+</button>
+
+</div>
+
+</div>
+
+
+</div>
+
+</td>
+</tr>

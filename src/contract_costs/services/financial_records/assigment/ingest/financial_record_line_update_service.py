@@ -67,7 +67,7 @@ class FinancialRecordLineUpdateService:
                and ref.action == RecordApplyAction.APPLIED
         }
 
-        value_type_directions: dict[UUID, ValueDirection] = {
+        value_type_directions_map: dict[UUID, ValueDirection] = {
             value_type.id: value_type.direction for value_type in value_type_repo.list_all(
                 organization_id=organization_id)
         }
@@ -226,7 +226,7 @@ class FinancialRecordLineUpdateService:
                 invoice_lines=record_lines_updated[ref.record_id],
                 buyer_role=ref.buyer_role,
                 seller_role=ref.seller_role,
-                value_type_directions=value_type_directions
+                value_type_directions_map=value_type_directions_map
             )
 
         return record_assignment_facts

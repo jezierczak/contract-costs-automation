@@ -1,0 +1,112 @@
+<div
+    id="company-metadata"
+    hx-get="/companies/{{ company.company_id }}/metadata"
+    hx-trigger="companyUpdated from:body"
+    hx-swap="outerHTML"
+>
+
+<div class="bg-white rounded-xl shadow-sm border p-6">
+
+    <div class="flex justify-between items-start mb-6">
+
+        <div>
+            <h3 class="text-lg font-semibold text-gray-800">
+                Dane firmy
+            </h3>
+
+            <div class="text-sm text-gray-500 mt-1">
+                {{ company.role.value }}
+            </div>
+        </div>
+
+        <div class="flex gap-2">
+
+            <button
+                hx-get="/companies/{{ company.tax_number }}/edit"
+                hx-target="#modal-area"
+                hx-swap="innerHTML"
+                class="px-3 py-1.5 text-sm border rounded hover:bg-gray-50"
+            >
+                Edytuj
+            </button>
+
+            {% if company.is_active and company.role != "Own" %}
+            <button
+                hx-post="/companies/{{ company.company_id }}/deactivate"
+                hx-confirm="Na pewno dezaktywować?"
+                class="px-3 py-1.5 text-sm border rounded text-red-600 hover:bg-red-50"
+            >
+                Deaktywuj
+            </button>
+            {% endif %}
+
+        </div>
+
+    </div>
+
+
+    <!-- ================================================= -->
+    <!-- COMPANY DATA -->
+    <!-- ================================================= -->
+
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-6 text-sm">
+
+        <div>
+            <div class="text-gray-500 text-xs uppercase tracking-wide">
+                Nazwa
+            </div>
+            <div class="font-medium text-gray-900">
+                {{ company.name }}
+            </div>
+        </div>
+
+        <div>
+            <div class="text-gray-500 text-xs uppercase tracking-wide">
+                NIP
+            </div>
+            <div class="font-medium text-gray-900">
+                {{ company.tax_number }}
+            </div>
+        </div>
+
+        <div>
+            <div class="text-gray-500 text-xs uppercase tracking-wide">
+                Opis
+            </div>
+            <div class="text-gray-800">
+                {{ company.description or "—" }}
+            </div>
+        </div>
+
+        <div>
+            <div class="text-gray-500 text-xs uppercase tracking-wide">
+                Telefon
+            </div>
+            <div>
+                {{ company.phone_number or "—" }}
+            </div>
+        </div>
+
+        <div>
+            <div class="text-gray-500 text-xs uppercase tracking-wide">
+                Email
+            </div>
+            <div>
+                {{ company.email or "—" }}
+            </div>
+        </div>
+
+        <div>
+            <div class="text-gray-500 text-xs uppercase tracking-wide">
+                Konto bankowe
+            </div>
+            <div>
+                {{ company.bank_account_number or "—" }}
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+</div>

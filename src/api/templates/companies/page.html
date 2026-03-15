@@ -1,0 +1,83 @@
+{% extends "workspace.html" %}
+
+{% block workspace_actions %}
+    {% include "companies/_actions.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+<div class="flex flex-col gap-4">
+
+    <!-- FILTERS -->
+    <div
+        id="companies-filters"
+        class="flex gap-3 items-center sticky top-0 z-20 bg-white py-2"
+        hx-push-url="true"
+    >
+
+        <input
+            name="search"
+             value="{{ request.query_params.get('search','') }}"
+            placeholder="Szukaj firmy..."
+            class="flex-1 border rounded-lg px-3 py-2"
+
+            hx-get="/companies/table"
+            hx-trigger="keyup changed delay:300ms"
+            hx-target="#companies-table"
+            hx-swap="innerHTML"
+            hx-include="#companies-filters"
+
+        >
+
+        <select
+            name="role"
+            class="border rounded-lg px-3 py-2 text-sm"
+
+            hx-get="/companies/table"
+            hx-trigger="change"
+            hx-target="#companies-table"
+            hx-swap="innerHTML"
+            hx-include="#companies-filters"
+        >
+            <option value="">Wszystkie typy</option>
+
+            {% for t in company_types %}
+            <option
+                value="{{ t.value }}"
+                {% if request.query_params.get('role') == t.value %}selected{% endif %}
+            >
+                {{ t.value }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <label class="flex items-center gap-2 whitespace-nowrap text-sm">
+            <input
+                type="checkbox"
+                name="inactive"
+                value="1"
+
+                {% if request.query_params.get('inactive') %}checked{% endif %}
+
+                hx-get="/companies/table"
+                hx-trigger="change"
+                hx-target="#companies-table"
+                hx-swap="innerHTML"
+                hx-include="#companies-filters"
+            >
+            Pokaż nieaktywne
+        </label>
+
+    </div>
+
+    <!-- TABLE -->
+    <div
+        id="companies-table"
+        hx-get="/companies/table"
+         hx-trigger="load, companiesChanged from:body"
+        hx-target="#companies-table"
+        hx-swap="innerHTML"
+    >
+    </div>
+
+</div>
+{%endblock%}

@@ -33,7 +33,7 @@ def value_types_list(
     )
 
     return request.app.state.templates.TemplateResponse(
-        "value_types/list.html",
+        "value_types/page.html",
         {
             "request": request,
             "items": items,
@@ -72,7 +72,7 @@ def value_type_review(
     if items:
         item = items[0]
     else:
-        print("wywołano")
+
         response = Response(status_code=400)
         response.headers["HX-Trigger"] = f'{{"showError":"Nie znaleziono kategorii finansowej!"}}'
         return response

@@ -30,7 +30,7 @@ def test_status_returns_ok_for_complete_cost_record():
         invoice_lines=[line],
         buyer_role=CompanyType.OWN,
         seller_role=CompanyType.SUPPLIER,
-        value_type_directions={value_type_id: ValueDirection.COST},
+        value_type_directions_map={value_type_id: ValueDirection.COST},
     )
 
     validator = RecordCompletionValidator()
@@ -54,7 +54,7 @@ def test_status_reports_incomplete_and_mismatch_issues():
         invoice_lines=[incomplete_line],
         buyer_role=CompanyType.OWN,
         seller_role=CompanyType.SUPPLIER,
-        value_type_directions={value_type_id: ValueDirection.REVENUE},
+        value_type_directions_map={value_type_id: ValueDirection.REVENUE},
     )
 
     reasons = RecordCompletionValidator().status(facts)
@@ -78,7 +78,7 @@ def test_status_raises_when_value_type_direction_missing():
         invoice_lines=[line],
         buyer_role=CompanyType.OWN,
         seller_role=CompanyType.SUPPLIER,
-        value_type_directions={},
+        value_type_directions_map={},
     )
 
     with pytest.raises(RuntimeError, match="Missing value_type_direction"):

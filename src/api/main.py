@@ -69,24 +69,6 @@ async def global_exception_handler(request: Request, exc: Exception):
 async def session_middleware(request: Request, call_next):
     request.state.ctx = RequestContext()
 
-    ctx = request.state.ctx
-    path = request.url.path
-
-    if path.startswith("/documents"):
-        ctx.workspace_actions = "documents/_actions.html"
-
-    elif path.startswith("/records"):
-        ctx.workspace_actions = "records/_actions.html"
-        ctx.workspace_title = "Rekordy"
-
-    elif path.startswith("/value_types"):
-        ctx.workspace_actions = "value_types/_actions.html"
-        ctx.workspace_title = "Kategorie finansowe"
-
-    elif path.startswith("/own-company-finances"):
-        ctx.workspace_actions = "own_company_dashboard/_actions.html"
-        ctx.workspace_title = "Dashboard firmy"
-
     core_services = request.app.state.services
     session_id = request.cookies.get("session_id")
 

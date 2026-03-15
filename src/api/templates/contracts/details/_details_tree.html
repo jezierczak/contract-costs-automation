@@ -1,0 +1,177 @@
+<div class="bg-white rounded-xl shadow overflow-x-auto">
+
+<!-- LEGEND -->
+<div class="mb-4 flex flex-wrap gap-3 text-xs p-3">
+
+    <span class="px-2 py-1 bg-gray-100 rounded">
+        BUDŻET — planowany budżet
+    </span>
+
+    <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded">
+        PROGRESS — postęp
+    </span>
+
+    <span class="px-2 py-1 bg-green-100 text-green-700 rounded">
+        WYKONANIE —> BUDŻET × PROGRESS
+    </span>
+
+    <span class="px-2 py-1 bg-red-100 text-red-700 rounded">
+        SUMA WYDATKÓW —> NET + NON-DEDUCT
+    </span>
+
+    <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
+        WYNIK —> WYKONANIE - SUMA WYDATKÓW
+    </span>
+        <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
+        PRZYCHÓD —> suma faktur przychodowych -realnie wystawionych faktur
+    </span>
+
+</div>
+
+<!-- HEADER -->
+<div class="bg-gray-100 text-gray-700 text-xs font-semibold
+            grid grid-cols-[160px_1fr_100px_120px_100px_100px_100px_100px_100px_100px]
+            px-3 py-2 rounded-t">
+
+    <div>CODE</div>
+    <div>NAME</div>
+
+    <div class="text-right">BUDŻET</div>
+    <div class="text-right">PROGRESS</div>
+    <div class="text-right">WYKONANIE</div>
+    <div class="text-right">NET</div>
+    <div class="text-right">NON-DEDUCT</div>
+    <div class="text-right">SUMA WYDATKÓW</div>
+    <div class="text-right">WYNIK</div>
+    <div class="text-right">PRZYCHÓD</div>
+
+</div>
+
+{% for n in nodes %}
+
+<div
+    class="
+        contract-node-row
+        grid grid-cols-[160px_1fr_100px_120px_100px_100px_100px_100px_100px_100px]
+        border-t px-3 py-2 text-sm items-center cursor-pointer
+        {% if n.level == 0 %}
+            bg-blue-50 font-semibold
+        {% elif n.is_leaf %}
+            bg-gray-50
+        {% endif %}
+    "
+    data-level="{{ n.level }}"
+    data-node-id="{{ n.node_id }}"
+>
+    <script type="application/json" id="node-data-{{ n.node_id }}">
+    {{ n.value_type_breakdown | tojson }}
+    </script>
+
+
+    <!-- CODE -->
+<div
+class="font-mono text-xs text-gray-600
+{% if n.level > 0 %}tree-code{% endif %}
+{% if n.is_leaf %}tree-leaf{% endif %}"
+style="margin-left: {{ n.level * 15 }}px;"
+>
+
+{% if not n.is_leaf %}
+<span
+class="tree-toggle inline-flex items-center justify-center w-6 h-5 shrink-0
+cursor-pointer text-gray-500 hover:bg-gray-200 rounded select-none"
+>
+▼
+</span>
+{% else %}
+<span class="w-3"></span>
+{% endif %}
+
+{{ n.code }}
+</div>
+
+<!-- NAME -->
+<div class="min-w-0 truncate " title="{{ n.name }}">
+    {% if n.level == 0 %}
+        <span class="text-blue-800">Suma całość</span>
+    {% else %}
+        {{ n.name }}
+    {% endif %}
+</div>
+
+
+
+    <!-- BUDGET -->
+    <div class="text-right truncate">
+        {{ n.planned_budget }}
+    </div>
+
+    <!-- PROGRESS -->
+    <div class="text-right">
+        {% if n.progress %}
+        <div class="flex items-center gap-2 justify-end">
+            <div class="w-16 bg-gray-200 rounded-full h-2 overflow-hidden">
+                <div class="bg-blue-500 h-2"
+                     style="width: {{ (n.progress*100)|round(1) }}%;">
+                </div>
+            </div>
+            <span class="text-xs w-9 text-right">
+                {{ (n.progress*100)|round(1) }}%
+            </span>
+        </div>
+        {% else %}
+            —
+        {% endif %}
+    </div>
+
+    <div class="text-right truncate">
+        {% if n.progress %}
+            {{ (n.planned_budget * n.progress)|round(2) }}
+        {% else %}
+            —
+        {% endif %}
+    </div>
+
+    <div class="text-right truncate">{{ n.net }}</div>
+    <div class="text-right truncate">{{ n.non_deductible }}</div>
+
+    <div class="text-right truncate">
+        {{ (n.net + n.non_deductible )|round(2) }}
+    </div>
+
+    <div class="text-right font-semibold truncate
+        {% if  (n.net + n.non_deductible)|round(2) >= 0 %}
+            text-green-700
+        {% else %}
+            text-red-700
+        {% endif %}
+    ">  {% if n.progress %}
+        {{ (n.planned_budget * n.progress)|round(2) - (n.net + n.non_deductible)|round(2) }}
+        {% else %}
+          {{ - (n.net + n.non_deductible)|round(2) }}
+        {% endif %}
+    </div>
+
+    <div class="text-right truncate">
+        {{ n.revenue }}
+    </div>
+
+</div>
+
+{% endfor %}
+    <div id="node-modal"
+     class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+
+    <div class="bg-white w-[650px] rounded-xl shadow-xl">
+
+        <div class="px-5 py-4 border-b flex justify-between">
+            <h2 class="font-semibold">Rozbicie wg kategorii</h2>
+            <button onclick="closeNodeModal()">×</button>
+        </div>
+
+        <div id="node-modal-body" class="p-5"></div>
+
+    </div>
+</div>
+
+</div>

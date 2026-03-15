@@ -18,6 +18,7 @@ class CompanyQuery(Query):
     # IDENTYFIKATORY (STRICT)
     # =====================
     tax_number: str | None = None
+    company_id: str | UUID | None = None
 
     # =====================
     # FILTRY LOGICZNE

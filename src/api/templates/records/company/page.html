@@ -1,0 +1,28 @@
+{% extends "workspace.html" %}
+
+{% block workspace_actions %}
+    {% include "records/company/_company_records_header.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+
+<div class="max-w-[95vw] mx-auto">
+
+<div
+id="records-table"
+hx-get="/records/table?company_id={{company_id}}&year={{year}}{% if month %}&month={{month}}{% endif %}"
+hx-trigger="load, every 8s, recordsUpdated from:body"
+hx-target="this"
+hx-swap="innerHTML"
+hx-sync="this:replace"
+>
+</div>
+    <div class="p-6 text-center text-gray-400">
+        Ładowanie rekordów...
+    </div>
+
+</div>
+
+</div>
+
+{% endblock %}

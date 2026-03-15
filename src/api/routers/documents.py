@@ -105,12 +105,13 @@ def documents_list(
             has_payload=has_payload,
             has_record=has_record,
             source=source,
+            status=DocumentStatus(status) if status else None,
         ),
         handler=services.list_documents_query_service,
     )
 
     return request.app.state.templates.TemplateResponse(
-        "documents/list.html",
+        "documents/page.html",
         {
             "request": request,
             "title": "Dokumenty",

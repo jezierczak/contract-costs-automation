@@ -1,0 +1,29 @@
+{% extends "workspace.html" %}
+
+{% block workspace_actions %}
+    {% include "contracts/progress/_actions_progress.html" %}
+{% endblock %}
+
+{% block workspace_content %}
+
+<div class="max-w-5xl mx-auto">
+
+
+
+    <div class="text-sm text-gray-500 mb-6">
+        {{ contract.code }} — {{ contract.name }}
+    </div>
+
+       <div
+            id="progress-loader"
+            hx-get="/contracts/{{ contract.contract_id }}/progress/edit"
+            hx-trigger="load"
+            hx-swap="outerHTML"
+            class="text-center text-gray-500 py-10"
+        >
+            ⏳ Ładowanie progresu...
+        </div>
+
+</div>
+
+{% endblock %}

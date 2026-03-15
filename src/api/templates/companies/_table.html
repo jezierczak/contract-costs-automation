@@ -16,44 +16,7 @@
 <tbody>
 
 {% for company in companies %}
-<tr class="hover:bg-gray-50">
-
-    <td class="p-3">
-        <a href="/companies/{{ company.tax_number }}"
-           class="font-medium text-gray-900 hover:text-blue-600 hover:underline">
-            {{ company.name }}
-        </a>
-    </td>
-
-    <td class="p-3">
-        {{ company.address_city or "-" }}
-    </td>
-
-    <td class="p-3">
-        {{ company.tax_number }}
-    </td>
-
-    <td class="p-3">
-        {{ company.role.value }}
-    </td>
-
-    <td class="p-3">
-        {% if company.is_active %}
-            <span class="px-2 py-1 text-xs rounded bg-green-100 text-green-700">
-                Active
-            </span>
-        {% else %}
-            <span class="px-2 py-1 text-xs rounded bg-gray-100 text-gray-500">
-                Inactive
-            </span>
-        {% endif %}
-    </td>
-
-    <td class="p-3" >
-        {{ company.quality_score }}
-    </td>
-
-</tr>
+    {% include "companies/_row.html" %}
 {% endfor %}
 
 </tbody>

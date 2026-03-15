@@ -36,6 +36,59 @@ from contract_costs.services.financial_records.review.workspace_query_factory im
 
 router = APIRouter()
 
+from datetime import date
+
+def _period_range(year: int, month: int | None) -> tuple[date, date]:
+    start = date(year, month or 1, 1)
+
+    if month:
+        end = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
+    else:
+        end = date(year + 1, 1, 1)
+
+    return start, end
+
+
+def _fetch_company_records(*,
+                           ctx,
+                           services,
+                           company_id: str,
+                           year: int,
+                           month: int | None,
+                            owner_company_id:str | None = None,
+                           ):
+    from_date, to_date = _period_range(year, month)
+
+    if owner_company_id:
+        query = FinancialRecordReviewQuery(
+            organization_id=ctx.organization_id,
+            actor_user_id=ctx.user_id,
+
+            # para firm
+            buyer_query={"id": [company_id, owner_company_id]},
+            seller_query={"id": [owner_company_id, company_id]},
+
+            from_date=from_date,
+            to_date=to_date,
+        )
+    else:
+        query = FinancialRecordReviewQuery(
+            organization_id=ctx.organization_id,
+            actor_user_id=ctx.user_id,
+
+            # tylko counterparty
+            buyer_query={"id": company_id},
+            seller_query={"id": company_id},
+
+            from_date=from_date,
+            to_date=to_date,
+        )
+
+    return services.action_bus.execute(
+        action=query,
+        handler=services.review_query_service,
+    )
+
 def d(v):
     return Decimal(v) if v else Decimal("0")
 
@@ -51,7 +104,6 @@ def record_edit_workspace(
     services=Depends(get_services),
 ):
     ctx = request.state.ctx
-    ctx.workspace_actions = "records/_actions_edit.html"
 
     # =====================
     # WORKSPACE QUERY (NEW)
@@ -69,7 +121,7 @@ def record_edit_workspace(
     # TEMPLATE
     # =====================
     return request.app.state.templates.TemplateResponse(
-        "records/edit_workspace.html",
+        "records/edit/edit_workspace.html",
         {
             "request": request,
             "record": workspace.record,
@@ -411,7 +463,7 @@ def new_line_row(
     )
 
     return request.app.state.templates.TemplateResponse(
-        "records/_line_edit_row.html",
+        "records/edit/_line_edit_row.html",
         {
             "request": request,
             "idx": idx,
@@ -425,7 +477,7 @@ def new_line_row(
             "contracts": workspace.contracts,
             "agreements": workspace.agreements,
             "value_types": workspace.value_types,
-        },
+        }
     )
 # def parse_lines_from_form(form):
 #
@@ -495,7 +547,7 @@ def new_line_row(
 def records_mainboard(request: Request):
 
     return request.app.state.templates.TemplateResponse(
-        "records/mainboard.html",
+        "records/page.html",
         {
             "request": request,
         },
@@ -514,65 +566,60 @@ def records_mainboard_stats(request: Request, services=Depends(get_services)):
     )
 
     return request.app.state.templates.TemplateResponse(
-        "records/_mainboard_cards.html",
+        "records/_dashboard_cards.html",
         {
             "request": request,
             "stats": stats,
         },
     )
+
 @router.get("/records/company")
 def records_company(
     request: Request,
     company_id: str,
     year: int,
     month: int | None = None,
+):
+    return request.app.state.templates.TemplateResponse(
+        "records/company/page.html",
+        {
+            "request": request,
+            "company_id": company_id,
+            "year": year,
+            "month": month,
+        },
+    )
+
+@router.get("/records/table")
+def records_table(
+    request: Request,
+    company_id: str,
+    year: int,
+    owner_company_id: UUID | None = None,
+    month: int | None = None,
     services=Depends(get_services),
 ):
 
     ctx = request.state.ctx
-    ctx.workspace_actions = "records/_company_records_header.html"
 
-    from_date = date(year, month or 1, 1)
-
-    if month:
-        if month == 12:
-            to_date = date(year + 1, 1, 1)
-        else:
-            to_date = date(year, month + 1, 1)
-    else:
-        to_date = date(year + 1, 1, 1)
-
-
-    query = FinancialRecordReviewQuery(
-        organization_id=ctx.organization_id,
-        actor_user_id=ctx.user_id,
-
-        buyer_query={"id": company_id},
-        seller_query={"id": company_id},
-
-        from_date=from_date,
-        to_date=to_date,
+    items = _fetch_company_records(
+        ctx=ctx,
+        services=services,
+        company_id=company_id,
+        year=year,
+        month=month,
+        owner_company_id=owner_company_id
     )
-
-    items = services.action_bus.execute(
-        action=query,
-        handler=services.review_query_service,
-    )
-    company_name = ""
-    if items:
-        company_name = items[0].buyer_name
 
     return request.app.state.templates.TemplateResponse(
-        "records/_records_table_container.html",
+        "records/list_records/_table.html",
         {
             "request": request,
             "records": items,
-            "company_id": company_id,
-            "year": year,
-            "month": month,
-            "company_name": company_name,
         },
     )
+
+
 @router.get("/records/{view}")
 def records_list(
     request: Request,
@@ -592,7 +639,6 @@ def records_list(
         handler=services.review_query_service,
     )
 
-    request.state.ctx.workspace_subtitle = view.value
     VIEW_LABELS = {
         RecordWorkspaceView.ASSIGN: "Przypisz nowe",
         RecordWorkspaceView.TO_ACCOUNTANT: "Do księgowej",
@@ -601,11 +647,12 @@ def records_list(
     }
     request.state.ctx.workspace_subtitle = VIEW_LABELS.get(view)
     return request.app.state.templates.TemplateResponse(
-        "records/list.html",
+        "records/list_records/list.html",
         {
             "request": request,
             "records": items,
             "view": view,
+             "view_label": VIEW_LABELS.get(view)
         },
     )
 
@@ -631,11 +678,12 @@ def records_table(
     )
 
     return request.app.state.templates.TemplateResponse(
-        "records/_table.html",
+        "records/list_records/_table.html",
         {
             "request": request,
             "records": records,
             "view": view,
+
         },
     )
 @router.get("/records/{record_id}/review")

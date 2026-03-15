@@ -1,0 +1,50 @@
+<button
+    hx-get="/records/assign"
+    hx-target="#content-area"
+    hx-swap="innerHTML"
+    hx-push-url="true"
+    hx-indicator="#global-indicator"
+    class="bg-white rounded-xl shadow p-6 hover:bg-gray-50 flex justify-between w-full text-left"
+>
+    <span>📥 Przypisz nowe rekordy</span>
+    <span class="font-bold text-lg">{{ stats.assign }}</span>
+</button>
+
+
+<button
+    hx-get="/records/to_accountant"
+    hx-target="#content-area"
+    hx-swap="innerHTML"
+    hx-push-url="true"
+    hx-indicator="#global-indicator"
+    class="bg-white rounded-xl shadow p-6 hover:bg-gray-50 flex justify-between w-full text-left"
+>
+    <span>📤 Do księgowej</span>
+    <span class="font-bold text-lg">{{ stats.to_accountant }}</span>
+</button>
+
+
+<button
+    hx-get="/records/unpaid_costs"
+    hx-target="#content-area"
+    hx-swap="innerHTML"
+    hx-push-url="true"
+    hx-indicator="#global-indicator"
+    class="bg-white rounded-xl shadow p-6 hover:bg-gray-50 flex justify-between w-full text-left"
+>
+    <span>💸 Niezapłacone koszty</span>
+    <span class="font-bold text-lg">{{ stats.unpaid_costs }}</span>
+</button>
+
+
+<button
+    hx-get="/records/unpaid_revenue"
+    hx-target="#content-area"
+    hx-swap="innerHTML"
+    hx-push-url="true"
+    hx-indicator="#global-indicator"
+    class="bg-white rounded-xl shadow p-6 hover:bg-gray-50 flex justify-between w-full text-left"
+>
+    <span>💰 Niezapłacone przychody</span>
+    <span class="font-bold text-lg">{{ stats.unpaid_revenue }}</span>
+</button>

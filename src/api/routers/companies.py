@@ -1,3 +1,6 @@
+import json
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, Form, Request, HTTPException
 from fastapi.responses import RedirectResponse
 from starlette.responses import HTMLResponse
@@ -10,9 +13,25 @@ from contract_costs.services.companies.dto.deactivate_company_command import Dea
     DeactivateCounterpartyCompanyCommand
 from contract_costs.services.companies.dto.update_company_command import UpdateOwnerCompanyCommand, \
     UpdateCounterpartyCompanyCommand
+from contract_costs.services.companies.query.dto.company_detail_query import CompanyDetailQuery
 from contract_costs.services.companies.query.dto.company_query import CompanyQuery
 
 router = APIRouter()
+
+
+def gus_lookup(nip: str):
+
+    # tu możesz użyć:
+    # GUS API
+    # VIES
+    # REGON API
+
+    return {
+        "name": "Budremex Sp. z o.o.",
+        "street": "ul. Krakowska 10",
+        "city": "Kraków",
+        "zip_code": "30-001",
+    }
 
 @router.post("/companies/create-own")
 def create_owner_company(
@@ -81,7 +100,28 @@ def create_owner_company(
         url=f"/companies/{tax_number}",
         status_code=303,
     )
+@router.get("/companies/gus", response_class=HTMLResponse)
+def company_gus_lookup(
+    request: Request,
+    tax_number: str | None = None,
+):
+    if not tax_number:
+        return HTMLResponse("")
 
+    company = gus_lookup(tax_number)
+
+    if not company:
+        return HTMLResponse(
+            "<div class='text-sm text-red-600 mt-2'>Nie znaleziono firmy w GUS</div>"
+        )
+
+    return request.app.state.templates.TemplateResponse(
+        "companies/_gus_autofill.html",
+        {
+            "request": request,
+            "company": company,
+        },
+    )
 
 @router.get("/companies/new", response_class=HTMLResponse)
 def company_new(
@@ -97,7 +137,6 @@ def company_new(
             "submit_label": "Dodaj",
             "show_role": True,
             "company_roles": [r.value for r in CompanyType if r.name != "OWN"],
-            "use_htmx": False,
         },
     )
 
@@ -114,18 +153,30 @@ def company_new_owner(
             "action_url": "/companies/create-own",
             "submit_label": "Dodaj",
             "show_role": False,  # ukryta rola
-            "use_htmx": False,
         },
     )
 @router.get("/companies", response_class=HTMLResponse)
-def companies_list(
+def companies_page(
+    request: Request,
+):
+    return request.app.state.templates.TemplateResponse(
+        "companies/page.html",
+        {
+            "request": request,
+            "company_types": CompanyType,
+        },
+    )
+
+@router.get("/companies/table", response_class=HTMLResponse)
+def companies_table(
     request: Request,
     search: str | None = None,
     role: str | None = None,
     inactive: int = 0,
+    mode: str = "manage",
+    target: str | None = None,
     services=Depends(get_services),
 ):
-
     ctx = request.state.ctx
 
     role_enum = CompanyType(role) if role else None
@@ -142,14 +193,12 @@ def companies_list(
     )
 
     return request.app.state.templates.TemplateResponse(
-        "companies/list.html",
+        "companies/_table.html",
         {
             "request": request,
             "companies": companies,
-            "search": search,
-            "company_types": CompanyType,
-            "role": role,
-            "inactive": inactive,
+            "mode": mode,
+            "target": target,
         },
     )
 
@@ -247,35 +296,123 @@ def companies_picker_table(
         },
     )
 
+from fastapi import HTTPException
+
+
+def _get_company(
+    *,
+    ctx,
+    services,
+    tax_number: str | None = None,
+    company_id: UUID | None = None,
+):
+
+    if company_id is not None:
+        action = CompanyQuery(
+            organization_id=ctx.organization_id,
+            actor_user_id=ctx.user_id,
+            company_id=company_id,
+        )
+
+    elif tax_number is not None:
+        action = CompanyQuery(
+            organization_id=ctx.organization_id,
+            actor_user_id=ctx.user_id,
+            tax_number=tax_number,
+        )
+
+    else:
+        raise HTTPException(status_code=404, detail="Company identifier missing")
+
+    companies = services.action_bus.execute(
+        action=action,
+        handler=services.company_query_service,
+    )
+
+    if not companies:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    return companies[0]
+
 @router.get("/companies/{tax_number}", response_class=HTMLResponse)
 def company_detail(
     request: Request,
     tax_number: str,
+    services=Depends(get_services),
+):
+    ctx = request.state.ctx
+
+    company = _get_company(ctx=ctx, tax_number=tax_number, services=services)
+
+    return request.app.state.templates.TemplateResponse(
+        "companies/details/page.html",
+        {
+            "request": request,
+            "company": company,
+
+        },
+    )
+
+@router.get("/companies/{tax_number}/content", response_class=HTMLResponse)
+def company_detail_content(
+    request: Request,
+    tax_number: str,
+    owner_company_id: str | None = None,
     services = Depends(get_services),
 ):
     ctx = request.state.ctx
 
 
-    companies = services.action_bus.execute(
+    company = _get_company(ctx=ctx, tax_number=tax_number, services=services)
+
+    dashboard = services.action_bus.execute(
+        action=CompanyDetailQuery(
+            organization_id=ctx.organization_id,
+            actor_user_id=ctx.user_id,
+            company_id=company.id,
+            owner_company_id=UUID(owner_company_id) if owner_company_id else None,
+        ),
+        handler=services.company_detail_query_service,
+    )
+
+    owner_companies = services.action_bus.execute(
         action=CompanyQuery(
             organization_id=ctx.organization_id,
             actor_user_id=ctx.user_id,
-            tax_number=tax_number
+            own_only=True
         ),
         handler=services.company_query_service,
     )
-    if not companies:
-        raise HTTPException(status_code=404)
-    company = companies[0]#query zwraca liste a poniewaz po nip mamy tylko 1 firme wiec musimy 1 element zwrócić
+
 
     return request.app.state.templates.TemplateResponse(
-        "companies/detail.html",
+        "companies/details/_content.html",
+        {
+            "request": request,
+            "company": company,
+            "dashboard": dashboard,
+            "owner_companies": owner_companies,
+            "selected_owner_company_id": owner_company_id,
+        },
+    )
+
+@router.get("/companies/{company_id}/metadata")
+def company_metadata(
+    request: Request,
+    company_id: UUID,
+    services=Depends(get_services),
+):
+    ctx = request.state.ctx
+
+    company = _get_company(ctx=ctx, company_id=company_id, services=services)
+
+    return request.app.state.templates.TemplateResponse(
+        "companies/details/_metadata.html",
         {
             "request": request,
             "company": company,
         },
     )
-
 
 @router.get("/companies/{tax_number}/edit", response_class=HTMLResponse)
 def company_edit_panel(
@@ -310,7 +447,6 @@ def company_edit_panel(
             "submit_label": "Zapisz",
             "show_role": True if company.role != CompanyType.OWN else False,
             "company_roles": [r.value for r in CompanyType if r.name != "OWN"],
-            "use_htmx": False,
         },
     )
 
@@ -377,18 +513,21 @@ def company_create(
         handler=services.create_company,
     )
 
-    # companies = services.action_bus.execute(
-    #     action=CompanyQuery(
-    #         organization_id=ctx.organization_id,
-    #         actor_user_id=ctx.user_id,
-    #     ),
-    #     handler=services.company_query_service,
-    # )
+    response = HTMLResponse("")
 
-    return RedirectResponse(
-        url=f"/companies/{company.tax_number}",
-        status_code=303,
-    )
+    response.headers["HX-Trigger"] = json.dumps({
+        "showMessage": {
+            "type": "success",
+            "text": f"Zaktualizowano firmę {name}"
+        },
+        "companiesChanged": True
+    })
+
+    response.headers["HX-Trigger-After-Swap"] = json.dumps({
+        "closeModal": True
+    })
+
+    return response
 
 
 @router.post("/companies/update")
@@ -463,20 +602,22 @@ def company_update(
         handler=services.update_company_service,
     )
 
-    # ← reload tabeli (TAK SAMO jak create)
-    # companies = services.action_bus.execute(
-    #     action=CompanyQuery(
-    #         organization_id=ctx.organization_id,
-    #         actor_user_id=ctx.user_id,
-    #     ),
-    #     handler=services.company_query_service,
-    # )
+    response = HTMLResponse("")
 
-    return RedirectResponse(
-        url=f"/companies/{tax_number}",
-        status_code=303,
-    )
+    response.headers["HX-Trigger"] = json.dumps({
+        "showMessage": {
+            "type": "success",
+            "text": f"Zaktualizowano firmę {name}"
+        },
+        "companiesChanged": True,
+        "companyUpdated": True
+    })
 
+    response.headers["HX-Trigger-After-Swap"] = json.dumps({
+        "closeModal": True
+    })
+
+    return response
 
 @router.post("/companies/{company_id}/deactivate")
 def company_deactivate(
@@ -514,4 +655,20 @@ def company_deactivate(
         handler=services.deactivate_company_service,
     )
 
-    return RedirectResponse("/companies", status_code=303)
+
+    response = HTMLResponse("")
+
+    response.headers["HX-Trigger"] = json.dumps({
+        "showMessage": {
+            "type": "success",
+            "text": f"Zdezaktywowano firmę {company.name}"
+        },
+        "companiesChanged": True,
+        "companyUpdated": True
+    })
+
+    response.headers["HX-Trigger-After-Swap"] = json.dumps({
+        "closeModal": True
+    })
+
+    return response

@@ -29,115 +29,123 @@
 {% else %}
 
 {% for c in contracts %}
-        {% set progress = c.progress or 0 %}
-        {% set planned = c.planned_budget or 0 %}
+
+{% set progress = c.progress or 0 %}
+{% set planned = c.planned_budget or 0 %}
+{% set done = (planned * progress)|round(2) %}
+{% set spend = (c.net or 0) + (c.non_deduction or 0) %}
+{% set result = done - spend %}
 
 <tr
-    class="table-row-link cursor-pointer hover:bg-gray-50"
-    data-href="/contracts/{{ c.contract_id }}"
+    class="cursor-pointer hover:bg-gray-50"
+    hx-get="/contracts/{{ c.contract_id }}"
+    hx-target="#content-area"
+    hx-swap="innerHTML"
+    hx-push-url="true"
+    hx-indicator="#global-indicator"
 >
-    <!-- CODE -->
-    <td class="p-2 font-medium">
-        {{ c.code }}
-    </td>
 
-    <!-- NAME -->
-    <td class="p-2">
+<!-- CODE -->
+<td class="p-2 font-medium">
+    {{ c.code }}
+</td>
 
-            {{ c.name }}
+<!-- NAME -->
+<td class="p-2">
+    {{ c.name }}
+</td>
 
-    </td>
+<!-- ACTIVE -->
+<td class="p-2">
+    {% if c.is_active %}
+        <span class="px-2 py-1 text-xs bg-green-100 text-green-700 rounded">
+            active
+        </span>
+    {% else %}
+        <span class="px-2 py-1 text-xs bg-gray-100 text-gray-500 rounded">
+            inactive
+        </span>
+    {% endif %}
+</td>
 
-    <!-- ACTIVE -->
-    <td class="p-2">
-        {% if c.is_active %}
-            <span class="px-2 py-1 text-xs bg-green-100 text-green-700 rounded">
-                active
-            </span>
-        {% else %}
-            <span class="px-2 py-1 text-xs bg-gray-100 text-gray-500 rounded">
-                inactive
-            </span>
-        {% endif %}
-    </td>
+<!-- BUDGET -->
+<td class="p-2 text-right">
+    {{ c.planned_budget }}
+</td>
 
-    <!-- BUDGET -->
-    <td class="p-2 text-right">
-        {{ c.planned_budget }}
-    </td>
-
-    <!-- PROGRESS -->
+<!-- PROGRESS -->
 <td class="p-2">
 
-{% if c.progress %}
+{% if c.progress is not none %}
 <div class="flex items-center justify-end gap-2">
 
-    <!-- BAR -->
     <div class="w-20 bg-gray-200 rounded-full h-2 overflow-hidden">
         <div
             class="bg-blue-500 h-2"
-            style="width: {{ (c.progress * 100)|round(1) }}%;">
+            style="width: {{ (progress * 100)|round(1) }}%;">
         </div>
     </div>
 
-    <!-- % -->
     <span class="text-xs text-gray-600 w-10 text-right">
         {{ (progress * 100)|round(1) }}%
     </span>
 
 </div>
 {% else %}
-    <div class="text-right">—</div>
+<div class="text-right">—</div>
 {% endif %}
 
 </td>
 
-    <!-- DONE -->
-    <td class="p-2 text-right">
-        {% if c.progress %}
-            {{ (planned * progress)|round(2) }}
-        {% else %}
-            —
-        {% endif %}
-    </td>
+<!-- DONE -->
+<td class="p-2 text-right">
+    {% if c.progress %}
+        {{ done }}
+    {% else %}
+        —
+    {% endif %}
+</td>
 
-    <!-- NET -->
-    <td class="p-2 text-right">
-        {{ c.net }}
-    </td>
+<!-- NET -->
+<td class="p-2 text-right">
+    {{ c.net }}
+</td>
 
-    <!-- NON-DEDUCT -->
-    <td class="p-2 text-right">
-        {{ c.non_deduction }}
-    </td>
+<!-- NON-DEDUCT -->
+<td class="p-2 text-right">
+    {{ c.non_deduction }}
+</td>
 
-    <!-- SPEND -->
-    <td class="p-2 text-right">
-        {{ c.net + c.non_deduction }}
-    </td>
+<!-- SPEND -->
+<td class="p-2 text-right">
+    {{ spend }}
+</td>
 
-    <!-- RESULT -->
-    <td class="p-2 text-right font-semibold
-    {%if c.planned_budget %}
-        {% if (planned * progress)|round(2) - (c.net+c.non_deduction) >= 0 %}
+<!-- RESULT -->
+<td class="p-2 text-right font-semibold
+    {% if c.planned_budget %}
+        {% if result >= 0 %}
             text-green-700
         {% else %}
             text-red-700
         {% endif %}
-    ">
+    {% endif %}
+">
+    {% if c.planned_budget %}
+        {{ result }}
+    {% else %}
+        —
+    {% endif %}
+</td>
 
-        {{ ((planned * progress)|round(2)) - (c.net+c.non_deduction) }}
-        {% endif %}
-    </td>
-
-    <!-- REVENUE -->
-    <td class="p-2 text-right">
-        {{ c.revenue }}
-    </td>
+<!-- REVENUE -->
+<td class="p-2 text-right">
+    {{ c.revenue }}
+</td>
 
 </tr>
-{% endfor %}
 
+{% endfor %}
 {% endif %}
 
 </tbody>

@@ -13,10 +13,9 @@ Koszty stałe
 <button
 onclick="this.closest('.fixed').remove()"
 class="text-gray-500 hover:text-black text-xl"
-
 >
-
-× </button>
+×
+</button>
 
 </div>
 
@@ -24,31 +23,13 @@ class="text-gray-500 hover:text-black text-xl"
 
 <div class="p-6 space-y-6">
 
-{% for contract in data.contracts %}
+{% for vt in data.value_types %}
 
 <div class="border rounded-lg">
 
-<!-- CONTRACT HEADER -->
+<!-- VALUE TYPE HEADER -->
 
 <div class="bg-gray-50 px-4 py-2 flex justify-between font-semibold">
-
-<span>
-{{ contract.contract_code }}
-</span>
-
-<span>
-{{ contract.total }}
-</span>
-
-</div>
-
-<!-- VALUE TYPES -->
-
-{% for vt in contract.value_types %}
-
-<div class="px-4 py-2 border-t">
-
-<div class="flex justify-between text-sm font-medium text-gray-700">
 
 <span>
 {{ vt.value_type_name }}
@@ -62,14 +43,14 @@ class="text-gray-500 hover:text-black text-xl"
 
 <!-- RECORDS -->
 
-<div class="mt-2 space-y-1 text-sm text-gray-600">
+<div class="px-4 py-2 space-y-1 text-sm text-gray-600">
 
 {% for r in vt.records %}
 
 <div class="flex justify-between">
 
 <span>
-{{ r.record_date }} — {{ r.description or "pozycja" }}
+{{ r.record_date }} — {{ r.item_name }}{% if r.description %} ({{ r.description }}){% endif %}
 </span>
 
 <span>
@@ -81,10 +62,6 @@ class="text-gray-500 hover:text-black text-xl"
 {% endfor %}
 
 </div>
-
-</div>
-
-{% endfor %}
 
 </div>
 

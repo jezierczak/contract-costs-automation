@@ -1,110 +1,280 @@
 <div class="w-full max-w-xl mx-auto box-border">
 
-<h2 class="text-xl font-bold mb-3">
-    {{ title }}
-</h2>
-
-<p class="mb-4 text-gray-600">
-    {{ subtitle }}
-</p>
-
 <form
-{% if use_htmx %}
     hx-post="{{ action_url }}"
-    hx-target="#companies-table"
-    hx-swap="outerHTML"
-{% else %}
-    method="post"
-    action="{{ action_url }}"
-{% endif %}
-    class="space-y-3">
+    hx-target="#modal-area"
+    hx-swap="innerHTML"
+    class="space-y-6"
+>
+
 {% if company and company.id %}
 <input type="hidden" name="company_id" value="{{ company.id }}">
 {% endif %}
+
 <input type="hidden" name="next_page" value="{{ next or '' }}">
-<input name="name"
-       value="{{ company.name if company.name else '' }}"
-       placeholder="Nazwa firmy"
-       class="w-full border rounded px-3 py-2">
 
-<input name="tax_number"
-       value="{{ company.tax_number if company.tax_number else '' }}"
-       placeholder="NIP"
-       class="w-full border rounded px-3 py-2">
+<!-- ======================================== -->
+<!-- BASIC DATA -->
+<!-- ======================================== -->
 
-<textarea
-    name="description"
-    placeholder="Opis firmy"
+<div>
+<h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
+Dane firmy
+</h3>
+
+<div class="space-y-3">
+
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-1">
+Nazwa firmy
+</label>
+<input
+        id="company-name"
+    name="name"
+    value="{{ company.name if company and company.name else '' }}"
+    placeholder="np. Budremex Sp. z o.o."
     class="w-full border rounded px-3 py-2"
->{{ company.description if company.description else '' }}</textarea>
+>
+</div>
 
-<hr class="my-3">
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-1">
+NIP
+</label>
 
-<input name="street"
-       value="{{ company.address_street if company.address_street else '' }}"
-       placeholder="Ulica"
-       class="w-full border rounded px-3 py-2">
+<div class="flex gap-2">
 
-<input name="city"
-       value="{{ company.address_city if company.address_city else '' }}"
-       placeholder="Miasto"
-       class="w-full border rounded px-3 py-2">
-
-<input name="zip_code"
-       value="{{ company.address_zip_code if company.address_zip_code else '' }}"
-       placeholder="Kod pocztowy"
-       class="w-full border rounded px-3 py-2">
-
-<input name="country"
-       value="{{ company.address_country if company.address_country else '' }}"
-       placeholder="Kraj"
-       class="w-full border rounded px-3 py-2">
-
-<hr class="my-3">
-
-<input name="phone_number"
-       value="{{ company.phone_number if company.phone_number else '' }}"
-       placeholder="Telefon"
-       class="w-full border rounded px-3 py-2">
-
-<input name="email"
-       value="{{ company.email if company.email else '' }}"
-       placeholder="Email"
-       class="w-full border rounded px-3 py-2">
-
-<hr class="my-3">
-
-<input name="account_number"
-       value="{{ company.bank_account_number if company.bank_account_number else '' }}"
-       placeholder="Numer konta"
-       class="w-full border rounded px-3 py-2">
-
-<input name="country_code"
-       value="{{ company.bank_account_country_code if company.bank_account_country_code else '' }}"
-       placeholder="Kod kraju konta"
-       class="w-full border rounded px-3 py-2">
-
-{% if show_role %}
-<select name="role"
-        class="w-full border rounded px-3 py-2">
-
-    {% for r in company_roles %}
-        <option value="{{ r }}"
-            {% if company and company.role.value == r %}
-                selected
-            {% endif %}
-        >
-            {{ r }}
-        </option>
-    {% endfor %}
-
-</select>
-{% endif %}
+<input
+    name="tax_number"
+    value="{{ company.tax_number if company and company.tax_number else '' }}"
+    placeholder="np. 7352861234"
+    class="flex-1 border rounded px-3 py-2"
+>
 
 <button
-class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 w-full">
-    {{ submit_label }}
+    type="button"
+    hx-get="/companies/gus"
+    hx-target="#company-autofill"
+    hx-include="closest form"
+    hx-swap="innerHTML"
+    class="bg-gray-100 border px-3 py-2 rounded hover:bg-gray-200 whitespace-nowrap"
+>
+    Pobierz z GUS
 </button>
+
+</div>
+</div>
+
+<div id="company-autofill"></div>
+
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-1">
+Opis
+</label>
+<textarea
+    name="description"
+    placeholder="Krótki opis firmy"
+    class="w-full border rounded px-3 py-2"
+>{{ company.description if company and company.description else '' }}</textarea>
+</div>
+
+</div>
+</div>
+
+<!-- ======================================== -->
+<!-- ADDRESS -->
+<!-- ======================================== -->
+
+<div>
+<h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
+Adres
+</h3>
+
+<div class="space-y-3">
+
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-1">
+Ulica
+</label>
+<input
+        id="company-street"
+    name="street"
+    value="{{ company.address_street if company and company.address_street else '' }}"
+    placeholder="np. ul. Krakowska 10"
+    class="w-full border rounded px-3 py-2"
+>
+</div>
+
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-1">
+Miasto
+</label>
+<input
+        id="company-city"
+    name="city"
+    value="{{ company.address_city if company and company.address_city else '' }}"
+    placeholder="np. Kraków"
+    class="w-full border rounded px-3 py-2"
+>
+</div>
+
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-1">
+Kod pocztowy
+</label>
+<input
+        id="company-zip"
+    name="zip_code"
+    value="{{ company.address_zip_code if company and company.address_zip_code else '' }}"
+    placeholder="np. 30-001"
+    class="w-full border rounded px-3 py-2"
+>
+</div>
+
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-1">
+Kraj
+</label>
+<input
+        id="company-country"
+    name="country"
+    value="{{ company.address_country if company and company.address_country else '' }}"
+    placeholder="np. Polska"
+    class="w-full border rounded px-3 py-2"
+>
+</div>
+
+</div>
+</div>
+
+<!-- ======================================== -->
+<!-- CONTACT -->
+<!-- ======================================== -->
+
+<div>
+<h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
+Kontakt
+</h3>
+
+<div class="space-y-3">
+
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-1">
+Telefon
+</label>
+<input
+    name="phone_number"
+    value="{{ company.phone_number if company and company.phone_number else '' }}"
+    placeholder="+48 500 000 000"
+    class="w-full border rounded px-3 py-2"
+>
+</div>
+
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-1">
+Email
+</label>
+<input
+    name="email"
+    value="{{ company.email if company and company.email else '' }}"
+    placeholder="firma@email.pl"
+    class="w-full border rounded px-3 py-2"
+>
+</div>
+
+</div>
+</div>
+
+<!-- ======================================== -->
+<!-- BANK -->
+<!-- ======================================== -->
+
+<div>
+<h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
+Konto bankowe
+</h3>
+
+<div class="space-y-3">
+
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-1">
+Numer konta
+</label>
+<input
+    name="account_number"
+    value="{{ company.bank_account_number if company and company.bank_account_number else '' }}"
+    placeholder="np. 12 3456 7890 1234 5678 9012 3456"
+    class="w-full border rounded px-3 py-2"
+>
+</div>
+
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-1">
+Kod kraju konta
+</label>
+<input
+    name="country_code"
+    value="{{ company.bank_account_country_code if company and company.bank_account_country_code else '' }}"
+    placeholder="np. PL"
+    class="w-full border rounded px-3 py-2"
+>
+</div>
+
+</div>
+</div>
+
+<!-- ======================================== -->
+<!-- ROLE -->
+<!-- ======================================== -->
+
+{% if show_role %}
+
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-1">
+Typ firmy
+</label>
+
+<select
+    name="role"
+    class="w-full border rounded px-3 py-2"
+>
+
+{% for r in company_roles %}
+<option
+    value="{{ r }}"
+    {% if company and company.role and company.role.value == r %}selected{% endif %}
+>
+    {{ r }}
+</option>
+{% endfor %}
+
+</select>
+
+</div>
+
+{% endif %}
+
+<!-- ======================================== -->
+<!-- ACTIONS -->
+<!-- ======================================== -->
+
+<div class="flex justify-end gap-2 pt-4 border-t">
+
+<button
+    type="button"
+    onclick="document.getElementById('modal-area').innerHTML=''"
+    class="border px-4 py-2 rounded hover:bg-gray-100"
+>
+Anuluj
+</button>
+
+<button
+    class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+>
+{{ submit_label }}
+</button>
+
+</div>
 
 </form>
 
