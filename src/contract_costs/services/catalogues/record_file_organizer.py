@@ -1,5 +1,6 @@
 import logging
 import re
+import uuid
 from datetime import date
 from pathlib import Path
 from typing import Literal
@@ -146,7 +147,9 @@ class RecordFileOrganizer:
     ) -> str:
         s_name = RecordFileOrganizer._sanitize_filename(client_name)[:5]
         i_number = RecordFileOrganizer._sanitize_filename(invoice_number)
-        return f"{s_name}_{i_number}{original.suffix}"
+        uid = uuid.uuid4().hex[:6]  # 🔥 krótki losowy
+
+        return f"{s_name}_{i_number}_{uid}{original.suffix}"
 
     @staticmethod
     def _sanitize_filename(value: str) -> str:

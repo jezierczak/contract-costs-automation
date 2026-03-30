@@ -551,18 +551,25 @@ class MySQLFinancialRecordRepository(FinancialRecordRepository):
             params.append(query.to_date)
 
         if query.direction:
-            conditions.append("""
-                CASE
-                    WHEN buyer.role = 'Own' AND seller.role != 'Own' THEN 'COST'
-                    WHEN buyer.role != 'Own' AND seller.role = 'Own' THEN 'REVENUE'
-                    WHEN buyer.role = 'Own' AND seller.role = 'Own' THEN 'INTERNAL'
-                END = %s
-            """)
-            params.append(query.direction.value)
+            directions = (
+                query.direction
+                if isinstance(query.direction, list)
+                else [query.direction]
+            )
+
+            placeholders = ", ".join(["%s"] * len(directions))
+
+            conditions.append(f"(vt.direction IN ({placeholders}) OR vt.direction IS NULL)")
+            params.extend([d.value for d in directions])
 
         sql = f"""
             SELECT {select_clause}
             FROM financial_records
+        """
+
+        sql += """
+            LEFT JOIN financial_record_lines l ON l.financial_record_id = financial_records.id
+            LEFT JOIN value_types vt ON vt.id = l.value_type_id
         """
 
         if query.seller_query or query.buyer_query or query.direction:
@@ -573,8 +580,7 @@ class MySQLFinancialRecordRepository(FinancialRecordRepository):
 
         if needs_contract_join:
             sql += """
-                JOIN financial_record_lines il ON il.financial_record_id = financial_records.id
-                JOIN contracts ON contracts.id = il.contract_id
+                JOIN contracts ON contracts.id = l.contract_id
             """
 
         if conditions:

@@ -76,7 +76,7 @@ class BankAccount:
     @property
     def iban(self) -> str | None:
         if not self.country_code:
-            return None
+            return self.account_number
         return f"{self.country_code}{self.account_number}"
 
 

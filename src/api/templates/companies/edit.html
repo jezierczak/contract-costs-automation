@@ -16,7 +16,13 @@
 
             <button
                 type="button"
+                {% if picker_target %}
+                hx-get="/companies/picker?target={{ picker_target }}"
+                hx-target="#modal-area"
+                hx-swap="innerHTML"
+                {% else %}
                 onclick="document.getElementById('modal-area').innerHTML=''"
+                {% endif %}
                 class="text-gray-500 hover:text-black text-xl leading-none"
             >
                 ×

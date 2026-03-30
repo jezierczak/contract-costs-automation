@@ -156,26 +156,43 @@
         </button>
         {% endif %}
 
-        {% if d.document_status == "APPLIED" and d.financial_record_id %}
-        <button
-            hx-get="/records/{{ d.financial_record_id }}/review"
-            hx-target="#modal-area"
-            hx-swap="innerHTML"
-            class="text-green-600 hover:underline"
-        >
-            Rekord
-        </button>
-        {% endif %}
+          {% if d.document_status == "APPLIED" and d.financial_record_id %}
+    <button
+        hx-get="/records/{{ d.financial_record_id }}/review"
+        hx-target="#modal-area"
+        hx-swap="innerHTML"
+        class="text-green-600 hover:underline"
+    >
+        Rekord
+    </button>
 
-        <button
-            hx-post="/documents/{{ d.document_id }}/delete"
-            hx-target="#documents-table"
-            hx-swap="innerHTML"
-            hx-confirm="Na pewno usunąć ten dokument?"
-            class="text-red-600 hover:underline"
-        >
-            Usuń
-        </button>
+    <!-- 🔗 UNATTACH zamiast DELETE -->
+    <button
+        hx-post="/documents/{{ d.document_id }}/unattach"
+        hx-target="#documents-table"
+        hx-swap="innerHTML"
+        hx-confirm="Odłączyć dokument od rekordu?"
+        class="text-orange-600 hover:underline"
+        title="Odłącz"
+    >
+        🔗❌
+    </button>
+
+    {% else %}
+
+    <!-- 🗑 DELETE tylko dla nieprzypiętych -->
+    <button
+        hx-post="/documents/{{ d.document_id }}/delete"
+        hx-target="#documents-table"
+        hx-swap="innerHTML"
+        hx-confirm="Na pewno usunąć ten dokument?"
+        class="text-red-600 hover:underline"
+        title="Usuń"
+    >
+        🗑
+    </button>
+
+    {% endif %}
 
     </td>
 

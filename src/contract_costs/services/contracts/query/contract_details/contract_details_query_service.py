@@ -94,10 +94,10 @@ class ContractDetailsQueryService(ActionHandler[ContractDetailsQuery,ContractDet
 
         contract_budget = None
         contract_progress = None
-        executed_value = None
-        cost_total = None
-        revenue_total = None
-        margin=None
+        executed_value = Decimal("0")
+        cost_total = Decimal("0")
+        revenue_total = Decimal("0")
+        margin = Decimal("0")
         margin_percent = None
 
 
@@ -105,16 +105,17 @@ class ContractDetailsQueryService(ActionHandler[ContractDetailsQuery,ContractDet
             contract_budget = planned_budget.get(root.id)
             contract_progress = progress_map.get(root.id)
 
-            if contract_budget and contract_progress:
+            if contract_budget is not None and contract_progress is not None:
                 executed_value = contract_budget * contract_progress
 
             vals = values.get(root.id, {})
 
-            cost_total = vals.get("net", 0) + vals.get("non_deductible", 0)
-            revenue_total = vals.get("revenue", 0)
+            cost_total = vals.get("net", Decimal("0")) + vals.get("non_deductible", Decimal("0"))
+            revenue_total = vals.get("revenue", Decimal("0"))
 
-            margin = revenue_total - cost_total
-            margin_percent = margin / contract_budget
+            margin = executed_value - cost_total
+            if contract_budget not in (None, Decimal("0")):
+                margin_percent = margin / contract_budget
 
         time_progress = self._calculate_time_progress(
             start_date=contract.start_date,

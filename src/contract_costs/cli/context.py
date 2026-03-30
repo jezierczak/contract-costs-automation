@@ -70,6 +70,7 @@ from contract_costs.services.documents.process.document_parser_resolver import D
 from contract_costs.services.documents.process.parse_document_from_file import ParseDocumentFromFileService
 from contract_costs.services.documents.process.process_document_service import ProcessDocumentService
 from contract_costs.services.documents.process.reprocess.reprocess_document_service import ReprocessDocumentService
+from contract_costs.services.documents.process.unattach.unattach_document_service import UnattachDocumentService
 from contract_costs.services.documents.query.get_document_file_query_service import GetDocumentFileQueryService
 from contract_costs.services.documents.query.get_document_query import GetDocumentQueryService
 
@@ -297,6 +298,7 @@ class Services:
         self._company_month_breakdown_service = None
         self._company_fixed_costs_query_service = None
         self._company_detail_query_service = None
+        self._unattach_document_service = None
 
         self._normalizer = DocumentParseNormalizer()
 
@@ -976,7 +978,10 @@ class Services:
             parse_service=self.parse_document_from_file,
             scoring_policy=SimpleScoringPolicy(),
             decision_service=DocumentDecisionService(
-                matching_service=FindMatchingRecordService(company_evaluator=self.company_evaluate_orchestrator),
+                matching_service=FindMatchingRecordService(
+                    company_evaluator=self.company_evaluate_orchestrator,
+                    document_parse_normalizer=DocumentParseNormalizer(),
+                ),
             ),
             apply_service=self.apply_document_service,
             event_service=BusinessEventService()
@@ -1132,7 +1137,13 @@ class Services:
     @property
     def get_document_service(self):
         if self._get_document_service is None:
-            self._get_document_service = GetDocumentQueryService(company_evaluate=self.company_evaluate_orchestrator)
+            self._get_document_service = GetDocumentQueryService(
+                company_evaluate=self.company_evaluate_orchestrator,
+                matching_service=FindMatchingRecordService(
+                    company_evaluator=self.company_evaluate_orchestrator,
+                    document_parse_normalizer=DocumentParseNormalizer(),
+                )
+            )
         return self._get_document_service
 
 
@@ -1175,6 +1186,14 @@ class Services:
         if self._company_detail_query_service is None:
             self._company_detail_query_service = CompanyDetailQueryService()
         return self._company_detail_query_service
+
+    @property
+    def unattach_document_service(self):
+        if self._unattach_document_service is None:
+            self._unattach_document_service = UnattachDocumentService(
+                document_file_organizer=DocumentFileOrganizer()
+            )
+        return self._unattach_document_service
 
 _services: Dict[str, Services] = {}
 

@@ -50,7 +50,11 @@ class CompanyDashboardQueryService(
         year_costs = raw.year_costs
 
         year_profit = year_revenue - year_costs
-        year_cashflow = year_profit - raw.year_non_deductible
+        year_cashflow = (
+                year_profit
+                - raw.year_non_deductible
+                - raw.year_fixed_costs
+        )
 
         # ===============================
         # MONTHS
@@ -64,7 +68,11 @@ class CompanyDashboardQueryService(
             costs = row.costs
 
             profit = revenue - costs
-            cashflow = profit - row.non_deductible
+            cashflow = (
+                    profit
+                    - row.non_deductible
+                    - row.fixed_costs
+            )
 
             months.append(
                 CompanyDashboardMonth(

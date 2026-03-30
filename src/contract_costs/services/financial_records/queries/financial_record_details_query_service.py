@@ -2,9 +2,11 @@ import logging
 from decimal import Decimal
 
 from contract_costs.action_bus.action_handler import ActionHandler
+from contract_costs.model.company import Company
 from contract_costs.services.financial_records.assigment.ingest.completion_validator.invoice_completion_validator import \
     RecordCompletionValidator
 from contract_costs.services.financial_records.queries.dto.attached_document_view import AttachedDocumentView
+from contract_costs.services.financial_records.queries.dto.company_details_view import CompanyDetailsView
 from contract_costs.services.financial_records.queries.dto.financial_record_details_query import \
     FinancialRecordDetailsQuery
 from contract_costs.services.financial_records.queries.dto.invoice_query import FinancialRecordDetailsView, InvoiceLineView
@@ -153,10 +155,8 @@ class FinancialRecordDetailsQueryService(
             status=record.status.value,
             invoice_date=record.invoice_date,
             selling_date=record.selling_date,
-            buyer_name=buyer.name if buyer else "UNKNOWN",
-            buyer_tax_number=buyer.tax_number if buyer else "",
-            seller_name=seller.name if seller else "UNKNOWN",
-            seller_tax_number=seller.tax_number if seller else "",
+            buyer=self._map_company(buyer),
+            seller=self._map_company(seller),
             lines=line_views,
             payment_method=record.payment_method.value,
             payment_status=record.payment_status.value,
@@ -172,6 +172,35 @@ class FinancialRecordDetailsQueryService(
             direction=direction.value if direction else "",
             documents=documents,
             tags=", ".join(sorted(record.tags)) if record.tags else ""
+        )
+
+    @staticmethod
+    def _map_company(company: Company) -> CompanyDetailsView:
+        if not company:
+            return CompanyDetailsView(
+                name="UNKNOWN",
+                tax_number="",
+                street=None,
+                city=None,
+                zip_code=None,
+                country=None,
+                email=None,
+                phone=None,
+                bank_account=None,
+                iban=None,
+            )
+
+        return CompanyDetailsView(
+            name=company.name,
+            tax_number=company.tax_number,
+            street=company.address.street if company.address else None,
+            city=company.address.city if company.address else None,
+            zip_code=company.address.zip_code if company.address else None,
+            country=company.address.country if company.address else None,
+            email=company.contact.email if company.contact else None,
+            phone=company.contact.phone_number if company.contact else None,
+            bank_account=company.bank_account.account_number if company.bank_account else None,
+            iban=company.bank_account.iban if company.bank_account else None,
         )
 
     @staticmethod

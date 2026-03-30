@@ -200,23 +200,45 @@
 
     <div class="grid grid-cols-2 gap-4">
 
-       {% with %}
-            {% set target = "buyer" %}
-            {% set company = {
-                "name": record.buyer_name,
-                "tax_number": record.buyer_tax_number
-            } if record and record.buyer_name else None %}
-            {% include "companies/_selected_company_slot.html" %}
-        {% endwith %}
+{% with %}
+    {% set target = "buyer" %}
 
-        {% with %}
-            {% set target = "seller" %}
-            {% set company = {
-                "name": record.seller_name,
-                "tax_number": record.seller_tax_number
-            } if record and record.seller_name else None %}
-            {% include "companies/_selected_company_slot.html" %}
-        {% endwith %}
+    {% if record and record.buyer_name %}
+        {% set company = {
+            "name": record.buyer_name,
+            "tax_number": record.buyer_tax_number
+        } %}
+    {% elif prefill_company_buyer %}
+        {% set company = {
+            "name": prefill_company_buyer.name,
+            "tax_number": prefill_company_buyer.tax_number
+        } %}
+    {% else %}
+        {% set company = None %}
+    {% endif %}
+
+    {% include "companies/_selected_company_slot.html" %}
+{% endwith %}
+
+{% with %}
+    {% set target = "seller" %}
+
+    {% if record and record.seller_name %}
+        {% set company = {
+            "name": record.seller_name,
+            "tax_number": record.seller_tax_number
+        } %}
+    {% elif prefill_company_seller %}
+        {% set company = {
+            "name": prefill_company_seller.name,
+            "tax_number": prefill_company_seller.tax_number
+        } %}
+    {% else %}
+        {% set company = None %}
+    {% endif %}
+
+    {% include "companies/_selected_company_slot.html" %}
+{% endwith %}
     </div>
 
 </div>

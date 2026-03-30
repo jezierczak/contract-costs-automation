@@ -9,7 +9,6 @@ import contract_costs.config as cfg
 from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.model.business_event import BusinessEventLevel
 from contract_costs.model.document import DocumentStatus, DocumentSource
-from contract_costs.services.business_event.business_event_helper import BusinessEventHelper
 from contract_costs.services.business_event.business_event_service import BusinessEventService
 from contract_costs.services.catalogues.document_file_organizer import DocumentFileOrganizer
 from contract_costs.services.documents.apply.apply_document_service import ApplyDocumentService
@@ -90,6 +89,7 @@ class ProcessDocumentService(ActionHandler[ProcessDocumentCommand, None]):
                 )
 
                 doc_repo.update(failed)
+                uow.commit()
             except Exception:
                 logger.exception("Failed to move document to failed directory")
             raise e
@@ -115,6 +115,7 @@ class ProcessDocumentService(ActionHandler[ProcessDocumentCommand, None]):
                 )
 
                 doc_repo.update(failed)
+                uow.commit()
             except Exception:
                 logger.exception("Failed to move document to failed after move error")
             raise

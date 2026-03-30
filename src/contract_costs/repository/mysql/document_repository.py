@@ -148,6 +148,41 @@ class MySQLDocumentRepository(DocumentRepository):
         finally:
             self._maybe_close(conn)
 
+    def unattach_from_record(
+            self,
+            *,
+            organization_id: UUID,
+            document_id: UUID,
+    ) -> None:
+
+        sql = """
+              UPDATE documents
+              SET financial_record_id = NULL,
+                  document_status     = %s
+              WHERE id = %s
+                AND organization_id = %s
+                AND financial_record_id IS NOT NULL 
+              """
+
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    sql,
+                    (
+                        DocumentStatus.READY.value,
+                        str(document_id),
+                        str(organization_id),
+                    ),
+                )
+            self._maybe_commit(conn)
+        except Exception:
+            self._maybe_rollback(conn)
+            raise
+        finally:
+            self._maybe_close(conn)
+
+
     def delete(self, *, organization_id: UUID, document_id: UUID) -> None:
         sql = """
             DELETE FROM documents

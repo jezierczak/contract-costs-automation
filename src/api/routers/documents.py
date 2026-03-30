@@ -15,6 +15,7 @@ from contract_costs.services.business_event.business_event_helper import Busines
 from contract_costs.services.documents.apply.dto.apply_document_command import ApplyDocumentCommand, DocumentApplyAction
 from contract_costs.services.documents.exeptions import DuplicateDocument
 from contract_costs.services.documents.process.delete.delete_document_command import DeleteDocumentCommand
+from contract_costs.services.documents.process.unattach.unattach_document_command import UnattachDocumentCommand
 from contract_costs.services.documents.query.dto.get_document_file_query import GetDocumentFileQuery
 from contract_costs.services.documents.query.dto.get_document_query import GetDocumentQuery
 from contract_costs.services.documents.query.list_docuemnts_query_command import (
@@ -26,7 +27,7 @@ router = APIRouter()
 
 BASE_DIR = Path(__file__).resolve().parents[3]
 
-xslt_path = BASE_DIR / "src" / "contract_costs" / "resources" / "fa3_visualisation.xslt"
+xslt_path = BASE_DIR / "src" / "contract_costs" / "resources" / "fa3_visualisation_v2.xslt"
 
 def render_xml_preview(xml_path):
     xml = etree.parse(str(xml_path))
@@ -46,15 +47,14 @@ def render_xml_to_pdf(xml_path: Path) -> bytes:
 
     # HTML z transformacji
     html_tree = transform(xml)
-    html_string = str(html_tree)
+    html_string = etree.tostring(html_tree, encoding="unicode")
 
     # PDF
     pdf_buffer = BytesIO()
 
     pisa.CreatePDF(
-        html_string,
+        html_string.encode("utf-8"),  # 👈 ważne
         dest=pdf_buffer,
-        encoding="utf-8"
     )
 
     return pdf_buffer.getvalue()
@@ -366,6 +366,38 @@ def apply_document(
     response.headers["HX-Trigger"] = "documentsUploaded"
 
     return response
+
+@router.post("/documents/{document_id}/unattach")
+def unattach_document(
+        request: Request,
+        document_id: str,
+        services = Depends(get_services)
+):
+    ctx = request.state.ctx
+
+    services.action_bus.execute(
+        action=UnattachDocumentCommand(
+            organization_id=ctx.organization_id,
+            actor_user_id=ctx.user_id,
+            document_id=UUID(document_id),
+        ),
+        handler=services.unattach_document_service,
+    )
+    BusinessEventHelper.log(
+        services=services,
+        ctx=ctx,
+        level=BusinessEventLevel.INFO,
+        message="Odłączono dokument od wpisu",
+        entity_type="document",
+        entity_id=UUID(document_id),
+    )
+
+
+    return _render_documents_table(
+        request=request,
+        services=services,
+        ctx=ctx,
+    )
 
 @router.post("/documents/{document_id}/delete")
 def delete_document(

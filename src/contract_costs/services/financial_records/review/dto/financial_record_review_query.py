@@ -33,7 +33,7 @@ class FinancialRecordReviewQuery(Query):
     contract_codes: list[str] | None = None
 
     only_ready_for_accountant: bool | None = None
-    direction: ValueDirection | None = None
+    direction: list[ValueDirection] | ValueDirection | None = None
     limit: int | None = None
 
     @staticmethod

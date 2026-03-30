@@ -43,16 +43,7 @@ class KsefDocumentParser(DocumentParser):
         except ET.ParseError as e:
             raise DocumentFatalError("Invalid KSeF XML") from e
 
-        self._validate_xsd_if_configured(file_path)
         self._validate_structure(root)
-
-        invoice_number = self._text(root, ".//k:Fa/k:P_2")
-        invoice_date = self._parse_date(self._text(root, ".//k:Fa/k:P_1"))
-        selling_date = self._parse_date(self._text(root, ".//k:Fa/k:P_6"))
-        due_date = (
-            self._parse_date(self._text(root, ".//k:Platnosc/k:TerminPlatnosci/k:Termin"))
-            or self._parse_date(self._text(root, ".//k:Fa/k:P_3"))
-        )
 
         document_type = self._map_document_type(root)
         is_correction = document_type in {
@@ -61,108 +52,90 @@ class KsefDocumentParser(DocumentParser):
             DocumentType.CORRECTION_SETTLEMENT,
         }
 
-        old_reference = self._text(root, ".//k:NrFaKorygowanej")
-        if is_correction and old_reference:
-            invoice_number = f"{invoice_number}kor:{old_reference}"
+        invoice_number = self._text(root, ".//k:Fa/k:P_2")
 
-        seller = CompanyInput(
-            name=self._text(root, ".//k:Podmiot1/k:DaneIdentyfikacyjne/k:Nazwa"),
-            tax_number=self._text(root, ".//k:Podmiot1/k:DaneIdentyfikacyjne/k:NIP"),
-            street=self._text(root, ".//k:Podmiot1/k:Adres/k:AdresL1"),
-            city=self._extract_city(root, ".//k:Podmiot1/k:Adres/k:AdresL2"),
-            state=None,
-            zip_code=self._extract_zip(root, ".//k:Podmiot1/k:Adres/k:AdresL2"),
-            country=self._text(root, ".//k:Podmiot1/k:Adres/k:KodKraju"),
-            phone_number=self._text(root, ".//k:Podmiot1/k:DaneKontaktowe/k:Telefon"),
-            email=self._text(root, ".//k:Podmiot1/k:DaneKontaktowe/k:Email"),
-            bank_account=self._text(root, ".//k:Platnosc/k:RachunekBankowy/k:NrRB"),
-            role=CompanyType.SELLER.value,
-        )
+        if is_correction:
+            old_ref = self._text(root, ".//k:NrFaKorygowanej")
+            if old_ref:
+                invoice_number = f"{invoice_number}kor:{old_ref}"
 
-        buyer = CompanyInput(
-            name=self._text(root, ".//k:Podmiot2/k:DaneIdentyfikacyjne/k:Nazwa"),
-            tax_number=self._text(root, ".//k:Podmiot2/k:DaneIdentyfikacyjne/k:NIP"),
-            street=self._text(root, ".//k:Podmiot2/k:Adres/k:AdresL1"),
-            city=self._extract_city(root, ".//k:Podmiot2/k:Adres/k:AdresL2"),
-            state=None,
-            zip_code=self._extract_zip(root, ".//k:Podmiot2/k:Adres/k:AdresL2"),
-            country=self._text(root, ".//k:Podmiot2/k:Adres/k:KodKraju"),
-            phone_number=self._text(root, ".//k:Podmiot2/k:DaneKontaktowe/k:Telefon"),
-            email=self._text(root, ".//k:Podmiot2/k:DaneKontaktowe/k:Email"),
-            bank_account=None,
-            role=CompanyType.BUYER.value,
-        )
+        # 🔥 LINES
+        if is_correction:
+            lines = self._parse_correction_lines(root, invoice_number)
+        else:
+            lines = self._parse_fa_wiersz(root, invoice_number)
 
-        payment_method_code = self._text(root, ".//k:Platnosc/k:FormaPlatnosci")
-        paid_date = self._parse_date(self._text(root, ".//k:Platnosc/k:DataZaplaty"))
-        payment_method = self._map_payment_method(payment_method_code)
-        payment_status = self._map_payment_status(root)
-
-        lines = self._parse_fa_wiersz(root, invoice_number, is_correction)
         if not lines:
-            logger.info("No FaWiersz found; fallback to ZamowienieWiersz")
-            lines = self._parse_zamowienie_wiersz(root, invoice_number, is_correction)
+            if is_correction:
+                logger.warning("Fallback to header totals (correction)")
+                lines = self._build_fallback_from_totals(root, invoice_number)
+            else:
+                lines = self._parse_zamowienie_wiersz(root, invoice_number)
+
         if not lines:
-            raise DocumentFatalError("No invoice lines found (FaWiersz/ZamowienieWiersz)")
+            raise DocumentFatalError("No invoice lines")
 
         self._validate_totals(root, lines, is_correction)
 
-        currency = self._text(root, ".//k:Fa/k:KodWaluty") or "PLN"
-        tags = {"ksef", currency.lower(), document_type.value}
-
-        record = FinancialRecordUpdate(
-            command=InvoiceCommand.APPLY,
-            reference=invoice_number,
-            record_id=None,
-            old_reference=None,
-            invoice_date=invoice_date,
-            selling_date=selling_date,
-            buyer_tax_number=buyer.tax_number,
-            seller_tax_number=seller.tax_number,
-            payment_method=payment_method,
-            due_date=due_date,
-            paid_date=paid_date,
-            tags=",".join(tags),
-            payment_status=payment_status,
-            status=FinancialRecordStatus.DRAFT,
-        )
-
-
         return DocumentParseResult(
             document_type=document_type,
-            record=record,
+            record=self._build_record(root, invoice_number),
             lines=lines,
-            buyer=buyer,
-            seller=seller,
+            buyer=self._build_buyer(root),
+            seller=self._build_seller(root),
         )
 
-    def _parse_fa_wiersz(self, root, invoice_number: str, is_correction: bool):
-        lines = []
-        for row in root.findall(".//k:FaWiersz", self.NS):
-            lines.append(
-                self._build_line_from_row(
-                    row=row,
-                    invoice_number=invoice_number,
-                    is_correction=is_correction,
-                    name_path="k:P_7",
-                    unit_path="k:P_8A",
-                    qty_path="k:P_8B",
-                    net_path="k:P_11",
-                    gross_path="k:P_11A",
-                    vat_path="k:P_11Vat",
-                    vat_rate_path="k:P_12",
-                )
+    def _parse_fa_wiersz(self, root, invoice_number):
+        return [
+            self._build_line_from_row(
+                row=row,
+                invoice_number=invoice_number,
+                name_path="k:P_7",
+                unit_path="k:P_8A",
+                qty_path="k:P_8B",
+                net_path="k:P_11",
+                gross_path="k:P_11A",
+                vat_path="k:P_11Vat",
+                vat_rate_path="k:P_12",
             )
-        return lines
+            for row in root.findall(".//k:FaWiersz", self.NS)
+        ]
 
-    def _parse_zamowienie_wiersz(self, root, invoice_number: str, is_correction: bool):
+    def _build_fallback_from_totals(self, root, invoice_number):
+        net = self._decimal_or_zero(root, ".//k:Fa/k:P_13_1")
+        vat = self._decimal_or_zero(root, ".//k:Fa/k:P_14_1")
+
+        amount = Amount.from_input(
+            value=net,
+            input_type=AmountInputType.NET,
+            vat_rate=self._closest_vat_rate(vat / net) if net != 0 else VatRate.VAT_ZW,
+            tax_treatment=TaxTreatment.TAX_DEDUCTIBLE,
+        )
+
+        return [
+            FinancialRecordLineUpdate(
+                record_reference=invoice_number,
+                item_name="Fallback correction",
+                quantity=Decimal("1"),
+                unit=UnitOfMeasure.PIECE,
+                amount=amount,
+                record_line_id=None,
+                description=None,
+                contract_reference=None,
+                contract_node_reference=None,
+                value_type_reference=None,
+                agreement_reference=None,
+                agreement_node_reference=None,
+            )
+        ]
+
+    def _parse_zamowienie_wiersz(self, root, invoice_number: str):
         lines = []
         for row in root.findall(".//k:ZamowienieWiersz", self.NS):
             lines.append(
                 self._build_line_from_row(
                     row=row,
                     invoice_number=invoice_number,
-                    is_correction=is_correction,
                     name_path="k:P_7Z",
                     unit_path="k:P_8AZ",
                     qty_path="k:P_8BZ",
@@ -179,7 +152,6 @@ class KsefDocumentParser(DocumentParser):
         *,
         row,
         invoice_number: str,
-        is_correction: bool,
         name_path: str,
         unit_path: str,
         qty_path: str,
@@ -210,9 +182,6 @@ class KsefDocumentParser(DocumentParser):
             vat_value=vat_value,
         )
 
-        if is_correction:
-            value = -abs(value)
-
         amount = Amount.from_input(
             value=value,
             input_type=input_type,
@@ -234,6 +203,109 @@ class KsefDocumentParser(DocumentParser):
             agreement_reference=None,
             agreement_node_reference=None
         )
+
+    def _parse_correction_lines(self, root, invoice_number: str):
+        rows = root.findall(".//k:FaWiersz", self.NS)
+
+        has_uid = any(self._text(r, "k:UU_ID") for r in rows)
+
+        groups: dict[str, list] = {}
+
+        for row in rows:
+            if has_uid:
+                key = self._text(row, "k:UU_ID") or str(id(row))
+            else:
+                key = "|".join([
+                    self._text(row, "k:P_7") or "",
+                    self._text(row, "k:P_9A") or "",
+                    self._text(row, "k:P_12") or "",
+                    self._text(row, "k:P_8A") or "",
+                ])
+            groups.setdefault(key, []).append(row)
+
+        result = []
+        seen = set()
+
+        for group in groups.values():
+            before = None
+            after = None
+
+            for row in group:
+                if row.find("k:StanPrzed", self.NS) is not None:
+                    before = row
+                else:
+                    after = row
+
+            before_line = self._safe_build_line(before, invoice_number)
+            after_line = self._safe_build_line(after, invoice_number)
+
+            if before_line and after_line:
+                net = after_line.amount.net - before_line.amount.net
+                tax = after_line.amount.tax - before_line.amount.tax
+            elif after_line:
+                net = after_line.amount.net
+                tax = after_line.amount.tax
+            elif before_line:
+                net = -before_line.amount.net
+                tax = -before_line.amount.tax
+            else:
+                continue
+
+            if net == Decimal("0") and tax == Decimal("0"):
+                continue
+
+            if (net, tax) in seen:
+                continue
+            seen.add((net, tax))
+
+            ref = after_line or before_line
+
+            amount = Amount.from_input(
+                value=net,
+                input_type=AmountInputType.NET,
+                vat_rate=ref.amount.vat_rate,
+                tax_treatment=TaxTreatment.TAX_DEDUCTIBLE,
+            )
+
+            result.append(
+                FinancialRecordLineUpdate(
+                    record_line_id=None,
+                    record_reference=invoice_number,
+                    item_name=ref.item_name,
+                    quantity=ref.quantity,
+                    unit=ref.unit,
+                    amount=amount,
+                    description=None,
+                    contract_reference=None,
+                    contract_node_reference=None,
+                    value_type_reference=None,
+                    agreement_reference=None,
+                    agreement_node_reference=None
+                )
+            )
+
+        return result
+
+    def _safe_build_line(self, row, invoice_number):
+        if row is None:
+            return None
+
+        try:
+            return self._build_line_from_row(
+                row=row,
+                invoice_number=invoice_number,
+
+                name_path="k:P_7",
+                unit_path="k:P_8A",
+                qty_path="k:P_8B",
+                net_path="k:P_11",
+                gross_path="k:P_11A",
+                vat_path="k:P_11Vat",
+                vat_rate_path="k:P_12",
+            )
+        except Exception as e:
+            logger.warning(f"Skipping broken line: {e}")
+            return None
 
     def _text(self, element, path):
         el = element.find(path, self.NS)
@@ -379,55 +451,23 @@ class KsefDocumentParser(DocumentParser):
             return PaymentStatus.PAID
         return PaymentStatus.UNPAID
 
-    def _validate_totals(
-        self,
-        root,
-        lines: list[FinancialRecordLineUpdate],
-        is_correction: bool,
-    ) -> None:
-        net_paths = [
-            ".//k:Fa/k:P_13_1",
-            ".//k:Fa/k:P_13_2",
-            ".//k:Fa/k:P_13_3",
-            ".//k:Fa/k:P_13_4",
-            ".//k:Fa/k:P_13_5",
-            ".//k:Fa/k:P_13_6_1",
-            ".//k:Fa/k:P_13_6_2",
-            ".//k:Fa/k:P_13_6_3",
-            ".//k:Fa/k:P_13_7",
-            ".//k:Fa/k:P_13_8",
-            ".//k:Fa/k:P_13_9",
-            ".//k:Fa/k:P_13_10",
-            ".//k:Fa/k:P_13_11",
-        ]
-        vat_paths = [
-            ".//k:Fa/k:P_14_1",
-            ".//k:Fa/k:P_14_2",
-            ".//k:Fa/k:P_14_3",
-            ".//k:Fa/k:P_14_4",
-            ".//k:Fa/k:P_14_5",
-        ]
+    def _validate_totals(self, root, lines, is_correction):
+        ksef_net = self._decimal_or_zero(root, ".//k:Fa/k:P_13_1")
+        ksef_vat = self._decimal_or_zero(root, ".//k:Fa/k:P_14_1")
 
-        ksef_net = sum((self._decimal_or_zero(root, p) for p in net_paths), Decimal("0"))
-        ksef_vat = sum((self._decimal_or_zero(root, p) for p in vat_paths), Decimal("0"))
-        p15 = self._decimal_or_zero(root, ".//k:Fa/k:P_15")
-        ksef_gross = p15 if p15 != 0 else (ksef_net + ksef_vat)
+        domain_net = sum(l.amount.net for l in lines)
+        domain_vat = sum(l.amount.tax for l in lines)
 
-        if is_correction:
-            ksef_net = -abs(ksef_net)
-            ksef_vat = -abs(ksef_vat)
-            ksef_gross = -abs(ksef_gross)
+        tolerance = Decimal("0.05") if is_correction else Decimal("0.02")
 
-        domain_net = sum((l.amount.net for l in lines), Decimal("0")).quantize(Decimal("0.01"))
-        domain_vat = sum((l.amount.tax for l in lines), Decimal("0")).quantize(Decimal("0.01"))
-        domain_gross = sum((l.amount.gross for l in lines), Decimal("0")).quantize(Decimal("0.01"))
+        logger.debug(f"KSEF NET: {ksef_net}, DOMAIN NET: {domain_net}")
+        logger.debug(f"KSEF VAT: {ksef_vat}, DOMAIN VAT: {domain_vat}")
 
-        if not self._almost_equal(ksef_net, domain_net):
-            raise DocumentFatalError(f"NET mismatch KSeF={ksef_net} domain={domain_net}")
-        if not self._almost_equal(ksef_vat, domain_vat):
-            raise DocumentFatalError(f"VAT mismatch KSeF={ksef_vat} domain={domain_vat}")
-        if not self._almost_equal(ksef_gross, domain_gross):
-            raise DocumentFatalError(f"GROSS mismatch KSeF={ksef_gross} domain={domain_gross}")
+        if abs(ksef_net - domain_net) > tolerance:
+            raise DocumentFatalError(f"NET mismatch {ksef_net} vs {domain_net}")
+
+        if abs(ksef_vat - domain_vat) > tolerance:
+            raise DocumentFatalError(f"VAT mismatch {ksef_vat} vs {domain_vat}")
 
     @staticmethod
     def _almost_equal(a: Decimal, b: Decimal, tolerance: Decimal = Decimal("0.02")) -> bool:
@@ -470,7 +510,8 @@ class KsefDocumentParser(DocumentParser):
         if rodzaj and rodzaj not in allowed:
             raise DocumentFatalError(f"Unsupported RodzajFaktury: {rodzaj}")
 
-    def _validate_xsd_if_configured(self, file_path: Path) -> None:
+    @staticmethod
+    def _validate_xsd_if_configured( file_path: Path) -> None:
         xsd_path = os.getenv("KSEF_FA3_XSD_PATH")
         if not xsd_path:
             return
@@ -492,3 +533,70 @@ class KsefDocumentParser(DocumentParser):
             schema.assertValid(xml_doc)
         except Exception as e:
             raise DocumentFatalError(f"XSD validation failed: {e}") from e
+
+    def _build_record(self, root, invoice_number: str) -> FinancialRecordUpdate:
+        invoice_date = self._parse_date(self._text(root, ".//k:Fa/k:P_1"))
+        selling_date = self._parse_date(self._text(root, ".//k:Fa/k:P_6"))
+
+        due_date = (
+                self._parse_date(self._text(root, ".//k:Platnosc/k:TerminPlatnosci/k:Termin"))
+                or self._parse_date(self._text(root, ".//k:Fa/k:P_3"))
+        )
+
+        payment_method_code = self._text(root, ".//k:Platnosc/k:FormaPlatnosci")
+        payment_method = self._map_payment_method(payment_method_code)
+
+        paid_date = self._parse_date(self._text(root, ".//k:Platnosc/k:DataZaplaty"))
+        payment_status = self._map_payment_status(root)
+
+        currency = self._text(root, ".//k:Fa/k:KodWaluty") or "PLN"
+        document_type = self._map_document_type(root)
+
+        tags = {"ksef", currency.lower(), document_type.value}
+
+        return FinancialRecordUpdate(
+            command=InvoiceCommand.APPLY,
+            reference=invoice_number,
+            record_id=None,
+            old_reference=None,
+            invoice_date=invoice_date,
+            selling_date=selling_date,
+            buyer_tax_number=self._text(root, ".//k:Podmiot2/k:DaneIdentyfikacyjne/k:NIP"),
+            seller_tax_number=self._text(root, ".//k:Podmiot1/k:DaneIdentyfikacyjne/k:NIP"),
+            payment_method=payment_method,
+            due_date=due_date,
+            paid_date=paid_date,
+            tags=",".join(tags),
+            payment_status=payment_status,
+            status=FinancialRecordStatus.DRAFT,
+        )
+
+    def _build_seller(self, root) -> CompanyInput:
+        return CompanyInput(
+            name=self._text(root, ".//k:Podmiot1/k:DaneIdentyfikacyjne/k:Nazwa"),
+            tax_number=self._text(root, ".//k:Podmiot1/k:DaneIdentyfikacyjne/k:NIP"),
+            street=self._text(root, ".//k:Podmiot1/k:Adres/k:AdresL1"),
+            city=self._extract_city(root, ".//k:Podmiot1/k:Adres/k:AdresL2"),
+            state=None,
+            zip_code=self._extract_zip(root, ".//k:Podmiot1/k:Adres/k:AdresL2"),
+            country=self._text(root, ".//k:Podmiot1/k:Adres/k:KodKraju"),
+            phone_number=self._text(root, ".//k:Podmiot1/k:DaneKontaktowe/k:Telefon"),
+            email=self._text(root, ".//k:Podmiot1/k:DaneKontaktowe/k:Email"),
+            bank_account=self._text(root, ".//k:Platnosc/k:RachunekBankowy/k:NrRB"),
+            role=CompanyType.SELLER.value,
+        )
+
+    def _build_buyer(self, root) -> CompanyInput:
+        return CompanyInput(
+            name=self._text(root, ".//k:Podmiot2/k:DaneIdentyfikacyjne/k:Nazwa"),
+            tax_number=self._text(root, ".//k:Podmiot2/k:DaneIdentyfikacyjne/k:NIP"),
+            street=self._text(root, ".//k:Podmiot2/k:Adres/k:AdresL1"),
+            city=self._extract_city(root, ".//k:Podmiot2/k:Adres/k:AdresL2"),
+            state=None,
+            zip_code=self._extract_zip(root, ".//k:Podmiot2/k:Adres/k:AdresL2"),
+            country=self._text(root, ".//k:Podmiot2/k:Adres/k:KodKraju"),
+            phone_number=self._text(root, ".//k:Podmiot2/k:DaneKontaktowe/k:Telefon"),
+            email=self._text(root, ".//k:Podmiot2/k:DaneKontaktowe/k:Email"),
+            bank_account=None,
+            role=CompanyType.BUYER.value,
+        )

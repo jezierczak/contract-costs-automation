@@ -126,6 +126,7 @@ def company_gus_lookup(
 @router.get("/companies/new", response_class=HTMLResponse)
 def company_new(
     request: Request,
+    target: str | None = None,
 ):
     return request.app.state.templates.TemplateResponse(
         "companies/new.html",
@@ -137,6 +138,7 @@ def company_new(
             "submit_label": "Dodaj",
             "show_role": True,
             "company_roles": [r.value for r in CompanyType if r.name != "OWN"],
+            "picker_target": target,
         },
     )
 
@@ -418,6 +420,7 @@ def company_metadata(
 def company_edit_panel(
     request: Request,
     tax_number: str,
+    target: str | None = None,
     services=Depends(get_services),
 ):
     ctx = request.state.ctx
@@ -447,6 +450,7 @@ def company_edit_panel(
             "submit_label": "Zapisz",
             "show_role": True if company.role != CompanyType.OWN else False,
             "company_roles": [r.value for r in CompanyType if r.name != "OWN"],
+            "picker_target": target,
         },
     )
 
@@ -473,6 +477,7 @@ def company_create(
         country_code: str | None = Form(None),
 
         role: str = Form(...),
+        picker_target: str | None = Form(None),
 
         services=Depends(get_services),
 ):
@@ -513,7 +518,17 @@ def company_create(
         handler=services.create_company,
     )
 
-    response = HTMLResponse("")
+    if picker_target:
+        response = request.app.state.templates.TemplateResponse(
+            "companies/_selected_company_slot.html",
+            {
+                "request": request,
+                "company": company,
+                "target": picker_target,
+            },
+        )
+    else:
+        response = HTMLResponse("")
 
     response.headers["HX-Trigger"] = json.dumps({
         "showMessage": {
@@ -551,6 +566,7 @@ def company_update(
 
     account_number: str | None = Form(None),
     country_code: str | None = Form(None),
+    picker_target: str | None = Form(None),
 
     services=Depends(get_services),
 ):
@@ -602,7 +618,20 @@ def company_update(
         handler=services.update_company_service,
     )
 
-    response = HTMLResponse("")
+    if picker_target:
+        response = request.app.state.templates.TemplateResponse(
+            "companies/_selected_company_slot.html",
+            {
+                "request": request,
+                "company": {
+                    "name": name,
+                    "tax_number": tax_number,
+                },
+                "target": picker_target,
+            },
+        )
+    else:
+        response = HTMLResponse("")
 
     response.headers["HX-Trigger"] = json.dumps({
         "showMessage": {

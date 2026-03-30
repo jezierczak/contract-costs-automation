@@ -54,7 +54,7 @@ class RecordWorkspaceQueryFactory:
                     organization_id=organization_id,
                     actor_user_id=actor_user_id,
                     payment_statuses=[PaymentStatus.UNPAID],
-                    direction=ValueDirection.COST
+                    direction=[ValueDirection.COST, ValueDirection.FIXED]
 
                 )
 

@@ -120,9 +120,9 @@ class MySQLCompanyDashboardRepository(CompanyDashboardRepository):
                     ) AS internal_cost,
                      SUM( 
                              CASE 
-                                 WHEN (fl.direction = 'FIXED' 
-                                     OR fl.contract_type = 'system') 
-                                     AND fl.contract_owner_id = %(company)s 
+                                 WHEN fl.direction = 'FIXED' 
+                                     OR (fl.contract_type = 'system'
+                                     AND fl.contract_owner_id = %(company)s )
                                      THEN fl.amount_value 
                                  ELSE 0 
                                  END 
@@ -337,11 +337,18 @@ class MySQLCompanyDashboardRepository(CompanyDashboardRepository):
               FROM financial_ledger fl
 
               WHERE fl.organization_id = %(org)s
-                    AND (
-                            fl.direction = 'FIXED'
-                            OR fl.contract_type = 'system'   -- legacy
-                    )
-                    AND fl.contract_owner_id = %(company)s
+                        AND
+                  (
+                     ( fl.direction = 'FIXED'
+                      AND (
+                            fl.buyer_id = %(company)s
+                            OR fl.seller_id = %(company)s
+                          )
+                     )
+                    OR (fl.contract_type = 'system'    -- LEGACY: remove after migration to direction=FIXED
+                    AND fl.contract_owner_id = %(company)s)
+                  )
+                    
                     AND fl.record_date >= %(start)s
                     AND fl.record_date < %(end)s
                     ORDER BY fl.record_date DESC

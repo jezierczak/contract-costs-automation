@@ -201,7 +201,7 @@ class DocumentParseNormalizer:
                 value=_safe_decimal(amount_data.get("value"), Decimal("0.00")),
                 vat_rate=self._parse_vat(amount_data.get("vat_rate")),
                 tax_treatment=TaxTreatment.TAX_DEDUCTIBLE,
-                input_type=AmountInputType.NET
+                input_type=self._parse_input_type(amount_data.get("input_type")),
             ),
 
             contract_reference=data.get("contract_code"),
@@ -211,6 +211,13 @@ class DocumentParseNormalizer:
             agreement_node_reference=data.get("agreement_node_code"),
 
         )
+
+    @staticmethod
+    def _parse_input_type(value) -> AmountInputType:
+        try:
+            return AmountInputType(value)
+        except Exception:
+            return AmountInputType.NET  # fallback
 
     @staticmethod
     def _build_company_input(

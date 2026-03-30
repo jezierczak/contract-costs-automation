@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 from uuid import UUID
 from abc import ABC, abstractmethod
 
@@ -128,4 +129,21 @@ class FinancialRecordLineRepository(ABC):
         financial_record_id: UUID,
         keep_ids: set[UUID],
     ) -> int:
+        ...
+
+    @abstractmethod
+    def find_financial_record_ids_by_line_amounts(
+            self,
+            *,
+            organization_id: UUID,
+            line_amounts: list[Decimal],
+            expected: int,
+            tolerance: Decimal,
+    ) -> list[UUID]:
+        """
+        Returns financial_record_ids that contain lines matching
+        all provided line_amounts (within tolerance).
+
+        Duplicate amounts must be respected.
+        """
         ...

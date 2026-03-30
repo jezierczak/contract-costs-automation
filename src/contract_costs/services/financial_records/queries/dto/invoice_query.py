@@ -3,6 +3,7 @@ from datetime import date
 from decimal import Decimal
 
 from contract_costs.services.financial_records.queries.dto.attached_document_view import AttachedDocumentView
+from contract_costs.services.financial_records.queries.dto.company_details_view import CompanyDetailsView
 
 
 @dataclass(frozen=True)
@@ -36,11 +37,8 @@ class FinancialRecordDetailsView:
     invoice_date: date | None
     selling_date: date | None
 
-    buyer_name: str
-    buyer_tax_number: str
-
-    seller_name: str
-    seller_tax_number: str
+    buyer: CompanyDetailsView
+    seller: CompanyDetailsView
 
     payment_status: str
     payment_method: str

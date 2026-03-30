@@ -53,6 +53,14 @@ class DocumentRepository(ABC):
     ) -> None: ...
 
     @abstractmethod
+    def unattach_from_record(
+            self,
+            *,
+            organization_id: UUID,
+            document_id: UUID,
+    ) -> None: ...
+
+    @abstractmethod
     def get_by_hash(
         self,
         *,

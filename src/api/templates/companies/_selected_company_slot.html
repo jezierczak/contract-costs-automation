@@ -5,19 +5,14 @@
 } %}
 
 <div id="company-slot-{{ target }}"
-     class="grid grid-cols-[100px_1fr_auto] items-center gap-3
-            border rounded-lg p-3 bg-gray-50">
+     class="grid grid-cols-[120px_1fr_auto] items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
 
-    <!-- LABEL -->
     <div class="text-sm font-medium text-gray-600">
-        {{ target|capitalize }}
+        {{ labels.get(target, target|capitalize) }}
     </div>
 
-    <!-- CONTENT -->
     <div>
-
         {% if company %}
-
             <div class="font-medium text-gray-900 leading-tight">
                 {{ company.name }}
             </div>
@@ -29,26 +24,35 @@
             <input type="hidden"
                    name="{{ target }}_tax_number"
                    value="{{ company.tax_number }}">
-
         {% else %}
-
             <div class="text-gray-400 text-sm">
                 Nie wybrano firmy
             </div>
-
         {% endif %}
-
     </div>
 
-    <!-- ACTION -->
-    <button
-        type="button"
-        hx-get="/companies/picker?target={{ target }}"
-        hx-target="#modal-area"
-        hx-swap="innerHTML"
-        class="text-blue-600 text-sm hover:underline"
-    >
-        {% if company %}Zmień{% else %}Wybierz{% endif %}
-    </button>
+    <div class="flex items-center gap-2">
+        {% if company %}
+        <button
+            type="button"
+            hx-get="/companies/{{ company.tax_number }}/edit?target={{ target }}"
+            hx-target="#modal-area"
+            hx-swap="innerHTML"
+            class="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
+        >
+            Edytuj
+        </button>
+        {% endif %}
+
+        <button
+            type="button"
+            hx-get="/companies/picker?target={{ target }}"
+            hx-target="#modal-area"
+            hx-swap="innerHTML"
+            class="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+        >
+            {% if company %}Zmień{% else %}Wybierz{% endif %}
+        </button>
+    </div>
 
 </div>

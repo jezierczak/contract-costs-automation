@@ -7,7 +7,91 @@
 {% block workspace_content %}
 
 <div class="max-w-[95vw] mx-auto">
+<div class="bg-white rounded-xl shadow p-3 mb-4">
 
+<form
+    id="company-records-filters"
+    hx-get="/records/table"
+    hx-target="#records-table"
+    hx-swap="innerHTML"
+    class="flex flex-wrap items-center gap-2"
+>
+
+    <!-- hidden -->
+    <input type="hidden" name="company_id" value="{{ company_id }}">
+    <input type="hidden" name="year" value="{{ year }}">
+    {% if month %}
+    <input type="hidden" name="month" value="{{ month }}">
+    {% endif %}
+
+    <!-- SEARCH -->
+    <input
+        type="text"
+        name="any"
+        placeholder="🔎 Faktura / kontrahent / NIP"
+        class="border rounded px-2 py-1 text-sm w-[220px]"
+    >
+
+    <!-- CONTRACT -->
+    <select name="contract_code" class="border rounded px-2 py-1 text-sm w-[180px]">
+        <option value="">Kontrakt</option>
+        {% for c in contracts %}
+            <option value="{{ c.code }}" {% if c.code == selected_contract_code %}selected{% endif %}>
+                {{ c.code }}
+            </option>
+        {% endfor %}
+    </select>
+
+    <!-- DIRECTION -->
+    <select name="direction" class="border rounded px-2 py-1 text-sm w-[140px]">
+        <option value="">Typ</option>
+        <option value="COST">Koszt</option>
+        <option value="FIXED">Stały koszt</option>
+        <option value="REVENUE">Przychód</option>
+        <option value="INTERNAL">Internal</option>
+    </select>
+
+    <!-- CHECKBOXES -->
+    <label class="flex items-center gap-1 text-xs">
+        <input type="checkbox" name="unpaid" value="1"> niezapłacone
+    </label>
+
+    <label class="flex items-center gap-1 text-xs">
+        <input type="checkbox" name="TAX_DEDUCTIBLE" value="1"> tax
+    </label>
+
+    <label class="flex items-center gap-1 text-xs">
+        <input type="checkbox" name="NON_DEDUCTIBLE" value="1"> non-tax
+    </label>
+
+    <label class="flex items-center gap-1 text-xs">
+        <input type="checkbox" name="NON_CASH_COST" value="1"> koszt
+    </label>
+
+    <!-- ACTIONS -->
+    <div class="ml-auto flex gap-2">
+
+        <button
+            type="submit"
+            class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+        >
+            Filtruj
+        </button>
+
+        <button
+            type="reset"
+            hx-get="/records/table?company_id={{company_id}}&year={{year}}{% if month %}&month={{month}}{% endif %}"
+            hx-target="#records-table"
+            class="text-sm text-gray-500 hover:text-gray-700"
+        >
+            Reset
+        </button>
+
+    </div>
+
+</form>
+
+</div>
 <div
 id="records-table"
 hx-get="/records/table?company_id={{company_id}}&year={{year}}{% if month %}&month={{month}}{% endif %}"
@@ -15,11 +99,14 @@ hx-trigger="load, every 8s, recordsUpdated from:body"
 hx-target="this"
 hx-swap="innerHTML"
 hx-sync="this:replace"
+hx-include="#company-records-filters"
 >
-</div>
+
     <div class="p-6 text-center text-gray-400">
         Ładowanie rekordów...
     </div>
+</div>
+
 
 </div>
 

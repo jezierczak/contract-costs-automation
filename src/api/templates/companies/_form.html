@@ -2,8 +2,8 @@
 
 <form
     hx-post="{{ action_url }}"
-    hx-target="#modal-area"
-    hx-swap="innerHTML"
+    hx-target="{% if picker_target %}#company-slot-{{ picker_target }}{% else %}#modal-area{% endif %}"
+    hx-swap="{% if picker_target %}outerHTML{% else %}innerHTML{% endif %}"
     class="space-y-6"
 >
 
@@ -12,6 +12,7 @@
 {% endif %}
 
 <input type="hidden" name="next_page" value="{{ next or '' }}">
+<input type="hidden" name="picker_target" value="{{ picker_target or '' }}">
 
 <!-- ======================================== -->
 <!-- BASIC DATA -->
@@ -262,7 +263,13 @@ Typ firmy
 
 <button
     type="button"
+    {% if picker_target %}
+    hx-get="/companies/picker?target={{ picker_target }}"
+    hx-target="#modal-area"
+    hx-swap="innerHTML"
+    {% else %}
     onclick="document.getElementById('modal-area').innerHTML=''"
+    {% endif %}
     class="border px-4 py-2 rounded hover:bg-gray-100"
 >
 Anuluj

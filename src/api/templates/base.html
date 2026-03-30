@@ -539,6 +539,21 @@ document.body.addEventListener("click", function(e){
 
 });
 </script>
+<script>
+function copyToClipboard(text, el, label = "Skopiowano") {
+    navigator.clipboard.writeText(text);
+
+    const tip = el.nextElementSibling;
+    if (!tip) return;
+
+    tip.textContent = label;
+    tip.classList.remove('opacity-0');
+
+    setTimeout(() => {
+        tip.classList.add('opacity-0');
+    }, 800);
+}
+</script>
 
 </body>
 </html>

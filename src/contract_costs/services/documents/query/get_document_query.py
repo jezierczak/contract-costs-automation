@@ -4,11 +4,13 @@ from uuid import UUID
 
 from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.model.company import CompanyType
+from contract_costs.model.document import Document
 from contract_costs.model.financial_record import FinancialRecordStatus, FinancialRecord
 from contract_costs.services.companies.company_evaluate_orchestrator import EvaluateMode, CompanyEvaluateOrchestrator
 from contract_costs.services.documents.prepare.dto.candidate_record_dto import CandidateRecordDto
 from contract_costs.services.documents.prepare.dto.prepare_document_dto import PreparedDocumentDto
 from contract_costs.services.documents.query.dto.get_document_query import GetDocumentQuery
+from contract_costs.services.documents.scoring.find_matching_record_service import FindMatchingRecordService, MatchMode
 from contract_costs.unit_of_work import UnitOfWork
 
 
@@ -20,8 +22,10 @@ class GetDocumentQueryService(
     def __init__(
         self,
         company_evaluate: CompanyEvaluateOrchestrator,
+        matching_service: FindMatchingRecordService,
     ) -> None:
         self._company_evaluate = company_evaluate
+        self._matching_service = matching_service
 
     def execute(self, *, action, uow):
 
@@ -40,8 +44,7 @@ class GetDocumentQueryService(
             candidates = self._find_candidates(
                 organization_id=action.organization_id,
                 actor_user_id=action.actor_user_id,
-                seller_nip=document.seller_nip,
-                document_number=document.document_number,
+                document=document,
                 uow=uow
             )
 
@@ -64,57 +67,43 @@ class GetDocumentQueryService(
     def _find_candidates(
             self,
             *,
-            uow:UnitOfWork,
-            organization_id:UUID,
-            actor_user_id:UUID,
-            seller_nip: str | None,
-            document_number: str | None,
+            document: Document,
+            organization_id: UUID,
+            actor_user_id: UUID,
+            uow: UnitOfWork,
     ) -> list[CandidateRecordDto]:
 
-        if not seller_nip:
+        matches = self._matching_service.find(
+            document=document,
+            actor_user_id=actor_user_id,
+            uow=uow,
+            mode=MatchMode.CANDIDATE
+        )
+
+        if not matches:
             return []
 
-        seller = self._company_evaluate.evaluate_from_tax(
-            organization_id=organization_id,
-            actor_user_id=actor_user_id,
-            input_tax_number=seller_nip,
-            role=CompanyType.SELLER,
-            mode=EvaluateMode.NO_CREATE,
-            uow=uow
-        )
+        records: list[FinancialRecord] = []
 
-        #logger.info("Found Seller: %s", seller)
-        records: list[FinancialRecord] = uow.financial_records.list_by_seller_id(
-            organization_id=organization_id,
-            seller_id=seller.id,
-        )
-
-        candidates: list[CandidateRecordDto] = []
-        records = sorted(
-            records,
-            key=lambda rr: (
-                datetime.combine(rr.invoice_date, datetime.min.time())
-                if rr.invoice_date
-                else rr.created_at
-            ),
-            reverse=True,
-        )
-
-        for r in records:
-
-            # opcjonalnie pomijamy zamknięte
-            if r.status == FinancialRecordStatus.SENT_TO_ACCOUNTANT or r.status == FinancialRecordStatus.DELETED:
-                #logger.info("Skipping record : %s", r)
-                continue
-            #logger.info("Added record to bundle: %s", r)
-            candidates.append(
-                CandidateRecordDto(
-                    record_id=r.id,
-                    reference=r.reference,
-                    status=str(r.status.value),
-                    invoice_date=r.invoice_date
-                )
+        for record_id in matches:
+            record = uow.financial_records.get(
+                organization_id=organization_id,
+                record_id=record_id
             )
 
+            if record and record.status not in (
+                    FinancialRecordStatus.DELETED,
+            ):
+                records.append(record)
+
+        candidates = [
+            CandidateRecordDto(
+                record_id=r.id,
+                reference=r.reference,
+                status=str(r.status.value),
+                invoice_date=r.invoice_date,
+            )
+            for r in records
+        ]
 
         return candidates

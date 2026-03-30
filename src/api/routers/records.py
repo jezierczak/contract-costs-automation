@@ -4,18 +4,21 @@ from fastapi import APIRouter, Depends, Request
 from starlette.responses import RedirectResponse, Response, HTMLResponse
 from decimal import Decimal
 from uuid import UUID
-from datetime import date
 from api.dependencies import get_services
 from contract_costs.model.amount import VatRate, AmountInputType, TaxTreatment, Amount
 from contract_costs.model.business_event import BusinessEventLevel
 from contract_costs.model.company import CompanyType
+from contract_costs.model.contract import ContractType, ContractStatus
 
 from contract_costs.model.financial_record import PaymentMethod, PaymentStatus, FinancialRecordStatus
 from contract_costs.model.record_workspace_view import RecordWorkspaceView
 from contract_costs.model.unit_of_measure import UnitOfMeasure
+from contract_costs.model.value_direction import ValueDirection
 from contract_costs.services.business_event.business_event_helper import BusinessEventHelper
 from contract_costs.services.companies.company_evaluate_orchestrator import EvaluateMode
+from contract_costs.services.companies.query.dto.company_query import CompanyQuery
 from contract_costs.services.contract_nodes.dto.contract_tree_query import ContractTreeQuery
+from contract_costs.services.contracts.query.list_contracts.list_contracts_query_command import ListContractsQuery
 from contract_costs.services.financial_records.actions.dto.invoice_action_command import FinancialRecordActionCommand, \
     FinancialRecordAction, FinancialRecordSelector
 
@@ -49,41 +52,81 @@ def _period_range(year: int, month: int | None) -> tuple[date, date]:
     return start, end
 
 
-def _fetch_company_records(*,
-                           ctx,
-                           services,
-                           company_id: str,
-                           year: int,
-                           month: int | None,
-                            owner_company_id:str | None = None,
-                           ):
+def _fetch_company_records(
+    *,
+    ctx,
+    services,
+    company_id: str,
+    year: int,
+    month: int | None,
+    owner_company_id: str | None = None,
+
+    any_value: str | None = None,
+    direction: str | None = None,
+    contract_code: str | None = None,
+    unpaid: str | None = None,
+    tax_deductible: str | None = None,
+    non_deductible: str | None = None,
+    non_cash_cost: str | None = None,
+):
     from_date, to_date = _period_range(year, month)
 
+    # ===============================
+    # BASE COMPANY FILTER
+    # ===============================
     if owner_company_id:
-        query = FinancialRecordReviewQuery(
-            organization_id=ctx.organization_id,
-            actor_user_id=ctx.user_id,
-
-            # para firm
-            buyer_query={"id": [company_id, owner_company_id]},
-            seller_query={"id": [owner_company_id, company_id]},
-
-            from_date=from_date,
-            to_date=to_date,
-        )
+        buyer_query = {"id": [company_id, owner_company_id]}
+        seller_query = {"id": [owner_company_id, company_id]}
     else:
-        query = FinancialRecordReviewQuery(
-            organization_id=ctx.organization_id,
-            actor_user_id=ctx.user_id,
+        buyer_query = {"id": company_id}
+        seller_query = {"id": company_id}
 
-            # tylko counterparty
-            buyer_query={"id": company_id},
-            seller_query={"id": company_id},
+    # ===============================
+    # SEARCH (any)
+    # ===============================
+    if any_value:
+        buyer_query = {**buyer_query, "any": any_value}
+        seller_query = {**seller_query, "any": any_value}
 
-            from_date=from_date,
-            to_date=to_date,
-        )
+    direction_enum = None
+    if direction:
+        direction_enum = ValueDirection(direction)
 
+    payment_status = None
+    if unpaid:
+        payment_status = PaymentStatus.UNPAID
+    # ===============================
+    # BUILD QUERY
+    # ===============================
+    query = FinancialRecordReviewQuery(
+        organization_id=ctx.organization_id,
+        actor_user_id=ctx.user_id,
+
+        buyer_query=buyer_query,
+        seller_query=seller_query,
+
+        from_date=from_date,
+        to_date=to_date,
+
+        contract_codes=[contract_code] if contract_code else None,
+        direction=direction_enum,
+        payment_statuses=[payment_status] if payment_status else None,
+    )
+
+    # ===============================
+    # FUTURE FILTERS (placeholder)
+    # ===============================
+    # TODO: jak dodasz do query:
+    # if tax_deductible:
+    #     ...
+    # if non_deductible:
+    #     ...
+    # if non_cash_cost:
+    #     ...
+
+    # ===============================
+    # EXECUTE
+    # ===============================
     return services.action_bus.execute(
         action=query,
         handler=services.review_query_service,
@@ -105,6 +148,54 @@ def record_edit_workspace(
 ):
     ctx = request.state.ctx
 
+    buyer_tax_number = request.query_params.get("buyer_tax_number")
+    seller_tax_number = request.query_params.get("seller_tax_number")
+
+    prefill_company_buyer = None
+    prefill_company_seller = None
+    default_own_company = None
+
+    if buyer_tax_number:
+        prefill_company_buyers = services.action_bus.execute(
+            action=CompanyQuery(
+                organization_id=ctx.organization_id,
+                actor_user_id=ctx.user_id,
+                tax_number=buyer_tax_number,
+            ),
+            handler=services.company_query_service,
+        )
+        if prefill_company_buyers:
+            prefill_company_buyer = prefill_company_buyers[0]
+
+    if seller_tax_number:
+        prefill_company_sellers = services.action_bus.execute(
+        action=CompanyQuery(
+            organization_id=ctx.organization_id,
+            actor_user_id=ctx.user_id,
+            tax_number=seller_tax_number,
+        ),
+        handler=services.company_query_service,
+    )
+        if prefill_company_sellers:
+            prefill_company_seller = prefill_company_sellers[0]
+
+    if prefill_company_buyer or prefill_company_seller:
+        owns = services.action_bus.execute(
+            action=CompanyQuery(
+                organization_id=ctx.organization_id,
+                actor_user_id=ctx.user_id,
+                own_only=True
+            ),
+            handler=services.company_query_service,
+        )
+        default_own_company = owns[0] if owns else None
+
+    if default_own_company:
+        if prefill_company_buyer and not prefill_company_seller:
+            prefill_company_seller = default_own_company
+        elif prefill_company_seller and not prefill_company_buyer:
+            prefill_company_buyer = default_own_company
+
     # =====================
     # WORKSPACE QUERY (NEW)
     # =====================
@@ -116,6 +207,7 @@ def record_edit_workspace(
         ),
         handler=services.record_edit_workspace_query_service,
     )
+
 
     # =====================
     # TEMPLATE
@@ -137,6 +229,9 @@ def record_edit_workspace(
             "contracts": workspace.contracts,
             "agreements": workspace.agreements,
             "value_types": workspace.value_types,
+
+            "prefill_company_buyer": prefill_company_buyer,
+            "prefill_company_seller": prefill_company_seller,
         },
     )
 
@@ -579,7 +674,21 @@ def records_company(
     company_id: str,
     year: int,
     month: int | None = None,
+    services=Depends(get_services),
 ):
+
+    ctx = request.state.ctx
+
+    contracts = services.action_bus.execute(
+        action=ListContractsQuery(
+            organization_id=ctx.organization_id,
+            actor_user_id=ctx.user_id,
+            contract_type=ContractType.PROJECT,
+            status=ContractStatus.ACTIVE,
+        ),
+        handler=services.list_contracts_service,
+    )
+
     return request.app.state.templates.TemplateResponse(
         "records/company/page.html",
         {
@@ -587,6 +696,7 @@ def records_company(
             "company_id": company_id,
             "year": year,
             "month": month,
+            "contracts": contracts,
         },
     )
 
@@ -599,6 +709,16 @@ def records_table(
     month: int | None = None,
     services=Depends(get_services),
 ):
+    params = request.query_params
+
+    any_value = params.get("any")
+    direction = params.get("direction")
+    contract_code = params.get("contract_code")
+
+    unpaid = params.get("unpaid")
+    tax_deductible = params.get("TAX_DEDUCTIBLE")
+    non_deductible = params.get("NON_DEDUCTIBLE")
+    non_cash_cost = params.get("NON_CASH_COST")
 
     ctx = request.state.ctx
 
@@ -608,7 +728,15 @@ def records_table(
         company_id=company_id,
         year=year,
         month=month,
-        owner_company_id=owner_company_id
+        owner_company_id=owner_company_id,
+
+        any_value = any_value,
+        direction = direction,
+        contract_code = contract_code,
+        unpaid = unpaid,
+        tax_deductible = tax_deductible,
+        non_deductible = non_deductible,
+        non_cash_cost = non_cash_cost
     )
 
     return request.app.state.templates.TemplateResponse(

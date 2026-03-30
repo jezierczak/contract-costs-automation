@@ -320,6 +320,53 @@ class MySQLFinancialRecordLineRepository(FinancialRecordLineRepository):
         finally:
             self._maybe_close(conn)
 
+    def find_financial_record_ids_by_line_amounts(
+            self,
+            *,
+            organization_id: UUID,
+            line_amounts: list[Decimal],
+            expected,
+            tolerance: Decimal,
+    ) -> list[UUID]:
+
+        if not line_amounts:
+            return []
+
+        conditions = []
+        params: list = [str(organization_id)]
+
+        for amount in line_amounts:
+            conditions.append("(amount_value BETWEEN %s AND %s)")
+            params.append(amount - tolerance)
+            params.append(amount + tolerance)
+
+        where_amounts = " OR ".join(conditions)
+
+
+        sql = f"""
+            SELECT financial_record_id, COUNT(*) as match_count
+            FROM financial_record_lines
+            WHERE organization_id = %s
+              AND financial_record_id IS NOT NULL
+              AND ({where_amounts})
+            GROUP BY financial_record_id
+            HAVING match_count >= %s
+        """
+
+        params.append(expected)
+
+        conn = self._get_connection()
+
+        try:
+            with conn.cursor() as cur:
+                cur.execute(sql, params)
+                rows = cur.fetchall()
+
+            return [UUID(r[0]) for r in rows]
+
+        finally:
+            self._maybe_close(conn)
+
     @staticmethod
     def _map_row(row: dict) -> FinancialRecordLine:
         return FinancialRecordLine(
