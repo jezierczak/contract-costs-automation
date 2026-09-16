@@ -11,7 +11,7 @@ from contract_costs.model.document import Document
 class PaymentMethod(Enum):
     PRE_PAID = "pre_paid"
     BANK_TRANSFER = "bank_transfer"   # przelew
-    CASH = "cash"                     # gotowka
+    CASH = "cash"                     # gotówka
     CARD = "card"                     # karta
     BLIK = "blik"                     # BLIK
     BON = "bon"                       # bon
@@ -73,6 +73,20 @@ class FinancialRecord(BaseEntity):
         return replace(
             self,
             payment_status=PaymentStatus.PAID,
+            paid_date=paid_at,
+            updated_by_user_id=updated_by_user_id,
+            updated_at=updated_at
+
+        )
+
+    def mark_partially_paid(self,
+                  *,
+                  updated_at: datetime,
+                  updated_by_user_id: UUID,
+                  paid_at: date | None = None) -> "FinancialRecord":
+        return replace(
+            self,
+            payment_status=PaymentStatus.PARTIALLY_PAID,
             paid_date=paid_at,
             updated_by_user_id=updated_by_user_id,
             updated_at=updated_at

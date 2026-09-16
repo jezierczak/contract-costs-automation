@@ -1,3 +1,5 @@
+{% include "own_company_dashboard/_selectors.html" %}
+
 <div class="max-w-[95vw] mx-auto mb-2 flex gap-4 text-xs text-gray-600">
 
 <div class="flex items-center gap-1">
@@ -26,12 +28,12 @@ dobry wynik
 
 <tr>
 <th class="text-left px-4 py-2">Okres</th>
-<th class="text-right px-4 py-2">Przychód</th>
+<th class="text-right px-4 py-2">Przychod</th>
 <th class="text-right px-4 py-2">Koszty</th>
 <th class="text-right px-4 py-2">Wynik</th>
 <th class="text-right px-4 py-2">Koszty nieopodatkowane</th>
 <th class="text-right px-4 py-2">Cashflow</th>
-<th class="text-right px-4 py-2">Koszty stałe</th>
+<th class="text-right px-4 py-2">Koszty stale</th>
 <th class="text-right px-4 py-2"></th>
 </tr>
 
@@ -45,7 +47,7 @@ dobry wynik
 
 <tr
 class="bg-gray-50 font-semibold hover:bg-gray-100 cursor-pointer"
-hx-get="/own-company-finances/month-breakdown?company_id={{selected_company_id}}&year={{dashboard.year}}"
+hx-get="/own-company-finances/month-breakdown?company_id={{ selected_company_id }}&year={{ dashboard.year }}"
 hx-target="#modal-area"
 hx-swap="innerHTML"
 >
@@ -87,7 +89,7 @@ text-green-600
 <td class="text-right px-4 py-2">
 
 <button
-hx-get="/own-company-finances/fixed-costs?company_id={{selected_company_id}}&year={{dashboard.year}}"
+hx-get="/own-company-finances/fixed-costs?company_id={{ selected_company_id }}&year={{ dashboard.year }}"
 hx-target="#modal-area"
 hx-swap="innerHTML"
 hx-trigger="click consume"
@@ -101,7 +103,7 @@ class="text-blue-600 hover:underline"
 <td class="text-right px-4 py-2">
 
 <a
-hx-get="/records/company?company_id={{selected_company_id}}&year={{dashboard.year}}"
+hx-get="/records/company?company_id={{ selected_company_id }}&year={{ dashboard.year }}"
 hx-target="#content-area"
 hx-swap="innerHTML"
 hx-push-url="true"
@@ -109,7 +111,7 @@ hx-indicator="#global-indicator"
 hx-trigger="click consume"
 class="text-gray-600 hover:text-black text-sm"
 >
-📄 faktury
+faktury
 </a>
 
 </td>
@@ -121,12 +123,13 @@ class="text-gray-600 hover:text-black text-sm"
 
 
 <!-- ===================== -->
-<!-- BIEŻĄCY MIESIĄC -->
+<!-- BIEZACY MIESIAC -->
 <!-- ===================== -->
 
+{% if dashboard.current_month %}
 <tr
 class="bg-gray-50 font-semibold hover:bg-gray-100 cursor-pointer"
-hx-get="/own-company-finances/month-breakdown?company_id={{selected_company_id}}&year={{dashboard.year}}&month={{dashboard.current_month.month}}"
+hx-get="/own-company-finances/month-breakdown?company_id={{ selected_company_id }}&year={{ dashboard.year }}&month={{ dashboard.current_month.month }}"
 hx-target="#modal-area"
 hx-swap="innerHTML"
 >
@@ -170,7 +173,7 @@ text-green-600
 <td class="text-right px-4 py-2">
 
 <button
-hx-get="/own-company-finances/fixed-costs?company_id={{selected_company_id}}&year={{dashboard.year}}&month={{dashboard.current_month.month}}"
+hx-get="/own-company-finances/fixed-costs?company_id={{ selected_company_id }}&year={{ dashboard.year }}&month={{ dashboard.current_month.month }}"
 hx-target="#modal-area"
 hx-swap="innerHTML"
 hx-trigger="click consume"
@@ -184,7 +187,7 @@ class="text-blue-600 hover:underline"
 <td class="text-right px-4 py-2">
 
 <a
-hx-get="/records/company?company_id={{selected_company_id}}&year={{dashboard.year}}&month={{dashboard.current_month.month}}"
+hx-get="/records/company?company_id={{ selected_company_id }}&year={{ dashboard.year }}&month={{ dashboard.current_month.month }}"
 hx-target="#content-area"
 hx-swap="innerHTML"
 hx-push-url="true"
@@ -192,19 +195,26 @@ hx-indicator="#global-indicator"
 hx-trigger="click consume"
 class="text-gray-600 hover:text-black text-sm"
 >
-📄 faktury
+faktury
 </a>
 
 </td>
 
 </tr>
+{% else %}
+<tr class="bg-gray-50">
+<td colspan="8" class="px-4 py-6 text-center text-sm text-gray-400">
+Brak danych dla biezacego miesiaca.
+</td>
+</tr>
+{% endif %}
 
 
 <tr><td colspan="8" class="py-2"></td></tr>
 
 
 <!-- ===================== -->
-<!-- POPRZEDNIE MIESIĄCE -->
+<!-- POPRZEDNIE MIESIACE -->
 <!-- ===================== -->
 
 {% for month in dashboard.previous_months %}
@@ -220,7 +230,7 @@ bg-yellow-50 hover:bg-yellow-100
 hover:bg-gray-50
 {% endif %}
 "
-hx-get="/own-company-finances/month-breakdown?company_id={{selected_company_id}}&year={{dashboard.year}}&month={{month.month}}"
+hx-get="/own-company-finances/month-breakdown?company_id={{ selected_company_id }}&year={{ dashboard.year }}&month={{ month.month }}"
 hx-target="#modal-area"
 hx-swap="innerHTML"
 >
@@ -264,7 +274,7 @@ text-green-600
 <td class="text-right px-4 py-2">
 
 <button
-hx-get="/own-company-finances/fixed-costs?company_id={{selected_company_id}}&year={{dashboard.year}}&month={{month.month}}"
+hx-get="/own-company-finances/fixed-costs?company_id={{ selected_company_id }}&year={{ dashboard.year }}&month={{ month.month }}"
 hx-target="#modal-area"
 hx-swap="innerHTML"
 hx-trigger="click consume"
@@ -278,7 +288,7 @@ class="text-blue-600 hover:underline"
 <td class="text-right px-4 py-2">
 
 <a
-hx-get="/records/company?company_id={{selected_company_id}}&year={{dashboard.year}}&month={{month.month}}"
+hx-get="/records/company?company_id={{ selected_company_id }}&year={{ dashboard.year }}&month={{ month.month }}"
 hx-target="#content-area"
 hx-swap="innerHTML"
 hx-push-url="true"
@@ -286,7 +296,7 @@ hx-indicator="#global-indicator"
 hx-trigger="click consume"
 class="text-gray-600 hover:text-black text-sm"
 >
-📄 faktury
+faktury
 </a>
 
 </td>

@@ -30,6 +30,30 @@ class MySQLNumberSequenceRepository(NumberSequenceRepository):
         if self._connection is None:
             conn.close()
 
+    def get(self, organization_id: UUID, scope_key: str) -> NumberSequence | None:
+        conn = self._get_connection()
+        try:
+            with conn.cursor(dictionary=True) as cur:
+                cur.execute(
+                    """
+                    SELECT *
+                    FROM number_sequences
+                    WHERE organization_id = %s
+                      AND scope_key = %s
+                    """,
+                    (str(organization_id), scope_key),
+                )
+                row = cur.fetchone()
+            if not row:
+                return None
+            return NumberSequence(
+                organization_id=UUID(row["organization_id"]),
+                scope_key=row["scope_key"],
+                current_value=row["current_value"],
+            )
+        finally:
+            self._maybe_close(conn)
+
     def get_for_update(self, organization_id: UUID, scope_key: str) -> NumberSequence | None:
         # resolved_conn = self._get_connection()
         # own_connection = self._is_owned(conn)

@@ -1,5 +1,6 @@
 import json
 import logging
+from decimal import Decimal
 from uuid import UUID
 
 from contract_costs.infrastructure.db.mysql_connection import get_connection
@@ -414,6 +415,56 @@ class MySQLFinancialRecordRepository(FinancialRecordRepository):
     #     self._attach_documents(organization_id=organization_id, records=records)
     #     return records
 
+    def find_by_total(
+            self,
+            *,
+            organization_id: UUID,
+            total: Decimal,
+            tolerance: Decimal,
+            seller_id: UUID | None = None,
+    ) -> list[UUID]:
+
+        sql = """
+              SELECT frl.financial_record_id
+              FROM financial_record_lines frl
+                       JOIN financial_records fr ON fr.id = frl.financial_record_id
+              WHERE frl.organization_id = %s
+                AND frl.financial_record_id IS NOT NULL
+                AND fr.status != %s \
+              """
+
+        params: list[object] = [
+            str(organization_id),
+            FinancialRecordStatus.DELETED.value,
+        ]
+
+        if seller_id:
+            sql += " AND fr.seller_id = %s"
+            params.append(str(seller_id))
+
+        sql += """
+            GROUP BY frl.financial_record_id
+            HAVING ABS(SUM(
+                ROUND(
+                    CASE
+                        WHEN frl.amount_input_type = 'gross' THEN frl.amount_value
+                        ELSE (frl.amount_value + (frl.amount_value * frl.vat_rate))
+                    END
+                , 2)
+            ) - %s) <= %s
+        """
+
+        params.extend([total, tolerance])
+
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(sql, params)
+                rows = cur.fetchall()
+            return [UUID(r[0]) for r in rows]
+        finally:
+            self._maybe_close(conn)
+
     def list_for_review(
             self,
             *,
@@ -559,7 +610,19 @@ class MySQLFinancialRecordRepository(FinancialRecordRepository):
 
             placeholders = ", ".join(["%s"] * len(directions))
 
-            conditions.append(f"(vt.direction IN ({placeholders}) OR vt.direction IS NULL)")
+            conditions.append(
+                f"""
+                (
+                    CASE
+                        WHEN vt.direction IS NOT NULL THEN vt.direction
+                        WHEN buyer.role = 'Own' AND seller.role != 'Own' THEN 'COST'
+                        WHEN buyer.role != 'Own' AND seller.role = 'Own' THEN 'REVENUE'
+                        WHEN buyer.role = 'Own' AND seller.role = 'Own' THEN 'INTERNAL'
+                        ELSE NULL
+                    END
+                ) IN ({placeholders})
+                """
+            )
             params.extend([d.value for d in directions])
 
         sql = f"""

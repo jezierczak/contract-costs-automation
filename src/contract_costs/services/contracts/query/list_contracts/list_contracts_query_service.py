@@ -169,6 +169,7 @@ class ListContractsQueryService(ActionHandler[ListContractsQuery, list[ContractL
             contract_id=contract.id,
             code=contract.code,
             name=contract.name,
+            status=contract.status.value,
             is_active=contract.is_active,
             planned_budget=planned_budget,
             progress=progress,

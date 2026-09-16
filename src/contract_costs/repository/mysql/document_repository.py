@@ -153,12 +153,14 @@ class MySQLDocumentRepository(DocumentRepository):
             *,
             organization_id: UUID,
             document_id: UUID,
+            file_path: str | None = None,
     ) -> None:
 
         sql = """
               UPDATE documents
               SET financial_record_id = NULL,
-                  document_status     = %s
+                  document_status     = %s,
+                  file_path           = COALESCE(%s, file_path)
               WHERE id = %s
                 AND organization_id = %s
                 AND financial_record_id IS NOT NULL 
@@ -171,6 +173,7 @@ class MySQLDocumentRepository(DocumentRepository):
                     sql,
                     (
                         DocumentStatus.READY.value,
+                        file_path,
                         str(document_id),
                         str(organization_id),
                     ),

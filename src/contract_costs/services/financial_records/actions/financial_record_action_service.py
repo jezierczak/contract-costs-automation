@@ -1,11 +1,14 @@
 import logging
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Any, Callable
 from uuid import UUID
 
 from contract_costs.action_bus.action_handler import ActionHandler
+from contract_costs.common.ids import new_uuid
 from contract_costs.common.time import utc_now
-from contract_costs.model.financial_record import PaymentStatus, FinancialRecord, FinancialRecordStatus
+from contract_costs.model.financial_record import FinancialRecord, FinancialRecordStatus
+from contract_costs.model.financial_record_payment import FinancialRecordPayment
 from contract_costs.services.financial_records.actions.dto.invoice_action_command import FinancialRecordActionCommand, FinancialRecordAction
 from contract_costs.services.financial_records.actions.financial_record_selector_resolver import FinancialRecordSelectorResolver
 from contract_costs.unit_of_work import UnitOfWork
@@ -60,6 +63,24 @@ class FinancialRecordActionService(
                     actor_user_id=action.actor_user_id,
                 )
 
+            case FinancialRecordAction.ADD_PAYMENT:
+                self._add_payment(
+                    uow=uow,
+                    record_ids=record_ids,
+                    organization_id=action.organization_id,
+                    actor_user_id=action.actor_user_id,
+                    payload=action.payload,
+                )
+
+            case FinancialRecordAction.REMOVE_PAYMENT:
+                self._remove_payment(
+                    uow=uow,
+                    record_ids=record_ids,
+                    organization_id=action.organization_id,
+                    actor_user_id=action.actor_user_id,
+                    payload=action.payload,
+                )
+
             case FinancialRecordAction.REOPEN:
                 self._reopen(
                     uow=uow,
@@ -96,22 +117,118 @@ class FinancialRecordActionService(
         payload: dict[str, Any] | None,
     ) -> None:
 
-        paid_at = None
-        if payload:
-            paid_at = payload.get("paid_at")
+        paid_date: date = (payload or {}).get("paid_date") or self._clock().date()
 
         for record_id in record_ids:
             record = self._require_record(uow=uow,organization_id=organization_id,record_id=record_id)
 
-            if record.payment_status == PaymentStatus.PAID:
-                continue  # albo raise, zależnie od filozofii
-
-            updated = record.mark_paid(
-                paid_at=paid_at,
-                updated_at=self._clock(),
-                updated_by_user_id=actor_user_id,
+            total = self._total_cashflow(uow=uow, organization_id=organization_id, record_id=record_id)
+            already_paid = self._sum_payments(
+                uow=uow, organization_id=organization_id, record_id=record_id,
             )
-            uow.financial_records.update(updated)
+            remaining = total - already_paid
+
+            if remaining <= 0:
+                continue  # już w pełni zapłacone / nadpłacone – no-op
+
+            payment = FinancialRecordPayment(
+                id=new_uuid(),
+                organization_id=organization_id,
+                created_at=self._clock(),
+                created_by_user_id=actor_user_id,
+                updated_at=None,
+                updated_by_user_id=None,
+                financial_record_id=record_id,
+                amount=remaining,
+                paid_date=paid_date,
+            )
+            uow.financial_record_payments.add(organization_id=organization_id, payment=payment)
+
+            self._recompute_payment_state(
+                uow=uow,
+                organization_id=organization_id,
+                actor_user_id=actor_user_id,
+                record=record,
+            )
+
+    def _add_payment(
+        self,
+        *,
+        uow: UnitOfWork,
+        organization_id: UUID,
+        actor_user_id: UUID,
+        record_ids: list[UUID],
+        payload: dict[str, Any] | None,
+    ) -> None:
+
+        if not payload or payload.get("amount") is None or payload.get("paid_date") is None:
+            raise ValueError("ADD_PAYMENT requires 'amount' and 'paid_date' in payload")
+
+        amount: Decimal = payload["amount"]
+        paid_date: date = payload["paid_date"]
+
+        if amount <= 0:
+            raise ValueError("Payment amount must be positive")
+
+        for record_id in record_ids:
+            record = self._require_record(uow=uow, organization_id=organization_id, record_id=record_id)
+
+            payment = FinancialRecordPayment(
+                id=new_uuid(),
+                organization_id=organization_id,
+                created_at=self._clock(),
+                created_by_user_id=actor_user_id,
+                updated_at=None,
+                updated_by_user_id=None,
+                financial_record_id=record_id,
+                amount=amount,
+                paid_date=paid_date,
+            )
+            uow.financial_record_payments.add(organization_id=organization_id, payment=payment)
+
+            self._recompute_payment_state(
+                uow=uow,
+                organization_id=organization_id,
+                actor_user_id=actor_user_id,
+                record=record,
+            )
+
+    def _remove_payment(
+        self,
+        *,
+        uow: UnitOfWork,
+        organization_id: UUID,
+        actor_user_id: UUID,
+        record_ids: list[UUID],
+        payload: dict[str, Any] | None,
+    ) -> None:
+
+        if not payload or payload.get("payment_id") is None:
+            raise ValueError("REMOVE_PAYMENT requires 'payment_id' in payload")
+
+        payment_id: UUID = payload["payment_id"]
+
+        for record_id in record_ids:
+            record = self._require_record(uow=uow, organization_id=organization_id, record_id=record_id)
+
+            payment = uow.financial_record_payments.get(
+                organization_id=organization_id, payment_id=payment_id,
+            )
+            if not payment or payment.financial_record_id != record_id:
+                raise ValueError(
+                    f"Payment {payment_id} not found for record {record_id}"
+                )
+
+            uow.financial_record_payments.delete(
+                organization_id=organization_id, payment_id=payment_id,
+            )
+
+            self._recompute_payment_state(
+                uow=uow,
+                organization_id=organization_id,
+                actor_user_id=actor_user_id,
+                record=record,
+            )
 
     def _mark_sent_to_accountant(self,
                                  *,
@@ -143,17 +260,22 @@ class FinancialRecordActionService(
                      organization_id: UUID,
                      actor_user_id: UUID,
                      record_ids: list[UUID]) -> None:
+        """
+        Świadomy reset: kasuje CAŁĄ historię wpłat faktury.
+        """
         for record_id in record_ids:
             record = self._require_record(uow=uow,organization_id=organization_id,record_id=record_id)
 
-            if record.payment_status == PaymentStatus.UNPAID:
-                continue
-
-            updated = record.mark_unpaid(
-                updated_at=self._clock(),
-                updated_by_user_id=actor_user_id,
+            uow.financial_record_payments.delete_all_by_financial_record(
+                organization_id=organization_id, financial_record_id=record_id,
             )
-            uow.financial_records.update(updated)
+
+            self._recompute_payment_state(
+                uow=uow,
+                organization_id=organization_id,
+                actor_user_id=actor_user_id,
+                record=record,
+            )
 
     def _delete(
             self,
@@ -244,6 +366,68 @@ class FinancialRecordActionService(
                 updated_by_user_id=actor_user_id
             )
             uow.financial_records.update(updated)
+    @staticmethod
+    def _total_cashflow(
+            *,
+            uow: UnitOfWork,
+            organization_id: UUID,
+            record_id: UUID,
+    ) -> Decimal:
+        lines = uow.financial_record_lines.list_by_financial_record(
+            organization_id=organization_id, financial_record_id=record_id,
+        )
+        return sum((line.amount.cashflow for line in lines), Decimal("0"))
+
+    @staticmethod
+    def _sum_payments(
+            *,
+            uow: UnitOfWork,
+            organization_id: UUID,
+            record_id: UUID,
+    ) -> Decimal:
+        payments = uow.financial_record_payments.list_by_financial_record(
+            organization_id=organization_id, financial_record_id=record_id,
+        )
+        return sum((p.amount for p in payments), Decimal("0"))
+
+    def _recompute_payment_state(
+            self,
+            *,
+            uow: UnitOfWork,
+            organization_id: UUID,
+            actor_user_id: UUID,
+            record: FinancialRecord,
+    ) -> None:
+        """
+        payment_status i paid_date faktury są zawsze pochodną listy wpłat
+        vs. sumy cashflow jej pozycji – przeliczane po każdej zmianie wpłat.
+        """
+        total = self._total_cashflow(
+            uow=uow, organization_id=organization_id, record_id=record.id,
+        )
+        payments = uow.financial_record_payments.list_by_financial_record(
+            organization_id=organization_id, financial_record_id=record.id,
+        )
+        paid = sum((p.amount for p in payments), Decimal("0"))
+        last_paid_date = max((p.paid_date for p in payments), default=None)
+
+        now = self._clock()
+
+        if paid <= 0:
+            updated = record.mark_unpaid(
+                updated_at=now, updated_by_user_id=actor_user_id,
+            )
+        elif paid < total:
+            updated = record.mark_partially_paid(
+                paid_at=last_paid_date, updated_at=now, updated_by_user_id=actor_user_id,
+            )
+        else:
+            updated = record.mark_paid(
+                paid_at=last_paid_date, updated_at=now, updated_by_user_id=actor_user_id,
+            )
+
+        uow.financial_records.update(updated)
+
     @staticmethod
     def _require_record(
             uow: UnitOfWork,

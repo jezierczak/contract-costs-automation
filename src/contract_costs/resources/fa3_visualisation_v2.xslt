@@ -213,8 +213,16 @@ NIP: <xsl:value-of select="//k:Podmiot1/k:DaneIdentyfikacyjne/k:NIP"/><br/>
             <xsl:value-of select="number(k:P_11)"/>
         </xsl:when>
         <xsl:when test="string(k:P_11A) != ''">
-            <xsl:value-of select="number(k:P_11A)"/>
+    <xsl:choose>
+        <xsl:when test="string(k:P_11Vat) != ''">
+            <xsl:value-of select="number(k:P_11A) - number(k:P_11Vat)"/>
         </xsl:when>
+        <xsl:otherwise>
+            <!-- fallback: brutto / (1 + VAT%) -->
+            <xsl:value-of select="number(k:P_11A) div (1 + (number(k:P_12) div 100))"/>
+        </xsl:otherwise>
+    </xsl:choose>
+</xsl:when>
         <xsl:otherwise>0</xsl:otherwise>
     </xsl:choose>
 </xsl:variable>
@@ -226,7 +234,7 @@ NIP: <xsl:value-of select="//k:Podmiot1/k:DaneIdentyfikacyjne/k:NIP"/><br/>
             <xsl:value-of select="number(k:P_11Vat)"/>
         </xsl:when>
         <xsl:otherwise>
-            <xsl:value-of select="$net * (number(k:P_12) div 100)"/>
+              <xsl:value-of select="round($net * (number(k:P_12) div 100) * 100) div 100"/>
         </xsl:otherwise>
     </xsl:choose>
 </xsl:variable>

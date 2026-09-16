@@ -50,6 +50,24 @@ class NumberGenerator:
 
         return final_number
 
+    def preview_next(
+        self,
+        uow: UnitOfWork,
+        organization_id: UUID,
+        pattern: str,
+        date: datetime,
+    ) -> str:
+        resolved_without_auto = self._resolve_context(pattern, date)
+
+        if "<auto>" not in pattern:
+            return resolved_without_auto
+
+        scope_key = self._build_scope_key(resolved_without_auto)
+        sequence = uow.number_sequences.get(organization_id, scope_key)
+        next_value = (sequence.current_value + 1) if sequence else 1
+
+        return resolved_without_auto.replace("<auto>", str(next_value))
+
     # --------------------------------------------------
     # PRIVATE
     # --------------------------------------------------

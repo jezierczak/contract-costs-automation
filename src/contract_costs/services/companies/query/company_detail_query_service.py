@@ -61,6 +61,9 @@ class CompanyDetailQueryService(
             if line.payment_status != "paid":
                 unpaid_invoice_ids.add(line.record_id)
 
+            if line.record_date is None:
+                continue
+
             if last_invoice_date is None or line.record_date > last_invoice_date:
                 last_invoice_date = line.record_date
 

@@ -6,6 +6,16 @@ from contract_costs.model.number_sequence import NumberSequence
 
 
 class NumberSequenceRepository(ABC):
+    @abstractmethod
+    def get(
+        self,
+        organization_id: UUID,
+        scope_key: str,
+    ) -> NumberSequence | None:
+        """
+        Odczytuje sekwencję bez blokowania.
+        """
+        ...
 
     @abstractmethod
     def get_for_update(

@@ -6,15 +6,52 @@
 
 {% block workspace_content %}
 
-<div
-    id="contracts-table"
-    class="bg-white rounded-xl shadow"
-    hx-get="/contracts/table"
-    hx-target="this"
-    hx-trigger="load, contractsUpdated from:body"
-    hx-swap="innerHTML"
->
-    Ładowanie...
+<div class="space-y-4">
+
+    <form
+        id="contracts-filters"
+        class="flex flex-wrap items-end gap-3 rounded-xl bg-white p-4 shadow"
+        hx-get="/contracts/table"
+        hx-target="#contracts-table"
+        hx-swap="innerHTML"
+        hx-trigger="change, keyup changed delay:300ms from:input[name='search']"
+    >
+        <div class="min-w-[220px] flex-1">
+            <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">Szukaj</label>
+            <input
+                type="text"
+                name="search"
+                placeholder="Kod albo nazwa kontraktu"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            >
+        </div>
+
+        <div class="w-[220px]">
+            <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">Status</label>
+            <select
+                name="status"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            >
+                <option value="">Wszystkie</option>
+                {% for status in statuses %}
+                <option value="{{ status }}">{{ status }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+
+    <div
+        id="contracts-table"
+        class="bg-white rounded-xl shadow"
+        hx-get="/contracts/table"
+        hx-include="#contracts-filters"
+        hx-target="this"
+        hx-trigger="load, contractsUpdated from:body"
+        hx-swap="innerHTML"
+    >
+        Ladowanie...
+    </div>
+
 </div>
 
 {% endblock %}

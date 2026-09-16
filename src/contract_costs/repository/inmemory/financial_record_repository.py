@@ -1,3 +1,4 @@
+from decimal import Decimal
 from uuid import UUID
 
 from contract_costs.model.financial_record import (
@@ -7,6 +8,9 @@ from contract_costs.model.financial_record import (
 from contract_costs.repository.financial_record_repository import (
     FinancialRecordRepository,
 )
+from contract_costs.repository.inmemory.financial_record_line_repository import (
+    InMemoryFinancialRecordLineRepository,
+)
 from contract_costs.services.financial_records.review.dto.financial_record_review_query import (
     FinancialRecordReviewQuery,
 )
@@ -14,8 +18,12 @@ from contract_costs.services.financial_records.review.dto.financial_record_revie
 
 class InMemoryFinancialRecordRepository(FinancialRecordRepository):
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        line_repository: InMemoryFinancialRecordLineRepository | None = None,
+    ) -> None:
         self._records: dict[UUID, FinancialRecord] = {}
+        self._line_repository = line_repository
 
     # =====================================================
     # CREATE / UPDATE
@@ -173,7 +181,51 @@ class InMemoryFinancialRecordRepository(FinancialRecordRepository):
     # REVIEW QUERY
     # =====================================================
 
-    def list_for_review(
+    def count_for_review(
+        self,
+        *,
+        organization_id: UUID,
+        query: FinancialRecordReviewQuery,
+    ) -> int:
+        return len(
+            self._filtered_for_review(organization_id=organization_id, query=query)
+        )
+
+    def find_by_total(
+        self,
+        *,
+        organization_id: UUID,
+        total: Decimal,
+        tolerance: Decimal,
+        seller_id: UUID | None = None,
+    ) -> list[UUID]:
+        if not self._line_repository:
+            return []
+
+        matches: list[UUID] = []
+
+        for r in self._records.values():
+            if r.organization_id != organization_id:
+                continue
+            if r.status == FinancialRecordStatus.DELETED:
+                continue
+            if seller_id and r.seller_id != seller_id:
+                continue
+
+            lines = self._line_repository.list_by_financial_record(
+                organization_id=organization_id,
+                financial_record_id=r.id,
+            )
+            if not lines:
+                continue
+
+            record_total = sum((l.amount.gross for l in lines), Decimal("0"))
+            if abs(record_total - total) <= tolerance:
+                matches.append(r.id)
+
+        return matches
+
+    def _filtered_for_review(
         self,
         *,
         organization_id: UUID,
@@ -220,6 +272,17 @@ class InMemoryFinancialRecordRepository(FinancialRecordRepository):
                 r for r in result
                 if r.invoice_date and r.invoice_date <= query.to_date
             ]
+
+        return result
+
+    def list_for_review(
+        self,
+        *,
+        organization_id: UUID,
+        query: FinancialRecordReviewQuery,
+    ) -> list[FinancialRecord]:
+
+        result = self._filtered_for_review(organization_id=organization_id, query=query)
 
         if query.payment_statuses:
             result = sorted(

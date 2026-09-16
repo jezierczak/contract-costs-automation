@@ -84,31 +84,74 @@
         <!-- REFERENCE -->
         <div>
             <label class="text-xs text-gray-500">Reference</label>
+            {% if record %}
             <input
                 name="reference"
                 value="{{ record.reference if record else '' }}"
                 class="w-full border rounded p-2"
+                required
             >
+            {% else %}
+            <div class="grid grid-cols-[180px_1fr] gap-2">
+                <select
+                    id="reference-numbering-mode"
+                    name="numbering_mode"
+                    class="w-full border rounded p-2"
+                >
+                    {% for option in reference_numbering_options %}
+                    <option value="{{ option.value }}">{{ option.label }}</option>
+                    {% endfor %}
+                </select>
+
+                <div id="reference-field-slot">
+                    {% with %}
+                        {% set numbering_mode = "manual" %}
+                        {% set current_reference = "" %}
+                        {% set reference_pattern = None %}
+                        {% set reference_preview = None %}
+                        {% include "records/_reference_field.html" %}
+                    {% endwith %}
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         <!-- INVOICE DATE -->
         <div>
-            <label class="text-xs text-gray-500">Invoice date</label>
+            <div class="mb-1 flex items-center justify-between">
+                <label class="text-xs text-gray-500">Invoice date</label>
+                <button
+                    type="button"
+                    onclick="setTodayDate('invoice_date')"
+                    class="text-xs font-medium text-blue-600 hover:underline"
+                >
+                    Dziś
+                </button>
+            </div>
             <input
                 type="date"
                 name="invoice_date"
-                value="{{ record.invoice_date or '' }}"
+                value="{{ record.invoice_date or default_invoice_date or '' }}"
                 class="w-full border rounded p-2"
             >
         </div>
 
         <!-- SELLING DATE -->
         <div>
-            <label class="text-xs text-gray-500">Selling date</label>
+            <div class="mb-1 flex items-center justify-between">
+                <label class="text-xs text-gray-500">Selling date</label>
+                <button
+                    type="button"
+                    onclick="setTodayDate('selling_date')"
+                    class="text-xs font-medium text-blue-600 hover:underline"
+                >
+                    Dziś
+                </button>
+            </div>
             <input
                 type="date"
                 name="selling_date"
-                value="{{ record.selling_date or '' }}"
+                value="{{ record.selling_date or default_selling_date or '' }}"
                 class="w-full border rounded p-2"
             >
         </div>
@@ -148,26 +191,38 @@
         <div>
             <label class="text-xs text-gray-500">Payment status</label>
 
-            <select name="payment_status"
-                    class="w-full border rounded p-2">
+            {% if record %}
+                <div class="w-full border rounded p-2 bg-gray-100 text-gray-700">
+                    {{ record.payment_status }}
+                </div>
+            {% else %}
+                <select name="payment_status"
+                        id="payment-status-select"
+                        onchange="updateInitialPaymentFields()"
+                        class="w-full border rounded p-2">
 
-                {% for v in payment_statuses %}
-                <option
-                    value="{{ v.value }}"
-                    {% if record and record.payment_status == v.value %}
-                        selected
-                    {% endif %}
-                >
-                    {{ v.value }}
-                </option>
-                {% endfor %}
+                    {% for v in payment_statuses %}
+                    <option value="{{ v.value }}">
+                        {{ v.value }}
+                    </option>
+                    {% endfor %}
 
-            </select>
+                </select>
+            {% endif %}
         </div>
 
         <!-- DUE DATE -->
         <div>
-            <label class="text-xs text-gray-500">Due date</label>
+            <div class="mb-1 flex items-center justify-between">
+                <label class="text-xs text-gray-500">Due date</label>
+                <button
+                    type="button"
+                    onclick="setTodayDate('due_date')"
+                    class="text-xs font-medium text-blue-600 hover:underline"
+                >
+                    Dziś
+                </button>
+            </div>
             <input
                 type="date"
                 name="due_date"
@@ -176,20 +231,49 @@
             >
         </div>
 
-        <!-- PAID DATE -->
-        <div>
-            <label class="text-xs text-gray-500">Paid date</label>
+        {% if not record %}
+        <!-- INITIAL PAYMENT (tylko przy tworzeniu nowej faktury) -->
+        <div id="initial-payment-date-field" class="hidden">
+            <div class="mb-1 flex items-center justify-between">
+                <label class="text-xs text-gray-500">Paid date</label>
+                <button
+                    type="button"
+                    onclick="setTodayDate('initial_paid_date')"
+                    class="text-xs font-medium text-blue-600 hover:underline"
+                >
+                    Dziś
+                </button>
+            </div>
             <input
                 type="date"
-                name="paid_date"
-                value="{{ record.paid_date or '' }}"
+                name="initial_paid_date"
                 class="w-full border rounded p-2"
             >
         </div>
 
+        <div id="initial-payment-amount-field" class="hidden">
+            <label class="text-xs text-gray-500">Zapłacona kwota</label>
+            <input
+                type="number"
+                step="0.01"
+                name="initial_paid_amount"
+                class="w-full border rounded p-2"
+            >
+        </div>
+        {% endif %}
+
     </div>
 
 </div>
+
+{% if record %}
+<!-- ===================== -->
+<!-- PAYMENTS -->
+<!-- ===================== -->
+<div class="bg-white border rounded-lg p-4 mb-4" id="payments-panel">
+    {% include "records/edit/_payments_panel.html" %}
+</div>
+{% endif %}
 
 <!-- ===================== -->
 <!-- COMPANIES -->
@@ -241,6 +325,36 @@
 {% endwith %}
     </div>
 
+</div>
+
+
+<!-- ===================== -->
+<!-- INVOICE SUMMARY -->
+<!-- ===================== -->
+<div class="bg-white border rounded-lg p-4 mb-4">
+    <h3 class="font-semibold mb-3">Podsumowanie faktury (z pozycji)</h3>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+        <div class="rounded border bg-gray-50 p-3">
+            <div class="text-xs uppercase tracking-wide text-gray-500">Suma netto</div>
+            <div id="invoice-summary-net" class="mt-1 font-semibold text-gray-800">0.00</div>
+        </div>
+
+        <div class="rounded border bg-gray-50 p-3">
+            <div class="text-xs uppercase tracking-wide text-gray-500">Suma non_deduct</div>
+            <div id="invoice-summary-non-deduct" class="mt-1 font-semibold text-amber-700">0.00</div>
+        </div>
+
+        <div class="rounded border bg-gray-50 p-3">
+            <div class="text-xs uppercase tracking-wide text-gray-500">Suma VAT</div>
+            <div id="invoice-summary-vat" class="mt-1 font-semibold text-blue-700">0.00</div>
+        </div>
+
+        <div class="rounded border bg-gray-50 p-3">
+            <div class="text-xs uppercase tracking-wide text-gray-500">Suma brutto</div>
+            <div id="invoice-summary-gross" class="mt-1 font-semibold text-green-700">0.00</div>
+        </div>
+    </div>
 </div>
 
 
@@ -332,4 +446,303 @@
 
 </div>
 </form>
+
+<script>
+function setTodayDate(fieldName) {
+    const input = document.querySelector(`[name="${fieldName}"]`);
+    if (!input) return;
+
+    const now = new Date();
+    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 10);
+
+    input.value = local;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function updateInitialPaymentFields() {
+    const select = document.getElementById("payment-status-select");
+    const dateField = document.getElementById("initial-payment-date-field");
+    const amountField = document.getElementById("initial-payment-amount-field");
+    if (!select || !dateField || !amountField) return;
+
+    const status = select.value;
+    dateField.classList.toggle("hidden", status !== "paid" && status !== "partially_paid");
+    amountField.classList.toggle("hidden", status !== "partially_paid");
+}
+
+document.addEventListener("DOMContentLoaded", updateInitialPaymentFields);
+
+async function refreshReferenceField() {
+    const modeSelect = document.getElementById("reference-numbering-mode");
+    const target = document.getElementById("reference-field-slot");
+    if (!modeSelect || !target) return;
+
+    const sellerInput = document.querySelector('[name="seller_tax_number"]');
+    const invoiceDateInput = document.querySelector('[name="invoice_date"]');
+
+    const params = new URLSearchParams({
+        numbering_mode: modeSelect.value,
+        seller_tax_number: sellerInput?.value || "",
+        invoice_date: invoiceDateInput?.value || "",
+    });
+
+    const response = await fetch(`/records/reference/field?${params.toString()}`, {
+        headers: { "HX-Request": "true" },
+    });
+
+    target.innerHTML = await response.text();
+}
+
+async function refreshContractNodeSlot(lineIdx, contractId, selectedNodeId) {
+    const slotId = `contract-node-slot-${lineIdx}`;
+    const slot = document.getElementById(slotId);
+    if (!slot) return;
+
+    const params = new URLSearchParams({
+        idx: String(lineIdx),
+        contract_id: contractId || "",
+    });
+
+    if (selectedNodeId) {
+        params.set("selected_node_id", selectedNodeId);
+    }
+
+    const response = await fetch(`/records/contracts/nodes/select?${params.toString()}`, {
+        headers: { "HX-Request": "true" },
+    });
+
+    slot.outerHTML = await response.text();
+    const updated = document.getElementById(slotId);
+    if (updated && window.htmx) {
+        window.htmx.process(updated);
+    }
+}
+
+async function refreshContractSlot(lineIdx, contractId) {
+    const slotId = `contract-slot-${lineIdx}`;
+    const slot = document.getElementById(slotId);
+    if (!slot) return;
+
+    const params = new URLSearchParams({
+        idx: String(lineIdx),
+        contract_id: contractId || "",
+    });
+
+    const response = await fetch(`/records/contracts/select?${params.toString()}`, {
+        headers: { "HX-Request": "true" },
+    });
+
+    slot.outerHTML = await response.text();
+    const updated = document.getElementById(slotId);
+    if (updated && window.htmx) {
+        window.htmx.process(updated);
+    }
+}
+
+async function fillContractToRemainingLines(sourceIdx) {
+    const sourceInput = document.querySelector(`[name="lines[${sourceIdx}].contract_id"]`);
+    if (!sourceInput || !sourceInput.value) return;
+
+    const rows = document.querySelectorAll("#record-lines tr[data-line]");
+    const contractId = sourceInput.value;
+
+    for (const row of rows) {
+        const lineIdx = Number(row.dataset.line);
+        if (lineIdx <= sourceIdx) continue;
+
+        const targetInput = row.querySelector(`[name="lines[${lineIdx}].contract_id"]`);
+        if (!targetInput) continue;
+
+        targetInput.value = contractId;
+        await refreshContractSlot(lineIdx, contractId);
+        await refreshContractNodeSlot(lineIdx, contractId, null);
+    }
+}
+
+async function fillContractNodeToRemainingLines(sourceIdx) {
+    const sourceContractInput = document.querySelector(`[name="lines[${sourceIdx}].contract_id"]`);
+    const sourceNodeInput = document.querySelector(`[name="lines[${sourceIdx}].contract_node_id"]`);
+
+    if (!sourceContractInput || !sourceNodeInput) return;
+    if (!sourceContractInput.value || !sourceNodeInput.value) return;
+
+    const rows = document.querySelectorAll("#record-lines tr[data-line]");
+
+    for (const row of rows) {
+        const lineIdx = Number(row.dataset.line);
+        if (lineIdx <= sourceIdx) continue;
+
+        const targetContractInput = row.querySelector(`[name="lines[${lineIdx}].contract_id"]`);
+        if (!targetContractInput) continue;
+
+        targetContractInput.value = sourceContractInput.value;
+        await refreshContractSlot(lineIdx, sourceContractInput.value);
+        await refreshContractNodeSlot(lineIdx, sourceContractInput.value, sourceNodeInput.value);
+    }
+}
+
+async function fillValueTypeToRemainingLines(sourceIdx) {
+    const sourceInput = document.querySelector(`[name="lines[${sourceIdx}].value_type_id"]`);
+    if (!sourceInput || !sourceInput.value) return;
+
+    const rows = document.querySelectorAll("#record-lines tr[data-line]");
+    const valueTypeId = sourceInput.value;
+
+    for (const row of rows) {
+        const lineIdx = Number(row.dataset.line);
+        if (lineIdx <= sourceIdx) continue;
+
+        const targetSlot = document.getElementById(`value-type-slot-${lineIdx}`);
+        if (!targetSlot) continue;
+
+        const response = await fetch(`/records/value-types/select?idx=${lineIdx}&value_type_id=${encodeURIComponent(valueTypeId)}`, {
+            headers: { "HX-Request": "true" },
+        });
+
+        targetSlot.outerHTML = await response.text();
+        const updated = document.getElementById(`value-type-slot-${lineIdx}`);
+        if (updated && window.htmx) {
+            window.htmx.process(updated);
+        }
+    }
+}
+
+function activatePickerTab(groupName, panelId, buttonEl) {
+    document.querySelectorAll(`[data-tab-panel="${groupName}"]`).forEach((panel) => {
+        panel.classList.toggle("hidden", panel.id !== panelId);
+    });
+
+    document.querySelectorAll(`[data-tab-button][data-tab-group="${groupName}"]`).forEach((button) => {
+        const isActive = button === buttonEl;
+        button.classList.toggle("border-blue-600", isActive);
+        button.classList.toggle("bg-blue-600", isActive);
+        button.classList.toggle("text-white", isActive);
+        button.classList.toggle("border-gray-300", !isActive);
+        button.classList.toggle("text-gray-600", !isActive);
+    });
+}
+
+document.body.addEventListener("change", function(e) {
+    if (e.target.id === "reference-numbering-mode" || e.target.name === "invoice_date") {
+        refreshReferenceField();
+    }
+});
+
+document.body.addEventListener("htmx:afterSwap", function(e) {
+    if (e.target && e.target.id === "company-slot-seller") {
+        refreshReferenceField();
+    }
+
+    if (e.target && e.target.id === "record-lines") {
+        updateInvoiceSummaryFromLines();
+    }
+});
+
+function parseDecimal(value) {
+    if (value === null || value === undefined) return 0;
+    const normalized = String(value).replace(",", ".").trim();
+    if (!normalized) return 0;
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function round2(value) {
+    return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function getLineFieldValue(line, fieldName) {
+    const input = line.querySelector(`[name$=".${fieldName}"]`);
+    return input ? input.value : "";
+}
+
+function computeLineAmounts(line) {
+    const amount = parseDecimal(getLineFieldValue(line, "amount"));
+    const vatRate = parseDecimal(getLineFieldValue(line, "vat_rate"));
+    const amountType = getLineFieldValue(line, "amount_type");
+    const taxTreatment = getLineFieldValue(line, "tax_treatment");
+
+    if (!amount) {
+        return { net: 0, nonDeduct: 0, vat: 0, gross: 0 };
+    }
+
+    if (taxTreatment === "non_deductible") {
+        return { net: 0, nonDeduct: amount, vat: 0, gross: 0 };
+    }
+
+    const net = amountType === "gross"
+        ? (vatRate === 0 ? amount : amount / (1 + vatRate))
+        : amount;
+
+    const vat = taxTreatment === "tax_deductible" ? net * vatRate : 0;
+    const gross = amountType === "gross" ? amount : (net + vat);
+
+    return {
+        net,
+        nonDeduct: 0,
+        vat,
+        gross,
+    };
+}
+
+function updateInvoiceSummaryFromLines() {
+    const lines = document.querySelectorAll("#record-lines tr[data-line]");
+    let sumNet = 0;
+    let sumNonDeduct = 0;
+    let sumVat = 0;
+    let sumGross = 0;
+
+    for (const line of lines) {
+        const amounts = computeLineAmounts(line);
+        sumNet += amounts.net;
+        sumNonDeduct += amounts.nonDeduct;
+        sumVat += amounts.vat;
+        sumGross += amounts.gross;
+    }
+
+    const netEl = document.getElementById("invoice-summary-net");
+    const nonDeductEl = document.getElementById("invoice-summary-non-deduct");
+    const vatEl = document.getElementById("invoice-summary-vat");
+    const grossEl = document.getElementById("invoice-summary-gross");
+
+    if (netEl) netEl.textContent = round2(sumNet).toFixed(2);
+    if (nonDeductEl) nonDeductEl.textContent = round2(sumNonDeduct).toFixed(2);
+    if (vatEl) vatEl.textContent = round2(sumVat).toFixed(2);
+    if (grossEl) grossEl.textContent = round2(sumGross).toFixed(2);
+}
+
+document.body.addEventListener("input", function(e) {
+    const target = e.target;
+    if (!target || !target.name || !target.name.startsWith("lines[")) return;
+    if (
+        target.name.endsWith(".amount")
+        || target.name.endsWith(".vat_rate")
+    ) {
+        updateInvoiceSummaryFromLines();
+    }
+});
+
+document.body.addEventListener("change", function(e) {
+    const target = e.target;
+    if (!target || !target.name || !target.name.startsWith("lines[")) return;
+    if (
+        target.name.endsWith(".amount")
+        || target.name.endsWith(".vat_rate")
+        || target.name.endsWith(".amount_type")
+        || target.name.endsWith(".tax_treatment")
+    ) {
+        updateInvoiceSummaryFromLines();
+    }
+});
+
+document.body.addEventListener("click", function(e) {
+    const deleteBtn = e.target.closest("button");
+    if (!deleteBtn) return;
+    if (!deleteBtn.textContent || !deleteBtn.textContent.includes("Usu")) return;
+    setTimeout(updateInvoiceSummaryFromLines, 0);
+});
+
+updateInvoiceSummaryFromLines();
+</script>
 {% endblock %}

@@ -41,6 +41,20 @@ def test_mark_unpaid_resets_paid_date():
     assert unpaid.paid_date is None
 
 
+def test_mark_partially_paid_returns_new_instance():
+    record = FinancialRecordBuilder().build()
+
+    updated = record.mark_partially_paid(
+        updated_at=utc_now(),
+        updated_by_user_id=new_uuid(),
+        paid_at=date(2024, 1, 1),
+    )
+
+    assert updated.payment_status == PaymentStatus.PARTIALLY_PAID
+    assert updated.paid_date == date(2024, 1, 1)
+    assert record.payment_status == PaymentStatus.UNPAID
+
+
 def test_mark_sent_to_accountant_changes_status():
     record = FinancialRecordBuilder().build()
 

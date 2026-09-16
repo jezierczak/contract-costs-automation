@@ -1,0 +1,145 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+
+    <div class="w-full max-w-3xl rounded-xl bg-white shadow-xl">
+
+        <div class="flex items-center justify-between border-b px-5 py-4">
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">Ustawienia KSeF</h2>
+                <div class="text-sm text-gray-500">
+                    {{ company.name }}{% if company.tax_number %} • {{ company.tax_number }}{% endif %}
+                </div>
+            </div>
+
+            <button
+                type="button"
+                onclick="document.getElementById('modal-area').innerHTML=''"
+                class="text-gray-500 hover:text-black"
+            >
+                ×
+            </button>
+        </div>
+
+        <form
+            hx-post="/companies/{{ company.id }}/ksef-settings"
+            hx-target="#modal-area"
+            hx-swap="innerHTML"
+        >
+            <div class="space-y-6 px-5 py-5">
+
+                {% if success_message %}
+                <div class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+                    {{ success_message }}
+                </div>
+                {% endif %}
+
+                {% if error_message %}
+                <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                    {{ error_message }}
+                </div>
+                {% endif %}
+
+                <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                    Ten formularz zapisuje konfiguracje dostepu i stanu importu KSeF dla wybranej firmy wlasnej.
+                </div>
+
+                <div class="grid gap-4 md:grid-cols-2">
+                    <div>
+                        <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Srodowisko
+                        </label>
+                        <select
+                            name="environment"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        >
+                            {% set selected_environment = settings.environment.value if settings else "test" %}
+                            {% for environment in environments %}
+                            <option value="{{ environment }}" {% if selected_environment == environment %}selected{% endif %}>
+                                {{ environment }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Integracja aktywna
+                        </label>
+                        <label class="flex h-[42px] items-center gap-2 rounded-lg border border-gray-300 px-3 text-sm text-gray-700">
+                            <input type="checkbox" name="is_enabled" value="1" {% if settings and settings.is_enabled %}checked{% endif %}>
+                            Aktywna konfiguracja KSeF
+                        </label>
+                    </div>
+
+                    <div>
+                        <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Sciezka certyfikatu
+                        </label>
+                        <input
+                            type="text"
+                            name="certificate_path"
+                            value="{{ settings.certificate_path if settings else '' }}"
+                            placeholder="Np. C:\\certs\\ksef\\company-cert.pfx"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Haslo / PIN
+                        </label>
+                        <input
+                            type="password"
+                            name="certificate_password"
+                            value="{{ settings.certificate_password if settings else '' }}"
+                            placeholder="Haslo do certyfikatu"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Importuj od dnia
+                        </label>
+                        <input
+                            type="date"
+                            name="last_import_from"
+                            value="{{ settings.last_import_from.isoformat() if settings and settings.last_import_from else '' }}"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Ostatni import
+                        </label>
+                        <div class="flex h-[42px] items-center rounded-lg border border-gray-300 px-3 text-sm text-gray-500">
+                            {{ settings.last_import_at if settings and settings.last_import_at else "Brak danych" }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                    Na kolejnych krokach podepniemy test polaczenia, import z KSeF i status ostatniego synca.
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 border-t px-5 py-4">
+                <button
+                    type="button"
+                    onclick="document.getElementById('modal-area').innerHTML=''"
+                    class="rounded border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                    Zamknij
+                </button>
+                <button
+                    type="submit"
+                    class="rounded bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700"
+                >
+                    Zapisz
+                </button>
+            </div>
+        </form>
+
+    </div>
+
+</div>

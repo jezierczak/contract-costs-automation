@@ -1,0 +1,37 @@
+<div id="value-type-slot-{{ idx }}" class="col-span-2">
+    <input
+        type="hidden"
+        name="lines[{{ idx }}].value_type_id"
+        value="{{ value_type.id if value_type else '' }}"
+    >
+
+    <div class="flex items-center gap-2">
+        <button
+            type="button"
+            hx-get="/records/value-types/picker?idx={{ idx }}{% if value_type %}&selected_value_type_id={{ value_type.id }}{% endif %}"
+            hx-target="#modal-area"
+            hx-swap="innerHTML"
+            class="flex w-full items-center justify-between rounded border px-2 py-1 text-left text-sm hover:bg-gray-50"
+        >
+            <span class="min-w-0">
+                {% if value_type %}
+                <span class="block truncate font-medium text-gray-900">{{ value_type.code }}</span>
+                {% else %}
+                <span class="block text-gray-400">Value type</span>
+                {% endif %}
+            </span>
+            <span class="ml-2 shrink-0 text-xs font-medium text-blue-600">
+                {% if value_type %}Zmień{% else %}Wybierz{% endif %}
+            </span>
+        </button>
+
+        <button
+            type="button"
+            onclick="fillValueTypeToRemainingLines({{ idx }})"
+            class="shrink-0 rounded border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100"
+            title="Wypełnij kolejne linie tym samym value type"
+        >
+            Dalej
+        </button>
+    </div>
+</div>

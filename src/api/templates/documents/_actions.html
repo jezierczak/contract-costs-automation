@@ -4,6 +4,16 @@
             Dokumenty
         </h1>
 
+        <div class="flex items-center gap-2">
+        <button
+            hx-get="/documents/ksef/import-form"
+            hx-target="#modal-area"
+            hx-swap="innerHTML"
+            class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+            Pobierz z KSeF
+        </button>
+
         <button
             hx-get="/documents/upload-form"
             hx-target="#modal-area"
@@ -12,4 +22,5 @@
         >
             + Dodaj dokument
         </button>
+        </div>
     </div>

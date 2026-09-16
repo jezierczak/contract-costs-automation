@@ -26,17 +26,12 @@ class UnattachDocumentService(ActionHandler[UnattachDocumentCommand, None]):
         org_root = cfg.WORK_DIR / str(action.organization_id)
 
         # =====================
-        # 1️⃣ MOVE FILE (post commit)
+        # 1️⃣ MOVE FILE
         # =====================
-        file_path = document.file_path
-
-        def move_file():
-            self._document_file_organizer.move_to_raw(
-                root=org_root,
-                file_path=org_root / file_path,
-            )
-
-        uow.add_post_commit_hook(move_file)
+        raw_relative = self._document_file_organizer.move_to_raw(
+            root=org_root,
+            file_path=org_root / document.file_path,
+        )
 
         # =====================
         # 2️⃣ DB UPDATE
@@ -44,4 +39,5 @@ class UnattachDocumentService(ActionHandler[UnattachDocumentCommand, None]):
         doc_repo.unattach_from_record(
             organization_id=action.organization_id,
             document_id=action.document_id,
+            file_path=raw_relative.as_posix(),
         )

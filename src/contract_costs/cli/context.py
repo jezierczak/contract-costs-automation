@@ -26,6 +26,7 @@ from contract_costs.services.companies.providers.excact_nip import ExactNipCandi
 from contract_costs.services.companies.providers.name import NameCandidateProvider
 from contract_costs.services.companies.providers.phone import PhoneCandidateProvider
 from contract_costs.services.companies.query.company_query_service import CompanyQueryService
+from contract_costs.services.companies.save_company_ksef_settings_service import SaveCompanyKsefSettingsService
 from contract_costs.services.companies.query.company_detail_query_service import CompanyDetailQueryService
 from contract_costs.services.companies.update_company_service import UpdateCompanyService
 from contract_costs.services.company_dashboard.company_dashboard_query_service import CompanyDashboardQueryService
@@ -158,7 +159,9 @@ from contract_costs.unit_of_work import UnitOfWork
 from typing import Dict
 
 from contract_costs.services.financial_records.review.financial_record_review_list_query_service import FinancialRecordReviewListQueryService
+from contract_costs.services.ksef.ksef_api_client import KsefApiClient
 from contract_costs.services.workers.document_parse_worker import DocumentParseWorker
+from contract_costs.services.workers.ksef_import_worker import KsefImportWorker
 
 
 class Services:
@@ -178,6 +181,7 @@ class Services:
 
         # repos
         self._company_repo = None
+        self._company_ksef_settings_repo = None
         self._record_repo = None
         self._record_line_repo = None
         self._contract_repo = None
@@ -202,6 +206,7 @@ class Services:
         self._export_financial_record_assignment_excel = None
         self._create_company_service = None
         self._update_company_service = None
+        self._save_company_ksef_settings_service = None
         self._create_value_type = None
         self._create_contract = None
         # self._update_contract_service = None
@@ -211,6 +216,8 @@ class Services:
         self._export_contract_structure_excel = None
 
         self._document_parse_worker = None
+        self._ksef_import_worker = None
+        self._ksef_api_client = None
 
         self._contract_cost_report =None
         self._open_ai_invoice_service = None
@@ -447,6 +454,12 @@ class Services:
         return self._company_repo
 
     @property
+    def company_ksef_settings_repository(self):
+        if self._company_ksef_settings_repo is None:
+            self._company_ksef_settings_repo = self._factory.company_ksef_settings_repository()
+        return self._company_ksef_settings_repo
+
+    @property
     def financial_record_repository(self):
         if self._record_repo is None:
             self._record_repo = self._factory.invoice_repository()
@@ -635,6 +648,18 @@ class Services:
         return self._document_parse_worker
 
     @property
+    def ksef_import_worker(self):
+        if self._ksef_import_worker is None:
+            self._ksef_import_worker = KsefImportWorker()
+        return self._ksef_import_worker
+
+    @property
+    def ksef_api_client(self):
+        if self._ksef_api_client is None:
+            self._ksef_api_client = KsefApiClient()
+        return self._ksef_api_client
+
+    @property
     def generate_financial_record_assignment_bundle(self):
         if self._generate_financial_record_assignment_bundle is None:
             self._generate_financial_record_assignment_bundle = GenerateFinancialRecordAssignmentBundleService()
@@ -664,6 +689,12 @@ class Services:
     @property
     def update_company_service(self):
         return UpdateCompanyService()
+
+    @property
+    def save_company_ksef_settings_service(self):
+        if self._save_company_ksef_settings_service is None:
+            self._save_company_ksef_settings_service = SaveCompanyKsefSettingsService()
+        return self._save_company_ksef_settings_service
 
     @property
     def create_value_type(self):

@@ -38,6 +38,13 @@ class InvoiceLineEditView:
     agreement_nodes: list[ContractNodeView]
 
 @dataclass(frozen=True)
+class PaymentEditView:
+    id: str
+    amount: Decimal
+    paid_date: date
+
+
+@dataclass(frozen=True)
 class FinancialRecordEditView:
 
     id: str
@@ -50,6 +57,11 @@ class FinancialRecordEditView:
     payment_status: str
     due_date: date | None
     paid_date: date | None
+
+    payments: list[PaymentEditView]
+    paid_amount: Decimal
+    total_amount: Decimal
+    is_overpaid: bool
 
     buyer_name: str
     buyer_tax_number: str

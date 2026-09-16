@@ -5,11 +5,13 @@ from contract_costs.repository.business_event_repository import BusinessEventRep
 from contract_costs.repository.mysql.business_event_repository import MySQLBusinessEventRepository
 from contract_costs.repository.mysql.company_dashboard.company_dashboard_repository import \
     MySQLCompanyDashboardRepository
+from contract_costs.repository.mysql.company_ksef_settings_repository import MySQLCompanyKsefSettingsRepository
 from contract_costs.repository.mysql.company_repository import MySQLCompanyRepository
 from contract_costs.repository.mysql.contract_node_repository import MySQLContractNodeRepository
 from contract_costs.repository.mysql.contract_repository import MySQLContractRepository
 from contract_costs.repository.mysql.document_repository import MySQLDocumentRepository
 from contract_costs.repository.mysql.financial_record_line_repository import MySQLFinancialRecordLineRepository
+from contract_costs.repository.mysql.financial_record_payment_repository import MySQLFinancialRecordPaymentRepository
 from contract_costs.repository.mysql.financial_record_repository import MySQLFinancialRecordRepository
 from contract_costs.repository.mysql.identity.organization_repository import MySqlOrganizationRepository
 from contract_costs.repository.mysql.identity.organization_user_repository import MySqlOrganizationUserRepository
@@ -41,6 +43,7 @@ class MySQLUnitOfWork(UnitOfWork):
         self._companies = MySQLCompanyRepository(connection=self._conn)
         self._financial_records = MySQLFinancialRecordRepository(connection=self._conn)
         self._financial_record_lines = MySQLFinancialRecordLineRepository(connection=self._conn)
+        self._financial_record_payments = MySQLFinancialRecordPaymentRepository(connection=self._conn)
         self._contracts = MySQLContractRepository(connection=self._conn)
         self._contract_nodes = MySQLContractNodeRepository(connection=self._conn)
         self._value_types = MySQLValueTypeRepository(connection=self._conn)
@@ -55,6 +58,7 @@ class MySQLUnitOfWork(UnitOfWork):
         self._business_events = MySQLBusinessEventRepository(connection=self._conn)
         self._sessions = MySQLSessionRepository(connection=self._conn)
         self._company_dashboard = MySQLCompanyDashboardRepository(connection=self._conn)
+        self._company_ksef_settings = MySQLCompanyKsefSettingsRepository(connection=self._conn)
 
 
     @property
@@ -68,6 +72,10 @@ class MySQLUnitOfWork(UnitOfWork):
     @property
     def financial_record_lines(self):
         return self._financial_record_lines
+
+    @property
+    def financial_record_payments(self):
+        return self._financial_record_payments
 
     @property
     def contracts(self):
@@ -116,6 +124,10 @@ class MySQLUnitOfWork(UnitOfWork):
     @property
     def company_dashboard(self):
         return self._company_dashboard
+
+    @property
+    def company_ksef_settings(self):
+        return self._company_ksef_settings
 
     @property
     def business_events(self) -> BusinessEventRepository:

@@ -25,7 +25,12 @@ class RecalculateDocumentScoringService:
         for document in documents:
             if document.scoring:
                 continue
-
+            if not document.parsed_payload:
+                logger.debug(
+                    "[SCORING] Skipped | doc=%s | no parsed payload",
+                    document.id,
+                )
+                continue
             try:
                 scoring = self._scoring_policy.calculate(
                     document.parsed_payload,

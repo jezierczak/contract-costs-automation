@@ -325,8 +325,9 @@ class MySQLFinancialRecordLineRepository(FinancialRecordLineRepository):
             *,
             organization_id: UUID,
             line_amounts: list[Decimal],
-            expected,
+            expected: int,
             tolerance: Decimal,
+            seller_id: UUID | None = None,
     ) -> list[UUID]:
 
         if not line_amounts:
@@ -336,19 +337,120 @@ class MySQLFinancialRecordLineRepository(FinancialRecordLineRepository):
         params: list = [str(organization_id)]
 
         for amount in line_amounts:
-            conditions.append("(amount_value BETWEEN %s AND %s)")
+            conditions.append("(frl.amount_value BETWEEN %s AND %s)")
             params.append(amount - tolerance)
             params.append(amount + tolerance)
 
         where_amounts = " OR ".join(conditions)
 
+        sql = f"""
+            SELECT frl.financial_record_id, COUNT(*) as match_count
+            FROM financial_record_lines frl
+            JOIN financial_records fr ON fr.id = frl.financial_record_id
+            WHERE frl.organization_id = %s
+              AND frl.financial_record_id IS NOT NULL
+        """
+
+        if seller_id:
+            sql += " AND fr.seller_id = %s"
+            params.append(str(seller_id))
+
+        sql += f"""
+              AND ({where_amounts})
+            GROUP BY frl.financial_record_id
+            HAVING match_count >= %s
+        """
+
+        params.append(expected)
+
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(sql, params)
+                rows = cur.fetchall()
+            return [UUID(r[0]) for r in rows]
+        finally:
+            self._maybe_close(conn)
+
+    def find_financial_record_ids_by_names(
+            self,
+            *,
+            organization_id: UUID,
+            names: list[str],
+            expected: int,
+            seller_id: UUID | None = None,
+    ) -> list[UUID]:
+
+        if not names:
+            return []
+
+        conditions = []
+        params: list = [str(organization_id)]
+
+        for name in names:
+            conditions.append("LOWER(TRIM(frl.item_name)) = %s")
+            params.append(name)
+
+        where_names = " OR ".join(conditions)
+
+        sql = f"""
+            SELECT frl.financial_record_id, COUNT(*) as match_count
+            FROM financial_record_lines frl
+            JOIN financial_records fr ON fr.id = frl.financial_record_id
+            WHERE frl.organization_id = %s
+              AND frl.financial_record_id IS NOT NULL
+        """
+
+        if seller_id:
+            sql += " AND fr.seller_id = %s"
+            params.append(str(seller_id))
+
+        sql += f"""
+              AND ({where_names})
+            GROUP BY frl.financial_record_id
+            HAVING match_count >= %s
+        """
+
+        params.append(expected)
+
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(sql, params)
+                rows = cur.fetchall()
+            return [UUID(r[0]) for r in rows]
+        finally:
+            self._maybe_close(conn)
+
+    def find_financial_record_ids_by_names_and_quantities(
+            self,
+            *,
+            organization_id: UUID,
+            items: list[tuple[str, Decimal]],
+            expected: int,
+    ) -> list[UUID]:
+
+        if not items:
+            return []
+
+        conditions = []
+        params: list = [str(organization_id)]
+
+        for name, quantity in items:
+            conditions.append(
+                "(LOWER(TRIM(item_name)) = %s AND quantity = %s)"
+            )
+            params.append(name)
+            params.append(quantity)
+
+        where_items = " OR ".join(conditions)
 
         sql = f"""
             SELECT financial_record_id, COUNT(*) as match_count
             FROM financial_record_lines
             WHERE organization_id = %s
               AND financial_record_id IS NOT NULL
-              AND ({where_amounts})
+              AND ({where_items})
             GROUP BY financial_record_id
             HAVING match_count >= %s
         """
@@ -356,7 +458,6 @@ class MySQLFinancialRecordLineRepository(FinancialRecordLineRepository):
         params.append(expected)
 
         conn = self._get_connection()
-
         try:
             with conn.cursor() as cur:
                 cur.execute(sql, params)

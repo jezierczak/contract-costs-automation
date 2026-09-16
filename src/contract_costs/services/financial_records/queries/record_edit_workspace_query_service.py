@@ -1,3 +1,4 @@
+from decimal import Decimal
 from uuid import UUID
 
 
@@ -17,6 +18,7 @@ from contract_costs.services.financial_records.queries.dto.financial_record_edit
     FinancialRecordEditView,
     InvoiceLineEditView,
     ContractNodeView,
+    PaymentEditView,
 )
 from contract_costs.services.financial_records.queries.dto.record_edit_workspace_query import (
     RecordEditWorkspaceQuery,
@@ -84,9 +86,15 @@ class RecordEditWorkspaceQueryService(
                 company_id=record.seller_id,
             )
 
+            payments = uow.financial_record_payments.list_by_financial_record(
+                organization_id=action.organization_id,
+                financial_record_id=record.id,
+            )
+
             record_view = self._map_record_to_edit_view(
                 record=record,
                 lines=lines,
+                payments=payments,
                 buyer=buyer,
                 seller=seller,
                 organization_id=action.organization_id,
@@ -131,6 +139,7 @@ class RecordEditWorkspaceQueryService(
             WorkspaceContractDTO(
                 contract_id=str(c.contract_id),
                 code=c.code,
+                name=c.name,
             )
             for c in contracts
         ]
@@ -148,6 +157,7 @@ class RecordEditWorkspaceQueryService(
             WorkspaceContractDTO(
                 contract_id=str(a.contract_id),
                 code=a.code,
+                name=a.name,
             )
             for a in agreements
         ]
@@ -166,6 +176,8 @@ class RecordEditWorkspaceQueryService(
             WorkspaceValueTypeDTO(
                 id=str(v.id),
                 code=v.code,
+                name=v.name,
+                direction=v.direction,
             )
             for v in value_types
         ]
@@ -192,6 +204,7 @@ class RecordEditWorkspaceQueryService(
         *,
         record,
         lines,
+        payments,
         buyer,
         seller,
         organization_id: UUID,
@@ -207,6 +220,14 @@ class RecordEditWorkspaceQueryService(
                 uow=uow,
             )
             for l in lines
+        ]
+
+        total_amount = sum((l.amount.cashflow for l in lines), Decimal("0"))
+        paid_amount = sum((p.amount for p in payments), Decimal("0"))
+
+        mapped_payments = [
+            PaymentEditView(id=str(p.id), amount=p.amount, paid_date=p.paid_date)
+            for p in sorted(payments, key=lambda p: p.paid_date)
         ]
 
         documents = [d for d in record.documents]
@@ -231,6 +252,10 @@ class RecordEditWorkspaceQueryService(
             payment_status=record.payment_status.value,
             due_date=record.due_date,
             paid_date=record.paid_date,
+            payments=mapped_payments,
+            paid_amount=paid_amount,
+            total_amount=total_amount,
+            is_overpaid=paid_amount > total_amount,
             buyer_name=buyer.name if buyer else "",
             buyer_tax_number=buyer.tax_number if buyer else "",
             seller_name=seller.name if seller else "",
@@ -310,7 +335,7 @@ class RecordEditWorkspaceQueryService(
             unit=line.unit.value if line.unit else "",
             amount_value=line.amount.value,
             vat_rate=line.amount.vat_rate.value,
-            amount_type=AmountInputType.NET.value,
+            amount_type=line.amount.input_type.value,
             tax_treatment=line.amount.tax_treatment.value,
             contract_id=str(line.contract_id) if line.contract_id else None,
             contract_node_id=str(line.contract_node_id) if line.contract_node_id else None,

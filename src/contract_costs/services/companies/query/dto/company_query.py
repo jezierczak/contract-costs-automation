@@ -36,3 +36,9 @@ class CompanyQuery(Query):
     # =====================
     search: str | None = None
 
+    # =====================
+    # SORTOWANIE
+    # =====================
+    sort_by: str | None = None
+    sort_dir: str | None = None
+

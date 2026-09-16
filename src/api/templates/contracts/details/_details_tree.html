@@ -62,6 +62,9 @@
     "
     data-level="{{ n.level }}"
     data-node-id="{{ n.node_id }}"
+    data-contract-id="{{ contract.contract_id }}"
+    data-node-code="{{ n.code }}"
+    data-node-name="{{ n.name }}"
 >
     <script type="application/json" id="node-data-{{ n.node_id }}">
     {{ n.value_type_breakdown | tojson }}
@@ -162,14 +165,14 @@ cursor-pointer text-gray-500 hover:bg-gray-200 rounded select-none"
     <div id="node-modal"
      class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-50">
 
-    <div class="bg-white w-[650px] rounded-xl shadow-xl">
+    <div class="bg-white w-[min(96vw,1400px)] rounded-xl shadow-xl">
 
         <div class="px-5 py-4 border-b flex justify-between">
             <h2 class="font-semibold">Rozbicie wg kategorii</h2>
             <button onclick="closeNodeModal()">×</button>
         </div>
 
-        <div id="node-modal-body" class="p-5"></div>
+        <div id="node-modal-body" class="max-h-[75vh] overflow-auto p-5"></div>
 
     </div>
 </div>

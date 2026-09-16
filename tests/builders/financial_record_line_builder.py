@@ -7,7 +7,7 @@ from contract_costs.common.ids import new_uuid
 from contract_costs.common.time import utc_now
 from contract_costs.model.financial_record_line import FinancialRecordLine
 from contract_costs.model.unit_of_measure import UnitOfMeasure
-from contract_costs.model.amount import Amount, VatRate, TaxTreatment
+from contract_costs.model.amount import Amount, AmountInputType, VatRate, TaxTreatment
 
 
 class FinancialRecordLineBuilder:
@@ -32,6 +32,7 @@ class FinancialRecordLineBuilder:
 
         self._amount = Amount(
             value=Decimal("100.00"),
+            input_type=AmountInputType.NET,
             vat_rate=VatRate.VAT_23,
             tax_treatment=TaxTreatment.TAX_DEDUCTIBLE,
         )

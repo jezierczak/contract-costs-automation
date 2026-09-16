@@ -1,0 +1,78 @@
+<div
+    id="records-history-filters"
+    class="mb-4 flex flex-wrap items-end gap-3 rounded-lg border bg-gray-50 p-3"
+>
+    <div>
+        <label class="mb-1 block text-xs text-gray-500">Rok</label>
+        <select
+            name="year"
+            class="border rounded px-3 py-2 text-sm"
+            hx-get="/records/table/{{ view.value }}"
+            hx-trigger="change"
+            hx-target="#records-table"
+            hx-swap="innerHTML"
+            hx-include="#records-history-filters"
+        >
+            {% for y in range(current_year, current_year - 5, -1) %}
+            <option value="{{ y }}" {% if y == filter_year %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div>
+        <label class="mb-1 block text-xs text-gray-500">Miesiac</label>
+        <select
+            name="month"
+            class="border rounded px-3 py-2 text-sm"
+            hx-get="/records/table/{{ view.value }}"
+            hx-trigger="change"
+            hx-target="#records-table"
+            hx-swap="innerHTML"
+            hx-include="#records-history-filters"
+        >
+            <option value="">Wszystkie</option>
+            {% for m in range(1, 13) %}
+            <option value="{{ m }}" {% if m == filter_month %}selected{% endif %}>{{ m }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div>
+        <label class="mb-1 block text-xs text-gray-500">Firma wlasna</label>
+        <select
+            name="owner_company_id"
+            class="border rounded px-3 py-2 text-sm min-w-[220px]"
+            hx-get="/records/table/{{ view.value }}"
+            hx-trigger="change"
+            hx-target="#records-table"
+            hx-swap="innerHTML"
+            hx-include="#records-history-filters"
+        >
+            <option value="">Wszystkie</option>
+            {% for company in owner_companies %}
+            <option
+                value="{{ company.id }}"
+                {% if company.id|string == filter_owner_company_id|string %}selected{% endif %}
+            >
+                {{ company.name }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="min-w-[260px] flex-1">
+        <label class="mb-1 block text-xs text-gray-500">Kontrahent</label>
+        <input
+            type="text"
+            name="counterparty"
+            value="{{ filter_counterparty }}"
+            placeholder="Nazwa lub NIP"
+            class="w-full border rounded px-3 py-2 text-sm"
+            hx-get="/records/table/{{ view.value }}"
+            hx-trigger="keyup changed delay:300ms"
+            hx-target="#records-table"
+            hx-swap="innerHTML"
+            hx-include="#records-history-filters"
+        >
+    </div>
+</div>

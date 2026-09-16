@@ -1,0 +1,20 @@
+{% if numbering_mode == "manual" %}
+<input
+    name="reference"
+    value="{{ current_reference }}"
+    class="w-full border rounded p-2"
+    placeholder="Numer rekordu"
+    required
+>
+{% else %}
+<input
+    type="hidden"
+    name="reference"
+    value="{{ reference_pattern or '' }}"
+>
+<input
+    value="{{ reference_preview or 'Wybierz sprzedawcę, aby wygenerować numer' }}"
+    class="w-full border rounded p-2 bg-gray-100 text-gray-700"
+    readonly
+>
+{% endif %}

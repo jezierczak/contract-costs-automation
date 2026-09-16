@@ -216,6 +216,7 @@
         {% block content %}{% endblock %}
     </div>
 
+    {% if request.state.ctx.user_id %}
     <!-- FOOTER -->
     <div
         id="workspace-messages"
@@ -225,6 +226,7 @@
         hx-swap="innerHTML"
     >
     </div>
+    {% endif %}
 
     </main>
         <!-- HTMX MODALS -->
@@ -308,9 +310,26 @@ document.body.addEventListener("duplicateDocument", (e) => {
 </script>
 
 <script>
-document.body.addEventListener("showError", function(e) {
-    alert(e.detail.value || e.detail);
-});
+if (!window.__showErrorHandlerBound) {
+    window.__showErrorHandlerBound = true;
+    window.__lastShowError = { message: "", ts: 0 };
+
+    document.body.addEventListener("showError", function(e) {
+        const message = (e.detail && (e.detail.value || e.detail)) || "Wystąpił błąd";
+        const now = Date.now();
+
+        // Deduplicate same error burst (e.g. multiple triggers for one failed save).
+        if (
+            window.__lastShowError.message === message &&
+            now - window.__lastShowError.ts < 1200
+        ) {
+            return;
+        }
+
+        window.__lastShowError = { message, ts: now };
+        alert(message);
+    });
+}
 </script>
 <script>
 document.body.addEventListener("closeModal", () => {
@@ -369,6 +388,8 @@ document.body.addEventListener("click", function(e){
 });
 </script>
 <script>
+window.currentNodeBreakdownState = null;
+
 document.body.addEventListener("click", function(e){
 
     const row = e.target.closest(".contract-node-row");
@@ -383,12 +404,27 @@ document.body.addEventListener("click", function(e){
 
     const data = JSON.parse(script.textContent);
 
-    renderNodeBreakdown(data);
+    renderNodeBreakdown({
+        items: data,
+        metadata: {
+            contractId: row.dataset.contractId,
+            nodeId: row.dataset.nodeId,
+            nodeCode: row.dataset.nodeCode || "",
+            nodeName: row.dataset.nodeName || "",
+        }
+    });
 });
 
-function renderNodeBreakdown(items){
+function renderNodeBreakdown(state){
+
+    const normalizedState = Array.isArray(state)
+        ? { items: state, metadata: {} }
+        : (state || { items: [], metadata: {} });
+
+    window.currentNodeBreakdownState = normalizedState;
 
     const body = document.getElementById("node-modal-body");
+    const items = normalizedState.items || [];
 
     if (!items.length){
         body.innerHTML = "<div class='text-gray-500'>Brak danych</div>";
@@ -411,61 +447,70 @@ function renderNodeBreakdown(items){
     // =================================================
     // TABLE BUILDER
     // =================================================
-    function renderSection(title, rows, total, colorClass){
+function renderSection(title, rows, total, colorClass){
 
-        if (!rows.length) return "";
+    if (!rows.length) return "";
 
-        return `
-        <div class="mt-4">
-
-
-            <table class="w-full text-sm border rounded overflow-hidden">
-                <thead class="bg-gray-100">
-                    <tr>
-                        <th class="p-2 text-left">Kod</th>
-                        <th class="p-2 text-left">Nazwa</th>
-                        <th class="p-2 text-right">Net</th>
-                        <th class="p-2 text-right">Non-deduct</th>
-                        <th class="p-2 text-right">Total</th>
-                        <th class="p-2 text-right">% udział</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rows.map(i => `
-                        <tr class="border-t hover:bg-gray-50">
-                            <td class="p-2">${i.code}</td>
-                            <td class="p-2">${i.name}</td>
-                            <td class="p-2 text-right">${i.net}</td>
-                            <td class="p-2 text-right">${i.non_deductible}</td>
-                            <td class="p-2 text-right font-medium">
-                                ${i.total}
-                            </td>
-                            <td class="p-2 text-right text-xs text-gray-600">
-                                ${Number(i.percent_of_direction || 0).toFixed(1)}%
-                            </td>
-                        </tr>
-                    `).join("")}
-                </tbody>
-                  <tfoot class="bg-gray-50 border-t font-semibold">
-                        <tr><td class="p-2 text-right ${colorClass}">
-                                SUMA
-                        </td>
-                        <td class="p-2 text-left ${colorClass}">
-                                (${title}):
-                        </td>
-                            <td class="p-2" colspan="2"></td>
-                            <td class="p-2 text-right ${colorClass}">
-                                ${total.toFixed(2)}
-                            </td>
-                            <td></td>
-                        </tr>
-                    </tfoot>
-            </table>
-
-
+    return `
+    <div class="mt-4">
+        <div class="mb-2 flex items-center justify-between">
+            <h3 class="text-sm font-semibold ${colorClass}">${title}</h3>
+            <span class="text-xs text-gray-500">Akcja faktur w kolumnie Akcje</span>
         </div>
-        `;
-    }
+
+        <table class="w-full table-fixed text-sm border rounded overflow-hidden">
+            <thead class="bg-gray-100">
+                <tr>
+                    <th class="w-[14%] p-2 text-left">Kod</th>
+                    <th class="w-[30%] p-2 text-left">Nazwa</th>
+                    <th class="w-[12%] p-2 text-right">Net</th>
+                    <th class="w-[12%] p-2 text-right">Non-deduct</th>
+                    <th class="w-[12%] p-2 text-right">Total</th>
+                    <th class="w-[10%] p-2 text-right">% udzial</th>
+                    <th class="w-[10%] p-2 text-right">Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows.map(i => `
+                    <tr class="node-breakdown-row border-t cursor-pointer hover:bg-gray-50" data-value-type-id="${i.value_type_id}">
+                        <td class="p-2">
+                            <div class="truncate" title="${i.code}">${i.code}</div>
+                        </td>
+                        <td class="p-2">
+                            <div class="truncate" title="${i.name}">${i.name}</div>
+                        </td>
+                        <td class="p-2 text-right">${i.net}</td>
+                        <td class="p-2 text-right">${i.non_deductible}</td>
+                        <td class="p-2 text-right font-medium">${i.total}</td>
+                        <td class="p-2 text-right text-xs text-gray-600">
+                            ${Number(i.percent_of_direction || 0).toFixed(1)}%
+                        </td>
+                        <td class="p-2 text-right">
+                            <button
+                                type="button"
+                                onclick="event.stopPropagation(); loadNodeScopeRecords('${i.value_type_id}')"
+                                class="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                            >
+                                Faktury
+                            </button>
+                        </td>
+                    </tr>
+                `).join("")}
+            </tbody>
+            <tfoot class="bg-gray-50 border-t font-semibold">
+                <tr>
+                    <td class="p-2 ${colorClass}" colspan="2">SUMA (${title})</td>
+                    <td class="p-2"></td>
+                    <td class="p-2"></td>
+                    <td class="p-2 text-right ${colorClass}">${total.toFixed(2)}</td>
+                    <td class="p-2"></td>
+                    <td class="p-2"></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    `;
+}
 
     // =================================================
     // RENDER
@@ -476,6 +521,38 @@ function renderNodeBreakdown(items){
     `;
 
     document.getElementById("node-modal").classList.remove("hidden");
+}
+
+async function loadNodeScopeRecords(valueTypeId){
+
+    const metadata = window.currentNodeBreakdownState?.metadata || {};
+
+    if (!metadata.contractId || !metadata.nodeId || !valueTypeId) {
+        return;
+    }
+
+    const body = document.getElementById("node-modal-body");
+    body.innerHTML = "<div class='py-8 text-center text-sm text-gray-500'>Ladowanie faktur...</div>";
+
+    const response = await fetch(
+        `/contracts/${metadata.contractId}/nodes/${metadata.nodeId}/value-types/${valueTypeId}/records`,
+        {
+            headers: { "HX-Request": "true" }
+        }
+    );
+
+    if (!response.ok) {
+        body.innerHTML = "<div class='py-8 text-center text-sm text-red-600'>Nie udalo sie zaladowac faktur.</div>";
+        return;
+    }
+
+    body.innerHTML = await response.text();
+
+    // HTML jest wstrzykiwany przez fetch, więc HTMX musi ponownie
+    // zarejestrować atrybuty hx-* w nowym fragmencie DOM.
+    if (window.htmx && typeof window.htmx.process === "function") {
+        window.htmx.process(body);
+    }
 }
 
 function closeNodeModal(){

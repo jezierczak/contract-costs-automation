@@ -39,6 +39,7 @@
             hx-target="#content-area"
             hx-swap="innerHTML"
             hx-push-url="true"
+            hx-on:click="sessionStorage.setItem('records.return_to', window.location.pathname + window.location.search)"
             class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
         >
             + Nowy rekord

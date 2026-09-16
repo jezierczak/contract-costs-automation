@@ -1,0 +1,37 @@
+<div id="contract-slot-{{ idx }}" class="col-span-3">
+    <input
+        type="hidden"
+        name="lines[{{ idx }}].contract_id"
+        value="{{ contract.contract_id if contract else '' }}"
+    >
+
+    <div class="flex items-center gap-2">
+        <button
+            type="button"
+            hx-get="/records/contracts/picker?idx={{ idx }}{% if contract %}&selected_contract_id={{ contract.contract_id }}{% endif %}"
+            hx-target="#modal-area"
+            hx-swap="innerHTML"
+            class="flex w-full items-center justify-between rounded border px-2 py-1 text-left text-sm hover:bg-gray-50"
+        >
+            <span class="min-w-0">
+                {% if contract %}
+                <span class="block truncate font-medium text-gray-900">{{ contract.code }}</span>
+                {% else %}
+                <span class="block text-gray-400">Kontrakt</span>
+                {% endif %}
+            </span>
+            <span class="ml-2 shrink-0 text-xs font-medium text-blue-600">
+                {% if contract %}Zmien{% else %}Wybierz{% endif %}
+            </span>
+        </button>
+
+        <button
+            type="button"
+            onclick="fillContractToRemainingLines({{ idx }})"
+            class="shrink-0 rounded border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100"
+            title="Wypelnij kolejne linie tym samym kontraktem"
+        >
+            Dalej
+        </button>
+    </div>
+</div>

@@ -8,11 +8,18 @@
 
 <div class="max-w-[95vw] mx-auto">
 
+    {% if view.value == "sent_history" %}
+        {% include "records/list_records/_filters_sent_history.html" %}
+    {% endif %}
+
     <div
         id="records-table"
         hx-get="/records/table/{{ view.value }}"
         hx-trigger="load, every 3s, recordsUpdated from:body"
         hx-swap="innerHTML"
+        {% if view.value == "sent_history" %}
+        hx-include="#records-history-filters"
+        {% endif %}
     >
 
 

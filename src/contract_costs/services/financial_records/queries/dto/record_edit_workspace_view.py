@@ -6,11 +6,14 @@ from contract_costs.services.financial_records.queries.dto.financial_record_edit
 class WorkspaceContractDTO:
     contract_id: str
     code: str
+    name: str | None = None
 
 @dataclass(frozen=True)
 class WorkspaceValueTypeDTO:
     id: str
     code: str
+    name: str
+    direction: str
 
 @dataclass(frozen=True)
 class RecordEditWorkspaceView:

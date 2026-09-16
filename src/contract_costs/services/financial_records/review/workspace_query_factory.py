@@ -49,6 +49,13 @@ class RecordWorkspaceQueryFactory:
                     only_ready_for_accountant=True
                 )
 
+            case RecordWorkspaceView.SENT_HISTORY:
+                return FinancialRecordReviewQuery(
+                    organization_id=organization_id,
+                    actor_user_id=actor_user_id,
+                    statuses=[FinancialRecordStatus.SENT_TO_ACCOUNTANT],
+                )
+
             case RecordWorkspaceView.UNPAID_COSTS:
                 return FinancialRecordReviewQuery(
                     organization_id=organization_id,

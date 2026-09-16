@@ -139,11 +139,44 @@ class FinancialRecordLineRepository(ABC):
             line_amounts: list[Decimal],
             expected: int,
             tolerance: Decimal,
+            seller_id: UUID | None = None,
     ) -> list[UUID]:
         """
         Returns financial_record_ids that contain lines matching
         all provided line_amounts (within tolerance).
 
         Duplicate amounts must be respected.
+        """
+        ...
+
+    @abstractmethod
+    def find_financial_record_ids_by_names(
+            self,
+            *,
+            organization_id: UUID,
+            names: list[str],
+            expected: int,
+            seller_id: UUID | None = None,
+    ) -> list[UUID]:
+        """
+        Returns financial_record_ids that contain lines matching
+        all provided item names.
+
+        Names should be normalized before passing.
+        Duplicate names must be respected.
+        """
+        ...
+
+    @abstractmethod
+    def find_financial_record_ids_by_names_and_quantities(
+            self,
+            *,
+            organization_id: UUID,
+            items: list[tuple[str, Decimal]],
+            expected: int,
+    ) -> list[UUID]:
+        """
+        Match by (normalized_name, quantity).
+        Stronger than name-only matching.
         """
         ...

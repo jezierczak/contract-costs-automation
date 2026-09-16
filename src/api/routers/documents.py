@@ -1,4 +1,5 @@
 from io import BytesIO
+from datetime import date, timedelta
 from uuid import UUID
 from lxml import etree
 from pathlib import Path
@@ -10,8 +11,10 @@ from xhtml2pdf import pisa
 
 from api.dependencies import get_services
 from contract_costs.model.business_event import BusinessEventLevel
+from contract_costs.model.company import CompanyType
 from contract_costs.model.document import DocumentType, DocumentStatus
 from contract_costs.services.business_event.business_event_helper import BusinessEventHelper
+from contract_costs.services.companies.query.dto.company_query import CompanyQuery
 from contract_costs.services.documents.apply.dto.apply_document_command import ApplyDocumentCommand, DocumentApplyAction
 from contract_costs.services.documents.exeptions import DuplicateDocument
 from contract_costs.services.documents.process.delete.delete_document_command import DeleteDocumentCommand
@@ -22,6 +25,8 @@ from contract_costs.services.documents.query.list_docuemnts_query_command import
     ListDocumentsQueryCommand,
 )
 from contract_costs.services.documents.upload.dto.upload_document_command import UploadDocumentCommand
+from contract_costs.services.queue.ksef_import_queue import ksef_import_queue
+from contract_costs.services.workers.dto.ksef_import_queue_item import KsefImportQueueItem
 import contract_costs.config as cfg
 router = APIRouter()
 
@@ -84,6 +89,25 @@ def _render_documents_table(
             "request": request,
             "documents": documents,
             "current_status": status,
+        },
+    )
+
+
+def _render_ksef_import_modal(
+    *,
+    request: Request,
+    own_companies: list,
+    error_message: str | None = None,
+):
+    today = date.today()
+    return request.app.state.templates.TemplateResponse(
+        "documents/_ksef_import_modal.html",
+        {
+            "request": request,
+            "own_companies": own_companies,
+            "default_from_date": (today - timedelta(days=7)).isoformat(),
+            "default_to_date": today.isoformat(),
+            "error_message": error_message,
         },
     )
 
@@ -230,6 +254,115 @@ def document_upload_form(
             "request": request,
         },
     )
+
+
+@router.get("/documents/ksef/import-form")
+def documents_ksef_import_form(
+    request: Request,
+    services=Depends(get_services),
+):
+    ctx = request.state.ctx
+    own_companies = services.action_bus.execute(
+        action=CompanyQuery(
+            organization_id=ctx.organization_id,
+            actor_user_id=ctx.user_id,
+            include_inactive=False,
+            role=CompanyType.OWN,
+        ),
+        handler=services.company_query_service,
+    )
+    return _render_ksef_import_modal(
+        request=request,
+        own_companies=own_companies,
+    )
+
+
+@router.post("/documents/ksef/import")
+def documents_ksef_import(
+    request: Request,
+    company_id: UUID = Form(...),
+    from_date: str = Form(...),
+    to_date: str = Form(...),
+    services=Depends(get_services),
+):
+    ctx = request.state.ctx
+    own_companies = services.action_bus.execute(
+        action=CompanyQuery(
+            organization_id=ctx.organization_id,
+            actor_user_id=ctx.user_id,
+            include_inactive=False,
+            role=CompanyType.OWN,
+        ),
+        handler=services.company_query_service,
+    )
+    own_company = next((c for c in own_companies if c.id == company_id), None)
+    if own_company is None:
+        return _render_ksef_import_modal(
+            request=request,
+            own_companies=own_companies,
+            error_message="Wybrana firma own nie istnieje albo jest nieaktywna.",
+        )
+
+    try:
+        from_dt = date.fromisoformat(from_date)
+        to_dt = date.fromisoformat(to_date)
+    except ValueError:
+        return _render_ksef_import_modal(
+            request=request,
+            own_companies=own_companies,
+            error_message="Niepoprawny format daty.",
+        )
+
+    if from_dt > to_dt:
+        return _render_ksef_import_modal(
+            request=request,
+            own_companies=own_companies,
+            error_message="Data od nie moze byc wieksza niz data do.",
+        )
+
+    with services.uow as uow:
+        settings = uow.company_ksef_settings.get_by_company_id(
+            organization_id=ctx.organization_id,
+            company_id=company_id,
+        )
+
+    if not settings or not settings.is_enabled:
+        return _render_ksef_import_modal(
+            request=request,
+            own_companies=own_companies,
+            error_message="Brak aktywnej konfiguracji KSeF dla wybranej firmy.",
+        )
+
+    # Krok 1: tylko zlecenie importu (UI + endpoint).
+    # Docelowe pobieranie z API KSeF bedzie realizowane przez KsefImportWorker.
+    ksef_import_queue.put(
+        KsefImportQueueItem(
+            organization_id=ctx.organization_id,
+            actor_user_id=ctx.user_id,
+            company_id=own_company.id,
+            from_date=from_dt,
+            to_date=to_dt,
+        )
+    )
+
+    BusinessEventHelper.log(
+        services=services,
+        ctx=ctx,
+        level=BusinessEventLevel.INFO,
+        message=(
+            f"Zlecono import KSeF dla {own_company.name} "
+            f"({from_dt.isoformat()} - {to_dt.isoformat()})"
+        ),
+        entity_type="company",
+        entity_id=own_company.id,
+    )
+
+    response = Response(status_code=200)
+    response.headers["HX-Trigger"] = (
+        '{"closeModal": true, '
+        '"showMessage": {"type": "success", "text": "Zlecenie importu KSeF zapisane."}}'
+    )
+    return response
 
 @router.get("/documents/table")
 def documents_table(request: Request,

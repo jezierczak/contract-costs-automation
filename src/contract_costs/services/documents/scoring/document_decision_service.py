@@ -17,16 +17,13 @@ class DocumentDecisionService:
         self._matching_service = matching_service
 
     def decide(
-        self,
-        *,
-        actor_user_id: UUID,
-        document: Document,
-        uow: UnitOfWork
+            self,
+            *,
+            actor_user_id: UUID,
+            document: Document,
+            uow: UnitOfWork
     ) -> DocumentDecisionResult:
 
-        # =====================
-        # DEFAULT
-        # =====================
         decision = DocumentDecision.MANUAL
         record_id = None
 
@@ -41,15 +38,10 @@ class DocumentDecisionService:
         reference = document.document_number
         seller_nip = document.seller_nip
 
-        if not reference or not seller_nip:
-            if score >= self.HIGH_CONFIDENCE:
-                decision = DocumentDecision.AUTO_CREATE
-            return self._log_and_return(decision, document, score, [])
-
         # =====================
-        # MATCHING (STRICT)
+        # STRICT
         # =====================
-        matches = self._matching_service.find(
+        strict_matches = self._matching_service.find(
             document=document,
             uow=uow,
             actor_user_id=actor_user_id,
@@ -57,23 +49,42 @@ class DocumentDecisionService:
         )
 
         # =====================
-        # DECISION LOGIC
+        # CANDIDATES (ZAWSZE!)
+        # =====================
+        candidate_matches = self._matching_service.find(
+            document=document,
+            uow=uow,
+            actor_user_id=actor_user_id,
+            mode=MatchMode.CANDIDATE
+        )
+
+        # =====================
+        # DECISION
         # =====================
         if score >= self.HIGH_CONFIDENCE:
-            if len(matches) == 1:
-                decision = DocumentDecision.AUTO_ATTACH
-                record_id = matches[0]
 
-            elif len(matches) == 0:
-                decision = DocumentDecision.AUTO_CREATE
+            if len(strict_matches) == 1:
+                decision = DocumentDecision.AUTO_ATTACH
+                record_id = strict_matches[0]
+
+            elif len(strict_matches) == 0:
+
+                if len(candidate_matches) == 0:
+                    decision = DocumentDecision.AUTO_CREATE
+
+                else:
+                    decision = DocumentDecision.MANUAL
 
             else:
                 decision = DocumentDecision.MANUAL
 
-        # =====================
-        # LOG + RETURN
-        # =====================
-        return self._log_and_return(decision, document, score, matches, record_id)
+        return self._log_and_return(
+            decision,
+            document,
+            score,
+            candidate_matches,
+            record_id
+        )
 
     @staticmethod
     def _log_and_return(

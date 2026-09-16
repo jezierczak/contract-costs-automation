@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import date
 from uuid import UUID
 
 from contract_costs.model.company import CompanyType
@@ -49,3 +50,5 @@ class CompanyDTO:
     # READ METADATA
     # =====================
     quality_score: int | None = None
+    invoice_count: int = 0
+    last_invoice_date: date | None = None

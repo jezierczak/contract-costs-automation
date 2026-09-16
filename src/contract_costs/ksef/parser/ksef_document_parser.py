@@ -74,6 +74,29 @@ class KsefDocumentParser(DocumentParser):
 
         if not lines:
             raise DocumentFatalError("No invoice lines")
+        if is_correction:
+            domain_net = sum(l.amount.net for l in lines)
+            domain_vat = sum(l.amount.tax for l in lines)
+
+            header_net = self._sum_ksef_totals(root, ".//k:Fa/k:P_13")
+            header_vat = self._sum_ksef_totals(root, ".//k:Fa/k:P_14")
+
+            if (
+                    abs(domain_net) <= Decimal("0.02")
+                    and abs(domain_vat) <= Decimal("0.02")
+                    and (
+                    abs(header_net) > Decimal("0.02")
+                    or abs(header_vat) > Decimal("0.02")
+            )
+            ):
+                logger.warning(
+                    f"Replacing correction lines with header totals. "
+                    f"Invoice={invoice_number}"
+                )
+                lines = self._build_fallback_from_totals(
+                    root,
+                    invoice_number,
+                )
 
         self._validate_totals(root, lines, is_correction)
 
@@ -224,7 +247,7 @@ class KsefDocumentParser(DocumentParser):
             groups.setdefault(key, []).append(row)
 
         result = []
-        seen = set()
+        # seen = set()
 
         for group in groups.values():
             before = None
@@ -254,9 +277,9 @@ class KsefDocumentParser(DocumentParser):
             if net == Decimal("0") and tax == Decimal("0"):
                 continue
 
-            if (net, tax) in seen:
-                continue
-            seen.add((net, tax))
+            # if (net, tax) in seen:
+            #     continue
+            # seen.add((net, tax))
 
             ref = after_line or before_line
 
@@ -311,6 +334,21 @@ class KsefDocumentParser(DocumentParser):
         el = element.find(path, self.NS)
         return el.text.strip() if el is not None and el.text else None
 
+    def _tax_number(self, root, company: str) -> str | None:
+        base = f".//k:{company}/k:DaneIdentyfikacyjne"
+
+        nip = self._text(root, f"{base}/k:NIP")
+        if nip:
+            return nip
+
+        kod_ue = self._text(root, f"{base}/k:KodUE")
+        nr_vat = self._text(root, f"{base}/k:NrVatUE")
+
+        if kod_ue and nr_vat:
+            return f"{kod_ue}{nr_vat}"
+
+        return None
+
     @staticmethod
     def _parse_date(value: str | None) -> date | None:
         if not value:
@@ -348,6 +386,12 @@ class KsefDocumentParser(DocumentParser):
             "np": VatRate.VAT_ZW,
         }
         return mapping.get(normalized, VatRate.VAT_ZW)
+
+    def _sum_ksef_totals(self, root, base_path: str) -> Decimal:
+        return sum(
+            (self._decimal_or_zero(root, f"{base_path}_{i}")
+            for i in range(1, 5)),Decimal("0")
+        )
 
     def _resolve_vat_rate(
         self,
@@ -452,16 +496,47 @@ class KsefDocumentParser(DocumentParser):
         return PaymentStatus.UNPAID
 
     def _validate_totals(self, root, lines, is_correction):
-        ksef_net = self._decimal_or_zero(root, ".//k:Fa/k:P_13_1")
-        ksef_vat = self._decimal_or_zero(root, ".//k:Fa/k:P_14_1")
+        ksef_net = self._sum_ksef_totals(root, ".//k:Fa/k:P_13")
+        ksef_vat = self._sum_ksef_totals(root, ".//k:Fa/k:P_14")
 
         domain_net = sum(l.amount.net for l in lines)
         domain_vat = sum(l.amount.tax for l in lines)
 
         tolerance = Decimal("0.05") if is_correction else Decimal("0.02")
 
+        document_type = self._map_document_type(root)
+
+        if document_type == DocumentType.ADVANCE:
+
+            domain_gross = domain_net + domain_vat
+            p15 = self._decimal_or_zero(root, ".//k:Fa/k:P_15")
+
+            if (
+                    abs(ksef_net - p15) <= tolerance
+                    and abs(ksef_net - domain_gross) <= tolerance
+                    and abs(ksef_vat - domain_vat) <= tolerance
+            ):
+                invoice_no = self._text(root, ".//k:Fa/k:P_2")
+                logger.warning(
+                    f"Broken KSeF ADVANCE invoice detected "
+                    f"(P_13 contains gross instead of net), "
+                    f"invoice={invoice_no}"
+                )
+                return
+
+
+
         logger.debug(f"KSEF NET: {ksef_net}, DOMAIN NET: {domain_net}")
         logger.debug(f"KSEF VAT: {ksef_vat}, DOMAIN VAT: {domain_vat}")
+
+
+        if ksef_net == 0 and domain_net != 0:
+            logger.warning("KSeF NET = 0 → fallback to domain")
+            ksef_net = domain_net
+
+        if ksef_vat == 0:
+            logger.warning("KSeF VAT = 0 → fallback to domain")
+            ksef_vat = domain_vat
 
         if abs(ksef_net - domain_net) > tolerance:
             raise DocumentFatalError(f"NET mismatch {ksef_net} vs {domain_net}")
@@ -491,24 +566,42 @@ class KsefDocumentParser(DocumentParser):
             raise DocumentFatalError(f"Invalid decimal value: {value}") from e
 
     def _validate_structure(self, root) -> None:
-        # Lightweight compliance check (not full XSD validation).
         if root.tag.startswith("{") and self.NS["k"] not in root.tag:
             raise DocumentFatalError("Unsupported XML namespace for KSeF FA(3)")
+
+        buyer_tax = self._tax_number(root, "Podmiot2")
+        seller_tax = self._tax_number(root, "Podmiot1")
 
         required = {
             "Fa/P_2": self._text(root, ".//k:Fa/k:P_2"),
             "Fa/P_1": self._text(root, ".//k:Fa/k:P_1"),
-            "Podmiot1/NIP": self._text(root, ".//k:Podmiot1/k:DaneIdentyfikacyjne/k:NIP"),
-            "Podmiot2/NIP": self._text(root, ".//k:Podmiot2/k:DaneIdentyfikacyjne/k:NIP"),
+            "Podmiot1/TaxNumber": seller_tax,
+            "Podmiot2/TaxNumber": buyer_tax,
         }
+
         missing = [name for name, val in required.items() if not val]
         if missing:
-            raise DocumentFatalError(f"Missing required KSeF fields: {', '.join(missing)}")
+            raise DocumentFatalError(
+                f"Missing required KSeF fields: {', '.join(missing)}"
+            )
 
         rodzaj = (self._text(root, ".//k:RodzajFaktury") or "").strip().upper()
-        allowed = {"VAT", "KOR", "KOREKTA", "ZAL", "ROZ", "UPR", "KOR_ZAL", "KOR_ROZ"}
+
+        allowed = {
+            "VAT",
+            "KOR",
+            "KOREKTA",
+            "ZAL",
+            "ROZ",
+            "UPR",
+            "KOR_ZAL",
+            "KOR_ROZ",
+        }
+
         if rodzaj and rodzaj not in allowed:
-            raise DocumentFatalError(f"Unsupported RodzajFaktury: {rodzaj}")
+            raise DocumentFatalError(
+                f"Unsupported RodzajFaktury: {rodzaj}"
+            )
 
     @staticmethod
     def _validate_xsd_if_configured( file_path: Path) -> None:
@@ -561,8 +654,8 @@ class KsefDocumentParser(DocumentParser):
             old_reference=None,
             invoice_date=invoice_date,
             selling_date=selling_date,
-            buyer_tax_number=self._text(root, ".//k:Podmiot2/k:DaneIdentyfikacyjne/k:NIP"),
-            seller_tax_number=self._text(root, ".//k:Podmiot1/k:DaneIdentyfikacyjne/k:NIP"),
+            buyer_tax_number=self._tax_number(root, "Podmiot2"),
+            seller_tax_number=self._tax_number(root, "Podmiot1"),
             payment_method=payment_method,
             due_date=due_date,
             paid_date=paid_date,
@@ -574,7 +667,7 @@ class KsefDocumentParser(DocumentParser):
     def _build_seller(self, root) -> CompanyInput:
         return CompanyInput(
             name=self._text(root, ".//k:Podmiot1/k:DaneIdentyfikacyjne/k:Nazwa"),
-            tax_number=self._text(root, ".//k:Podmiot1/k:DaneIdentyfikacyjne/k:NIP"),
+            tax_number=self._tax_number(root, "Podmiot1"),
             street=self._text(root, ".//k:Podmiot1/k:Adres/k:AdresL1"),
             city=self._extract_city(root, ".//k:Podmiot1/k:Adres/k:AdresL2"),
             state=None,
@@ -589,7 +682,7 @@ class KsefDocumentParser(DocumentParser):
     def _build_buyer(self, root) -> CompanyInput:
         return CompanyInput(
             name=self._text(root, ".//k:Podmiot2/k:DaneIdentyfikacyjne/k:Nazwa"),
-            tax_number=self._text(root, ".//k:Podmiot2/k:DaneIdentyfikacyjne/k:NIP"),
+            tax_number=self._tax_number(root, "Podmiot2"),
             street=self._text(root, ".//k:Podmiot2/k:Adres/k:AdresL1"),
             city=self._extract_city(root, ".//k:Podmiot2/k:Adres/k:AdresL2"),
             state=None,

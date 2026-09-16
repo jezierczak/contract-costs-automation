@@ -1,5 +1,6 @@
 from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.model.company import Company, CompanyType
+from contract_costs.model.financial_record import FinancialRecordStatus
 
 from contract_costs.services.companies.confidence.quality_default import DefaultCompanyQuality
 from contract_costs.services.companies.query.dto.company_dto import CompanyDTO
@@ -13,7 +14,9 @@ class CompanyQueryService(ActionHandler[CompanyQuery, list[CompanyDTO]]):
 
     def execute(self, *, action: CompanyQuery, uow: UnitOfWork) -> list[CompanyDTO]:
         companies = self._load_companies(uow=uow,query=action)
-        return [self._to_dto(c) for c in companies]
+        stats = self._build_company_stats(uow=uow, query=action, companies=companies)
+        dtos = [self._to_dto(c, stats=stats) for c in companies]
+        return self._sort_dtos(dtos=dtos, query=action)
 
     def _load_companies(self,*,uow:UnitOfWork, query: CompanyQuery) -> list[Company]:
         repo = uow.companies
@@ -60,9 +63,83 @@ class CompanyQueryService(ActionHandler[CompanyQuery, list[CompanyDTO]]):
         ]
         return any(phrase in (value or "").lower() for value in haystack)
 
+    def _build_company_stats(
+        self,
+        *,
+        uow: UnitOfWork,
+        query: CompanyQuery,
+        companies: list[Company],
+    ) -> dict:
+        company_ids = {company.id for company in companies}
+        if not company_ids:
+            return {}
+
+        records = uow.financial_records.list_all(
+            organization_id=query.organization_id,
+        )
+
+        stats: dict = {
+            company_id: {
+                "invoice_count": 0,
+                "last_invoice_date": None,
+            }
+            for company_id in company_ids
+        }
+
+        for record in records:
+            if record.status == FinancialRecordStatus.DELETED:
+                continue
+
+            related_ids = {
+                company_id
+                for company_id in (record.buyer_id, record.seller_id)
+                if company_id in company_ids
+            }
+
+            for company_id in related_ids:
+                company_stats = stats[company_id]
+                company_stats["invoice_count"] += 1
+                if (
+                    record.invoice_date is not None
+                    and (
+                        company_stats["last_invoice_date"] is None
+                        or record.invoice_date > company_stats["last_invoice_date"]
+                    )
+                ):
+                    company_stats["last_invoice_date"] = record.invoice_date
+
+        return stats
+
     @staticmethod
-    def _to_dto(company: Company) -> CompanyDTO:
+    def _sort_dtos(*, dtos: list[CompanyDTO], query: CompanyQuery) -> list[CompanyDTO]:
+        sort_by = query.sort_by or "name"
+        sort_dir = (query.sort_dir or "asc").lower()
+        reverse = sort_dir == "desc"
+
+        if sort_by == "invoice_count":
+            return sorted(
+                dtos,
+                key=lambda dto: (dto.invoice_count, dto.name.lower()),
+                reverse=reverse,
+            )
+
+        if sort_by == "last_invoice_date":
+            return sorted(
+                dtos,
+                key=lambda dto: (dto.last_invoice_date is None, dto.last_invoice_date, dto.name.lower()),
+                reverse=reverse,
+            )
+
+        return sorted(
+            dtos,
+            key=lambda dto: dto.name.lower(),
+            reverse=reverse,
+        )
+
+    @staticmethod
+    def _to_dto(company: Company, *, stats: dict | None = None) -> CompanyDTO:
         quality = DefaultCompanyQuality.from_company(company)
+        company_stats = (stats or {}).get(company.id, {})
         return CompanyDTO(
             id=company.id,
             name=company.name,
@@ -81,4 +158,6 @@ class CompanyQueryService(ActionHandler[CompanyQuery, list[CompanyDTO]]):
             bank_account_country_code=company.bank_account.country_code if company.bank_account else None,
             iban=company.bank_account.iban if company.bank_account else None,
             quality_score=quality.get_overall_score(),
+            invoice_count=company_stats.get("invoice_count", 0),
+            last_invoice_date=company_stats.get("last_invoice_date"),
         )

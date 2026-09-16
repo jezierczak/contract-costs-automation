@@ -1,4 +1,5 @@
 from contract_costs.repository.company_dashboard.company_dashboard_repository import CompanyDashboardRepository
+from contract_costs.repository.company_ksef_settings_repository import CompanyKsefSettingsRepository
 from contract_costs.repository.company_repository import CompanyRepository
 from contract_costs.repository.document_repository import DocumentRepository
 from contract_costs.repository.identity.organization_repository import OrganizationRepository
@@ -6,18 +7,21 @@ from contract_costs.repository.identity.organization_user_repository import Orga
 from contract_costs.repository.identity.user_repository import UserRepository
 from contract_costs.repository.inmemory.company_dashboard.company_dashboard_repository import \
     InMemoryCompanyDashboardRepository
+from contract_costs.repository.inmemory.company_ksef_settings_repository import InMemoryCompanyKsefSettingsRepository
 from contract_costs.repository.inmemory.document_repository import InMemoryDocumentRepository
 from contract_costs.repository.inmemory.identity.organization_repository import InMemoryOrganizationRepository
 from contract_costs.repository.inmemory.identity.organization_user_repository import InMemoryOrganizationUserRepository
 from contract_costs.repository.inmemory.identity.user_repository import InMemoryUserRepository
 from contract_costs.repository.financial_record_repository import FinancialRecordRepository
 from contract_costs.repository.financial_record_line_repository import FinancialRecordLineRepository
+from contract_costs.repository.financial_record_payment_repository import FinancialRecordPaymentRepository
 from contract_costs.repository.contract_repository import ContractRepository
 from contract_costs.repository.contract_node_repository import ContractNodeRepository
 from contract_costs.repository.inmemory.number_sequence_repository import InMemoryNumberSequenceRepository
 from contract_costs.repository.inmemory.session_repository import InMemorySessionRepository
 from contract_costs.repository.mysql.company_dashboard.company_dashboard_repository import \
     MySQLCompanyDashboardRepository
+from contract_costs.repository.mysql.company_ksef_settings_repository import MySQLCompanyKsefSettingsRepository
 from contract_costs.repository.mysql.document_repository import MySQLDocumentRepository
 from contract_costs.repository.mysql.identity.organization_repository import MySqlOrganizationRepository
 from contract_costs.repository.mysql.identity.organization_user_repository import MySqlOrganizationUserRepository
@@ -41,6 +45,7 @@ from contract_costs.unit_of_work.unit_of_work import UnitOfWork
 from contract_costs.repository.mysql.company_repository import MySQLCompanyRepository
 from contract_costs.repository.mysql.financial_record_repository import MySQLFinancialRecordRepository
 from contract_costs.repository.mysql.financial_record_line_repository import MySQLFinancialRecordLineRepository
+from contract_costs.repository.mysql.financial_record_payment_repository import MySQLFinancialRecordPaymentRepository
 from contract_costs.repository.mysql.contract_repository import MySQLContractRepository
 from contract_costs.repository.mysql.contract_node_repository import MySQLContractNodeRepository
 from contract_costs.repository.mysql.value_type_repository import MySQLValueTypeRepository
@@ -54,6 +59,9 @@ from contract_costs.repository.mysql.snapshot.contract_node_value_snapshot_repos
 from contract_costs.repository.inmemory.company_repository import InMemoryCompanyRepository
 from contract_costs.repository.inmemory.financial_record_repository import InMemoryFinancialRecordRepository
 from contract_costs.repository.inmemory.financial_record_line_repository import InMemoryFinancialRecordLineRepository
+from contract_costs.repository.inmemory.financial_record_payment_repository import (
+    InMemoryFinancialRecordPaymentRepository,
+)
 from contract_costs.repository.inmemory.contract_repository import InMemoryContractRepository
 from contract_costs.repository.inmemory.contract_node_repository import InMemoryContractNodeRepository
 from contract_costs.repository.inmemory.value_type_repository import InMemoryValueTypeRepository
@@ -82,6 +90,13 @@ class RepositoryFactory:
             else InMemoryCompanyRepository()
         )
 
+    def company_ksef_settings_repository(self) -> CompanyKsefSettingsRepository:
+        return (
+            MySQLCompanyKsefSettingsRepository()
+            if self.backend == RepoBackend.MYSQL
+            else InMemoryCompanyKsefSettingsRepository()
+        )
+
     def invoice_repository(self) -> FinancialRecordRepository:
         return (
             MySQLFinancialRecordRepository()
@@ -94,6 +109,13 @@ class RepositoryFactory:
             MySQLFinancialRecordLineRepository()
             if self.backend == RepoBackend.MYSQL
             else InMemoryFinancialRecordLineRepository()
+        )
+
+    def financial_record_payment_repository(self) -> FinancialRecordPaymentRepository:
+        return (
+            MySQLFinancialRecordPaymentRepository()
+            if self.backend == RepoBackend.MYSQL
+            else InMemoryFinancialRecordPaymentRepository()
         )
 
     def contract_repository(self) -> ContractRepository:

@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from decimal import Decimal
 from uuid import UUID
 
 from contract_costs.model.financial_record_line import FinancialRecordLine
@@ -177,3 +178,72 @@ class InMemoryFinancialRecordLineRepository(FinancialRecordLineRepository):
             del self._lines[line_id]
 
         return len(to_delete)
+
+    # =====================================================
+    # MATCHING (uproszczone – bez uwzględnienia seller_id,
+    # w przeciwieństwie do implementacji MySQL, która robi JOIN
+    # do financial_records)
+    # =====================================================
+
+    def find_financial_record_ids_by_line_amounts(
+        self,
+        *,
+        organization_id: UUID,
+        line_amounts: list[Decimal],
+        expected: int,
+        tolerance: Decimal,
+        seller_id: UUID | None = None,
+    ) -> list[UUID]:
+        if not line_amounts:
+            return []
+
+        counts: dict[UUID, int] = {}
+        for line in self._lines.values():
+            if line.organization_id != organization_id or line.financial_record_id is None:
+                continue
+            if any(abs(line.amount.value - amount) <= tolerance for amount in line_amounts):
+                counts[line.financial_record_id] = counts.get(line.financial_record_id, 0) + 1
+
+        return [record_id for record_id, count in counts.items() if count >= expected]
+
+    def find_financial_record_ids_by_names(
+        self,
+        *,
+        organization_id: UUID,
+        names: list[str],
+        expected: int,
+        seller_id: UUID | None = None,
+    ) -> list[UUID]:
+        if not names:
+            return []
+
+        normalized_names = {n.strip().lower() for n in names}
+        counts: dict[UUID, int] = {}
+        for line in self._lines.values():
+            if line.organization_id != organization_id or line.financial_record_id is None:
+                continue
+            if line.item_name.strip().lower() in normalized_names:
+                counts[line.financial_record_id] = counts.get(line.financial_record_id, 0) + 1
+
+        return [record_id for record_id, count in counts.items() if count >= expected]
+
+    def find_financial_record_ids_by_names_and_quantities(
+        self,
+        *,
+        organization_id: UUID,
+        items: list[tuple[str, Decimal]],
+        expected: int,
+    ) -> list[UUID]:
+        if not items:
+            return []
+
+        normalized_items = {(name.strip().lower(), quantity) for name, quantity in items}
+        counts: dict[UUID, int] = {}
+        for line in self._lines.values():
+            if line.organization_id != organization_id or line.financial_record_id is None:
+                continue
+            key = (line.item_name.strip().lower(), line.quantity)
+            if key in normalized_items:
+                counts[line.financial_record_id] = counts.get(line.financial_record_id, 0) + 1
+
+        return [record_id for record_id, count in counts.items() if count >= expected]

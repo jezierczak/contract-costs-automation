@@ -19,7 +19,7 @@
     hx-swap="innerHTML"
     hx-push-url="true"
     hx-indicator="#global-indicator"
-    hx-on:click="document.getElementById('modal-area').innerHTML=''"
+    hx-on:click="sessionStorage.setItem('records.return_to', window.location.pathname + window.location.search); document.getElementById('modal-area').innerHTML=''"
     class="inline-flex items-center px-2 py-1 text-xs font-medium
     text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md transition"
 >

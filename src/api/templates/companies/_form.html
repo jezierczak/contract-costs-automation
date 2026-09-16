@@ -263,7 +263,7 @@ Typ firmy
 
 <button
     type="button"
-    {% if picker_target %}
+    {% if return_to_picker %}
     hx-get="/companies/picker?target={{ picker_target }}"
     hx-target="#modal-area"
     hx-swap="innerHTML"

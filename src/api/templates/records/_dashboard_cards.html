@@ -23,6 +23,18 @@
     <span class="font-bold text-lg">{{ stats.to_accountant }}</span>
 </button>
 
+<button
+    hx-get="/records/sent_history"
+    hx-target="#content-area"
+    hx-swap="innerHTML"
+    hx-push-url="true"
+    hx-indicator="#global-indicator"
+    class="bg-white rounded-xl shadow p-6 hover:bg-gray-50 flex justify-between w-full text-left"
+>
+    <span>Wyslane do ksiegowej</span>
+    <span class="font-bold text-lg">{{ stats.sent_history }}</span>
+</button>
+
 
 <button
     hx-get="/records/unpaid_costs"

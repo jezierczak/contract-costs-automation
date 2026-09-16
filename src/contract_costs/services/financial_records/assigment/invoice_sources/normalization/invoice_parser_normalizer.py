@@ -212,12 +212,22 @@ class DocumentParseNormalizer:
 
         )
 
+    # @staticmethod
+    # def _parse_input_type(value) -> AmountInputType:
+    #     try:
+    #         return AmountInputType(value)
+    #     except Exception:
+    #         return AmountInputType.NET  # fallback
+
     @staticmethod
     def _parse_input_type(value) -> AmountInputType:
+        if not value:
+            raise ValueError("Missing input_type in payload")
+
         try:
-            return AmountInputType(value)
+            return AmountInputType(str(value).lower())
         except Exception:
-            return AmountInputType.NET  # fallback
+            raise ValueError(f"Invalid input_type: {value}")
 
     @staticmethod
     def _build_company_input(

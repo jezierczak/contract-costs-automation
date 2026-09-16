@@ -1,0 +1,91 @@
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div class="bg-white w-full max-w-xl rounded-xl shadow-lg p-5">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold">Pobierz z KSeF</h2>
+            <button
+                type="button"
+                onclick="document.getElementById('modal-area').innerHTML=''"
+                class="text-gray-500 hover:text-black"
+            >
+                X
+            </button>
+        </div>
+
+        {% if error_message %}
+        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            {{ error_message }}
+        </div>
+        {% endif %}
+
+        <form
+            hx-post="/documents/ksef/import"
+            hx-target="#modal-area"
+            hx-swap="innerHTML"
+            class="space-y-4"
+        >
+            <div>
+                <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">
+                    Firma (Own)
+                </label>
+                <select
+                    name="company_id"
+                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    required
+                >
+                    <option value="">Wybierz firme</option>
+                    {% for company in own_companies %}
+                    <option value="{{ company.id }}">{{ company.name }}{% if company.tax_number %} ({{ company.tax_number }}){% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                    <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">
+                        Od daty
+                    </label>
+                    <input
+                        type="date"
+                        name="from_date"
+                        value="{{ default_from_date }}"
+                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        required
+                    >
+                </div>
+
+                <div>
+                    <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">
+                        Do daty
+                    </label>
+                    <input
+                        type="date"
+                        name="to_date"
+                        value="{{ default_to_date }}"
+                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        required
+                    >
+                </div>
+            </div>
+
+            <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                Ten krok tylko zleca import. Pobieranie i przetwarzanie faktur wykona worker.
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <button
+                    type="button"
+                    onclick="document.getElementById('modal-area').innerHTML=''"
+                    class="rounded border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                    Anuluj
+                </button>
+                <button
+                    type="submit"
+                    class="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+                >
+                    Zlec pobieranie
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

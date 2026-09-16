@@ -1,4 +1,5 @@
 import json
+from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Form, Request, HTTPException
@@ -7,6 +8,7 @@ from starlette.responses import HTMLResponse
 
 from api.dependencies import get_services
 from contract_costs.model.company import CompanyType, Address, Contact, BankAccount
+from contract_costs.model.company_ksef_settings import KsefEnvironment
 from contract_costs.services.companies.dto.create_company_command import CreateOwnerCompanyCommand, \
     CreateCounterpartyCompanyCommand
 from contract_costs.services.companies.dto.deactivate_company_command import DeactivateOwnerCompanyCommand, \
@@ -15,8 +17,30 @@ from contract_costs.services.companies.dto.update_company_command import UpdateO
     UpdateCounterpartyCompanyCommand
 from contract_costs.services.companies.query.dto.company_detail_query import CompanyDetailQuery
 from contract_costs.services.companies.query.dto.company_query import CompanyQuery
+from contract_costs.services.companies.dto.save_company_ksef_settings_command import SaveCompanyKsefSettingsCommand
 
 router = APIRouter()
+
+
+def _render_ksef_settings_modal(
+    *,
+    request: Request,
+    company,
+    settings=None,
+    success_message: str | None = None,
+    error_message: str | None = None,
+):
+    return request.app.state.templates.TemplateResponse(
+        "companies/_ksef_settings_modal.html",
+        {
+            "request": request,
+            "company": company,
+            "settings": settings,
+            "environments": [env.value for env in KsefEnvironment],
+            "success_message": success_message,
+            "error_message": error_message,
+        },
+    )
 
 
 def gus_lookup(nip: str):
@@ -139,6 +163,7 @@ def company_new(
             "show_role": True,
             "company_roles": [r.value for r in CompanyType if r.name != "OWN"],
             "picker_target": target,
+            "return_to_picker": bool(target),
         },
     )
 
@@ -175,6 +200,8 @@ def companies_table(
     search: str | None = None,
     role: str | None = None,
     inactive: int = 0,
+    sort_by: str | None = None,
+    sort_dir: str | None = None,
     mode: str = "manage",
     target: str | None = None,
     services=Depends(get_services),
@@ -190,6 +217,8 @@ def companies_table(
             search=search,
             role=role_enum,
             include_inactive=bool(inactive),
+            sort_by=sort_by,
+            sort_dir=sort_dir,
         ),
         handler=services.company_query_service,
     )
@@ -451,7 +480,105 @@ def company_edit_panel(
             "show_role": True if company.role != CompanyType.OWN else False,
             "company_roles": [r.value for r in CompanyType if r.name != "OWN"],
             "picker_target": target,
+            "return_to_picker": False,
         },
+    )
+
+@router.get("/companies/{company_id}/metadata-modal")
+def company_metadata_modal(
+    request: Request,
+    company_id: UUID,
+    services=Depends(get_services),
+):
+    ctx = request.state.ctx
+
+    company = _get_company(ctx=ctx, company_id=company_id, services=services)
+
+    return request.app.state.templates.TemplateResponse(
+        "own_company_dashboard/_company_metadata_modal.html",
+        {
+            "request": request,
+            "company": company,
+        },
+    )
+
+
+@router.get("/companies/{company_id}/ksef-settings")
+def company_ksef_settings_modal(
+    request: Request,
+    company_id: UUID,
+    services=Depends(get_services),
+):
+    ctx = request.state.ctx
+
+    company = _get_company(ctx=ctx, company_id=company_id, services=services)
+
+    if company.role.value != "Own":
+        raise HTTPException(status_code=404)
+
+    with services.uow as uow:
+        settings = uow.company_ksef_settings.get_by_company_id(
+            organization_id=ctx.organization_id,
+            company_id=company_id,
+        )
+
+    return _render_ksef_settings_modal(
+        request=request,
+        company=company,
+        settings=settings,
+    )
+
+
+@router.post("/companies/{company_id}/ksef-settings")
+def company_ksef_settings_save(
+    request: Request,
+    company_id: UUID,
+    environment: str = Form(...),
+    is_enabled: str | None = Form(None),
+    certificate_path: str | None = Form(None),
+    certificate_password: str | None = Form(None),
+    last_import_from: str | None = Form(None),
+    services=Depends(get_services),
+):
+    ctx = request.state.ctx
+
+    company = _get_company(ctx=ctx, company_id=company_id, services=services)
+
+    if company.role.value != "Own":
+        raise HTTPException(status_code=404)
+
+    try:
+        settings = services.action_bus.execute(
+            action=SaveCompanyKsefSettingsCommand(
+                organization_id=ctx.organization_id,
+                actor_user_id=ctx.user_id,
+                company_id=company_id,
+                environment=KsefEnvironment(environment),
+                is_enabled=is_enabled == "1",
+                certificate_path=(certificate_path or "").strip() or None,
+                certificate_password=(certificate_password or "").strip() or None,
+                last_import_from=date.fromisoformat(last_import_from) if last_import_from else None,
+            ),
+            handler=services.save_company_ksef_settings_service,
+        )
+    except Exception as exc:
+        with services.uow as uow:
+            current_settings = uow.company_ksef_settings.get_by_company_id(
+                organization_id=ctx.organization_id,
+                company_id=company_id,
+            )
+        return _render_ksef_settings_modal(
+            request=request,
+            company=company,
+            settings=current_settings,
+            error_message=str(exc),
+        )
+
+    return _render_ksef_settings_modal(
+        request=request,
+        company=company,
+        settings=settings,
+        success_message="Ustawienia KSeF zapisane.",
     )
 
 

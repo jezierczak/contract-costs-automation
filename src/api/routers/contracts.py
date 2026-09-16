@@ -10,6 +10,7 @@ from api.dependencies import get_services
 
 from contract_costs.model.company import CompanyType
 from contract_costs.model.contract import ContractType, ContractStatus
+from contract_costs.model.financial_record import FinancialRecordStatus
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 from contract_costs.services.companies.query.dto.company_query import CompanyQuery
 from contract_costs.services.contract_nodes.dto.add_contract_node_command import AddContractNodeCommand
@@ -25,6 +26,131 @@ from contract_costs.services.contracts.query.contract_details.contract_details_q
 from contract_costs.services.contracts.query.list_contracts.list_contracts_query_command import ListContractsQuery
 
 router = APIRouter()
+
+
+def _build_contract_scope_record_rows(
+    *,
+    services,
+    organization_id: UUID,
+    contract_id: UUID,
+    node_id: UUID,
+    value_type_id: UUID,
+):
+    with services.uow as uow:
+        contract_nodes = uow.contract_nodes.list_by_contract(
+            organization_id=organization_id,
+            contract_id=contract_id,
+        )
+        node = uow.contract_nodes.get(
+            organization_id=organization_id,
+            contract_node_id=node_id,
+        )
+        value_type = uow.value_types.get(
+            organization_id=organization_id,
+            value_type_id=value_type_id,
+        )
+
+        child_ids_by_parent: dict[UUID | None, list[UUID]] = {}
+        for contract_node in contract_nodes:
+            child_ids_by_parent.setdefault(contract_node.parent_id, []).append(contract_node.id)
+
+        scope_node_ids: set[UUID] = set()
+        pending_node_ids = [node_id]
+        while pending_node_ids:
+            current_node_id = pending_node_ids.pop()
+            if current_node_id in scope_node_ids:
+                continue
+            scope_node_ids.add(current_node_id)
+            pending_node_ids.extend(child_ids_by_parent.get(current_node_id, []))
+
+        matched_lines = [
+            line
+            for line in uow.financial_record_lines.list_by_contract(
+                organization_id=organization_id,
+                contract_id=contract_id,
+            )
+            if (
+                line.financial_record_id is not None
+                and line.contract_node_id in scope_node_ids
+                and line.value_type_id == value_type_id
+            )
+        ]
+
+        if not matched_lines:
+            return node, value_type, []
+
+        grouped_lines: dict[UUID, list] = {}
+        for line in matched_lines:
+            grouped_lines.setdefault(line.financial_record_id, []).append(line)
+
+        records_by_id = {
+            record.id: record
+            for record in uow.financial_records.list_all(
+                organization_id=organization_id,
+            )
+            if record.status != FinancialRecordStatus.DELETED
+        }
+
+        company_ids = set()
+        for record_id in grouped_lines:
+            record = records_by_id.get(record_id)
+            if not record:
+                continue
+            company_ids.add(record.buyer_id)
+            company_ids.add(record.seller_id)
+
+        companies = {}
+        for company_id in company_ids:
+            company = uow.companies.get(
+                organization_id=organization_id,
+                company_id=company_id,
+            )
+            if company:
+                companies[company_id] = company
+
+        rows = []
+        for record_id, scope_lines in grouped_lines.items():
+            record = records_by_id.get(record_id)
+            if not record:
+                continue
+
+            buyer = companies.get(record.buyer_id)
+            seller = companies.get(record.seller_id)
+
+            scope_net = sum((line.amount.net for line in scope_lines), Decimal("0"))
+            scope_vat = sum((line.amount.tax for line in scope_lines), Decimal("0"))
+            scope_gross = sum((line.amount.gross for line in scope_lines), Decimal("0"))
+            scope_non_deductible = sum(
+                (line.amount.non_tax_cost for line in scope_lines),
+                Decimal("0"),
+            )
+
+            rows.append(
+                {
+                    "record_id": record.id,
+                    "reference": record.reference,
+                    "invoice_date": record.invoice_date,
+                    "buyer_name": buyer.name if buyer else "UNKNOWN",
+                    "seller_name": seller.name if seller else "UNKNOWN",
+                    "scope_net": scope_net,
+                    "scope_vat": scope_vat,
+                    "scope_gross": scope_gross,
+                    "scope_non_deductible": scope_non_deductible,
+                    "scope_total": scope_net + scope_non_deductible,
+                    "line_count": len(scope_lines),
+                }
+            )
+
+        rows.sort(
+            key=lambda item: (
+                item["invoice_date"] is None,
+                item["invoice_date"] or date.min,
+                item["reference"],
+            ),
+            reverse=True,
+        )
+
+        return node, value_type, rows
 
 def _render_contract_tree(
     *,
@@ -56,7 +182,10 @@ def _render_contract_tree(
 def contracts_page(request: Request):
     return request.app.state.templates.TemplateResponse(
         "contracts/page.html",
-        {"request": request}
+        {
+            "request": request,
+            "statuses": [s.value for s in ContractStatus],
+        }
     )
 @router.get("/contracts/table", response_class=HTMLResponse)
 def contracts_list(
@@ -87,6 +216,7 @@ def contracts_list(
             "contracts": contracts,
             "search": search,
             "status": status_enum,
+            "statuses": [s.value for s in ContractStatus],
             "title": "Kontrakty",
         },
     )
@@ -783,4 +913,36 @@ def contract_update(
     return RedirectResponse(
         url=f"/contracts/{contract_id}",
         status_code=303,
+    )
+
+
+@router.get(
+    "/contracts/{contract_id}/nodes/{node_id}/value-types/{value_type_id}/records",
+    response_class=HTMLResponse,
+)
+def contract_scope_records(
+    request: Request,
+    contract_id: str,
+    node_id: str,
+    value_type_id: str,
+    services=Depends(get_services),
+):
+    ctx = request.state.ctx
+
+    node, value_type, records = _build_contract_scope_record_rows(
+        services=services,
+        organization_id=ctx.organization_id,
+        contract_id=UUID(contract_id),
+        node_id=UUID(node_id),
+        value_type_id=UUID(value_type_id),
+    )
+
+    return request.app.state.templates.TemplateResponse(
+        "contracts/details/_scope_records.html",
+        {
+            "request": request,
+            "records": records,
+            "node": node,
+            "value_type": value_type,
+        },
     )

@@ -8,6 +8,7 @@ class ContractListDTO:
     contract_id: UUID
     code: str
     name: str
+    status: str
     is_active: bool
 
     planned_budget: Decimal

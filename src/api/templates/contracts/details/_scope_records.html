@@ -1,0 +1,84 @@
+<div class="space-y-4" xmlns:hx-on="http://www.w3.org/1999/xhtml">
+    <div class="flex items-center justify-between gap-3">
+        <div>
+            <div class="text-xs uppercase tracking-wide text-gray-500">Faktury z zakresu</div>
+            <div class="text-sm font-semibold text-gray-800">
+                {{ node.code if node else "-" }}
+                {% if node and node.name %} / {{ node.name }}{% endif %}
+                {% if value_type %} / {{ value_type.code }}{% endif %}
+            </div>
+        </div>
+
+        <button
+            type="button"
+            onclick="renderNodeBreakdown(window.currentNodeBreakdownState)"
+            class="inline-flex items-center rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+        >
+            Powrot
+        </button>
+    </div>
+
+    {% if not records %}
+    <div class="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500">
+        Brak faktur dla tego zakresu.
+    </div>
+    {% else %}
+    <div class="max-w-full overflow-x-auto rounded-lg border">
+        <table class="w-full table-fixed text-sm">
+            <thead class="bg-gray-50 text-gray-700">
+                <tr>
+                    <th class="w-[16%] px-3 py-2 text-left">Ref</th>
+                    <th class="w-[11%] px-3 py-2 text-left">Data</th>
+                    <th class="w-[18%] px-3 py-2 text-left">Buyer</th>
+                    <th class="w-[18%] px-3 py-2 text-left">Seller</th>
+                    <th class="w-[10%] px-3 py-2 text-right">Net</th>
+                    <th class="w-[10%] px-3 py-2 text-right">VAT</th>
+                    <th class="w-[10%] px-3 py-2 text-right">Zakres</th>
+                    <th class="w-[7%] px-3 py-2 text-right">Linie</th>
+                    <th class="w-[10%] px-3 py-2 text-right">Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in records %}
+                <tr class="border-t hover:bg-gray-50">
+                    <td class="px-3 py-2 font-medium">
+                        <div class="truncate" title="{{ record.reference }}">{{ record.reference }}</div>
+                    </td>
+                    <td class="px-3 py-2">
+                        <div class="truncate">{{ record.invoice_date or "-" }}</div>
+                    </td>
+                    <td class="px-3 py-2">
+                        <div class="truncate" title="{{ record.buyer_name }}">{{ record.buyer_name }}</div>
+                    </td>
+                    <td class="px-3 py-2">
+                        <div class="truncate" title="{{ record.seller_name }}">{{ record.seller_name }}</div>
+                    </td>
+                    <td class="px-3 py-2 text-right">
+                        <div class="truncate">{{ record.scope_net }}</div>
+                    </td>
+                    <td class="px-3 py-2 text-right">
+                        <div class="truncate">{{ record.scope_vat }}</div>
+                    </td>
+                    <td class="px-3 py-2 text-right font-semibold">
+                        <div class="truncate">{{ record.scope_total }}</div>
+                    </td>
+                    <td class="px-3 py-2 text-right">{{ record.line_count }}</td>
+                    <td class="px-3 py-2 text-right">
+                        <button
+                            type="button"
+                            onclick="event.stopPropagation()"
+                            hx-get="/records/{{ record.record_id }}/review"
+                            hx-target="#modal-area"
+                            hx-swap="innerHTML"
+                            class="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                        >
+                            Otworz
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>

@@ -87,6 +87,11 @@ def financial_record_repo(uow):
 
 
 @pytest.fixture
+def financial_record_payment_repo(uow):
+    return uow.financial_record_payments
+
+
+@pytest.fixture
 def number_sequence_repo(uow):
     return uow.number_sequences
 

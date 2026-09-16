@@ -28,6 +28,7 @@ class RecordMainboardStatsQueryService(
         return RecordMainboardStatsView(
             assign=count(RecordWorkspaceView.ASSIGN),
             to_accountant=count(RecordWorkspaceView.TO_ACCOUNTANT),
+            sent_history=count(RecordWorkspaceView.SENT_HISTORY),
             unpaid_costs=count(RecordWorkspaceView.UNPAID_COSTS),
             unpaid_revenue=count(RecordWorkspaceView.UNPAID_REVENUE),
         )

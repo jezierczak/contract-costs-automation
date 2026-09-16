@@ -58,6 +58,7 @@ class DocumentRepository(ABC):
             *,
             organization_id: UUID,
             document_id: UUID,
+            file_path: str | None = None,
     ) -> None: ...
 
     @abstractmethod

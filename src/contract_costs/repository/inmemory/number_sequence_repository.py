@@ -17,6 +17,16 @@ class InMemoryNumberSequenceRepository(NumberSequenceRepository):
     # INTERFACE
     # ---------------------------
 
+    def get(
+        self,
+        organization_id: UUID,
+        scope_key: str,
+    ) -> NumberSequence | None:
+        key = (organization_id, scope_key)
+
+        with self._lock:
+            return self._data.get(key)
+
     def get_for_update(
         self,
         organization_id: UUID,

@@ -14,6 +14,8 @@ from contract_costs.model.company import Company
 class FinancialRecordAction(Enum):
     MARK_PAID = "mark_paid"
     MARK_UNPAID = "mark_unpaid"
+    ADD_PAYMENT = "add_payment"
+    REMOVE_PAYMENT = "remove_payment"
     MARK_SENT_TO_ACCOUNTANT = "mark_sent_to_accountant"
     REOPEN = "reopen"
     DELETE = "delete"

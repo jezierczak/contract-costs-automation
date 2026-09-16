@@ -35,10 +35,10 @@ required
 <!-- QUANTITY -->
 <input
 name="lines[{{ loop.index0 }}].quantity"
-value="{{ l.quantity }}"
+value="{{ '%.2f'|format(l.quantity) }}"
 class="border rounded p-1 text-sm text-right col-span-1"
 inputmode="decimal"
-pattern="[0-9]+([.][0-9]+)?"
+pattern="-?[0-9]+([.][0-9]+)?"
 step="0.01"
 oninput="this.value=this.value.replace(',', '.')"
 required
@@ -67,6 +67,7 @@ inputmode="decimal"
 pattern="-?[0-9]+([.][0-9]+)?"
 step="0.01"
 oninput="this.value=this.value.replace(',', '.')"
+required
 >
 
 <!-- VAT -->
@@ -120,60 +121,47 @@ class="border rounded p-1 text-sm col-span-1"
 <div class="grid grid-cols-12 gap-2">
 
 <!-- CONTRACT -->
-<select
-name="lines[{{ loop.index0 }}].contract_id"
-class="border rounded p-1 text-sm col-span-3"
-hx-get="/records/contracts/nodes"
-hx-trigger="change"
-hx-target="#contract-node-slot-{{ loop.index0 }}"
-hx-swap="innerHTML"
-hx-vals='js:{
-idx:"{{ loop.index0 }}",
-field_name:"contract_node_id",
-label:"Contract node"
-}'
->
-<option value="">Kontrakt</option>
-
+{% with %}
+{% set idx = loop.index0 %}
+{% set ns_contract = namespace(item=None) %}
 {% for c in contracts %}
-<option
-value="{{ c.contract_id }}"
-{% if l.contract_id == c.contract_id %}selected{% endif %}
->
-{{ c.code }}
-</option>
+    {% if l.contract_id == c.contract_id %}
+        {% set ns_contract.item = c %}
+    {% endif %}
 {% endfor %}
-</select>
+{% set contract = ns_contract.item %}
+{% include "records/_contract_slot.html" %}
+{% endwith %}
 
 
 <!-- CONTRACT NODE -->
-<div id="contract-node-slot-{{ loop.index0 }}" class="col-span-3">
 {% with %}
-{% set nodes = l.contract_nodes or [] %}
 {% set idx = loop.index0 %}
-{% set field_name = "contract_node_id" %}
-{% set label = "Contract node" %}
+{% set contract_id = l.contract_id %}
 {% set selected_node_id = l.contract_node_id %}
-{% include "records/_contract_nodes_select.html" %}
+{% set ns_node = namespace(code=None) %}
+{% for n in l.contract_nodes or [] %}
+    {% if selected_node_id|string == n.id|string %}
+        {% set ns_node.code = n.code %}
+    {% endif %}
+{% endfor %}
+{% set selected_node_code = ns_node.code %}
+{% include "records/_contract_node_slot.html" %}
 {% endwith %}
-</div>
 
 
 <!-- VALUE TYPE -->
-<select
-name="lines[{{ loop.index0 }}].value_type_id"
-class="border rounded p-1 text-sm col-span-2"
->
-<option value="">Value type</option>
-
+{% with %}
+{% set idx = loop.index0 %}
+{% set ns = namespace(value_type=None) %}
 {% for v in value_types %}
-<option value="{{ v.id }}"
-{% if l.value_type_id == v.id %}selected{% endif %}
->
-{{ v.code }}
-</option>
+    {% if l.value_type_id == v.id %}
+        {% set ns.value_type = v %}
+    {% endif %}
 {% endfor %}
-</select>
+{% set value_type = ns.value_type %}
+{% include "records/_value_type_slot.html" %}
+{% endwith %}
 
 
 <!-- AGREEMENT -->
@@ -252,3 +240,5 @@ class="text-red-600 hover:underline text-sm"
 
 {% endfor %}
 {% endif %}
+
+

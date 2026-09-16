@@ -1,17 +1,24 @@
 from uuid import UUID
-from fastapi.responses import HTMLResponse, Response, RedirectResponse
-from fastapi import APIRouter, Depends, Form,Request
-from contract_costs.services.identity.add.dto.create_organization_command import CreateOrganizationCommand
-from api.dependencies import get_services
+
+from fastapi import APIRouter, Depends, Form, Request
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from passlib.context import CryptContext
 
+from api.dependencies import get_services
+from contract_costs.services.identity.add.dto.create_organization_command import CreateOrganizationCommand
+from contract_costs.services.identity.auth.dto.authenticate_user_command import AuthenticateUserCommand
 from contract_costs.services.identity.auth.session.dto.create_session_command import CreateSessionCommand
 from contract_costs.services.identity.auth.session.dto.logout_command import LogoutCommand
 from contract_costs.services.identity.auth.session.dto.update_session_organization_command import \
     UpdateSessionOrganizationCommand
-from contract_costs.services.identity.exceptions import UserNotFound, PermissionDenied, UserInactive, \
-    IdentityServiceError, UserAlreadyExists, OrganizationAlreadyExists
-from contract_costs.services.identity.auth.dto.authenticate_user_command import AuthenticateUserCommand
+from contract_costs.services.identity.exceptions import (
+    IdentityServiceError,
+    OrganizationAlreadyExists,
+    PermissionDenied,
+    UserAlreadyExists,
+    UserInactive,
+    UserNotFound,
+)
 from contract_costs.services.identity.query.dto.list_user_organizations_query import ListUserOrganizationsQuery
 
 router = APIRouter()
@@ -19,33 +26,32 @@ pwd_context = CryptContext(
     schemes=["argon2"],
     deprecated="auto"
 )
+
+
 @router.get("/register", response_class=HTMLResponse)
 def register_page(request: Request):
-
     return request.app.state.templates.TemplateResponse(
         "auth/register.html",
         {"request": request},
     )
+
+
 @router.post("/register", response_class=HTMLResponse)
 def register(
-
-    # request: Request,
     organization_code: str = Form(...),
     organization_name: str = Form(...),
     login: str = Form(...),
     full_name: str | None = Form(None),
     email: str | None = Form(None),
-
     password: str = Form(...),
     password_repeat: str = Form(...),
-
     services=Depends(get_services),
 ):
     if password != password_repeat:
         return HTMLResponse(
-            "<p class='text-red-600'>Hasła nie są takie same</p>"
-
+            "<p class='text-red-600'>Hasla nie sa takie same</p>"
         )
+
     password_hash = pwd_context.hash(password)
     command = CreateOrganizationCommand(
         organization_code=organization_code,
@@ -57,39 +63,42 @@ def register(
         owner_password_hash=password_hash,
     )
     try:
-        org_id, user_id = services.action_bus.execute(action=command,handler = services.create_organization_with_owner)
+        org_id, user_id = services.action_bus.execute(
+            action=command,
+            handler=services.create_organization_with_owner,
+        )
         session_id = services.action_bus.execute(
             action=CreateSessionCommand(
                 actor_user_id=user_id,
-                organization_id=org_id,  # jeśli masz
+                organization_id=org_id,
             ),
             handler=services.create_session_service,
         )
     except OrganizationAlreadyExists:
         return HTMLResponse(
-            "<p style='color:red;'>Organizacja już istnieje</p>"
+            "<p style='color:red;'>Organizacja juz istnieje</p>"
         )
-
     except UserAlreadyExists:
         return HTMLResponse(
-            "<p style='color:red;'>Login już istnieje</p>"
+            "<p style='color:red;'>Login juz istnieje</p>"
         )
-    response = Response(headers={"HX-Redirect": "/"})
 
+    response = Response(headers={"HX-Redirect": "/"})
     response.set_cookie(
         key="session_id",
         value=str(session_id),
         httponly=True,
         samesite="lax",
     )
-
     return response
 
-@router.post("/login", response_class=RedirectResponse)
+
+@router.post("/login")
 def login(
+    request: Request,
     login: str = Form(...),
     password: str = Form(...),
-    services = Depends(get_services),
+    services=Depends(get_services),
 ):
     command = AuthenticateUserCommand(
         login=login,
@@ -101,21 +110,37 @@ def login(
             handler=services.authenticate_user_service,
         )
     except UserNotFound:
-        return HTMLResponse("<p style='color:red;'>Nieprawidłowy login</p>")
+        reason = "Nieprawidlowy login"
     except PermissionDenied:
-        return HTMLResponse("<p style='color:red;'>Nieprawidłowe hasło</p>")
+        reason = "Nieprawidlowe haslo"
     except UserInactive:
-        return HTMLResponse("<p style='color:red;'>Użytkownik został zdezaktywowany</p>")
+        reason = "Uzytkownik zostal zdezaktywowany"
     except IdentityServiceError:
-        return HTMLResponse("<p style='color:red;'>Błąd identyfikacji</p>")
-    # if not pwd_context.verify(password, user.password_hash):
-    #     return HTMLResponse("<p style='color:red;'>Nieprawidłowe hasło</p>")
-    # 2. Create session
+        reason = "Blad identyfikacji"
+    else:
+        reason = None
+
+    if reason is not None:
+        if request.headers.get("HX-Request") == "true":
+            return HTMLResponse(
+                f"<p class='text-sm text-red-600'>{reason}</p>",
+                status_code=401,
+            )
+        return request.app.state.templates.TemplateResponse(
+            "auth/login.html",
+            {
+                "request": request,
+                "reason": reason,
+                "login_value": login,
+            },
+            status_code=401,
+        )
 
     orgs = services.action_bus.execute(
         action=ListUserOrganizationsQuery(actor_user_id=user_id),
         handler=services.list_user_organizations_user_service,
     )
+
     if len(orgs) == 1:
         org_id = orgs[0].id
         session_id = services.action_bus.execute(
@@ -125,10 +150,8 @@ def login(
             ),
             handler=services.create_session_service,
         )
-        response = RedirectResponse("/", status_code=303)
-
+        redirect_path = "/"
     else:
-        # redirect to organization choice
         session_id = services.action_bus.execute(
             action=CreateSessionCommand(
                 actor_user_id=user_id,
@@ -136,7 +159,13 @@ def login(
             ),
             handler=services.create_session_service,
         )
-        response = RedirectResponse("/select-organization", status_code=303)
+        redirect_path = "/select-organization"
+
+    if request.headers.get("HX-Request") == "true":
+        response = Response(status_code=200, headers={"HX-Redirect": redirect_path})
+    else:
+        response = RedirectResponse(redirect_path, status_code=303)
+
     response.set_cookie(
         key="session_id",
         value=str(session_id),
@@ -147,13 +176,11 @@ def login(
 
 
 @router.post("/logout")
-def logout(request: Request, services = Depends(get_services)):
-
+def logout(request: Request, services=Depends(get_services)):
     session_id = request.cookies.get("session_id")
 
     if session_id:
         command = LogoutCommand(session_id=UUID(session_id))
-
         services.action_bus.execute(
             action=command,
             handler=services.logout_service,
@@ -161,7 +188,6 @@ def logout(request: Request, services = Depends(get_services)):
 
     response = RedirectResponse("/", status_code=302)
     response.delete_cookie("session_id")
-
     return response
 
 
@@ -187,6 +213,7 @@ def select_organization_page(
             "organizations": orgs,
         },
     )
+
 
 @router.post("/select-organization")
 def select_organization(

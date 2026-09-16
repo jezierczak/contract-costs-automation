@@ -1,0 +1,42 @@
+<div id="contract-node-slot-{{ idx }}" class="col-span-3">
+    <input
+        type="hidden"
+        name="lines[{{ idx }}].contract_node_id"
+        value="{{ selected_node_id or '' }}"
+    >
+
+    <div class="flex items-center gap-2">
+        <button
+            type="button"
+            {% if contract_id %}
+            hx-get="/records/contracts/nodes/picker?idx={{ idx }}&contract_id={{ contract_id }}{% if selected_node_id %}&selected_node_id={{ selected_node_id }}{% endif %}"
+            hx-target="#modal-area"
+            hx-swap="innerHTML"
+            {% endif %}
+            class="flex w-full items-center justify-between rounded border px-2 py-1 text-left text-sm {% if contract_id %}hover:bg-gray-50{% else %}cursor-not-allowed bg-gray-50 text-gray-400{% endif %}"
+            {% if not contract_id %}disabled{% endif %}
+        >
+            <span class="min-w-0">
+                {% if selected_node_code %}
+                <span class="block truncate font-medium text-gray-900">{{ selected_node_code }}</span>
+                {% elif contract_id %}
+                <span class="block text-gray-400">Contract node</span>
+                {% else %}
+                <span class="block text-gray-400">Najpierw wybierz kontrakt</span>
+                {% endif %}
+            </span>
+            <span class="ml-2 shrink-0 text-xs font-medium text-blue-600">
+                {% if selected_node_id %}Zmien{% else %}Wybierz{% endif %}
+            </span>
+        </button>
+
+        <button
+            type="button"
+            onclick="fillContractNodeToRemainingLines({{ idx }})"
+            class="shrink-0 rounded border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100"
+            title="Wypelnij kolejne linie tym samym contract node"
+        >
+            Dalej
+        </button>
+    </div>
+</div>

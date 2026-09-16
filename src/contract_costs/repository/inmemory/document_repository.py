@@ -1,5 +1,6 @@
 from uuid import UUID
 from typing import Dict, List
+from dataclasses import replace
 
 from contract_costs.model.document import Document, DocumentStatus
 from contract_costs.repository.document_repository import DocumentRepository
@@ -88,6 +89,30 @@ class InMemoryDocumentRepository(DocumentRepository):
         if doc.financial_record_id is None:
             doc.financial_record_id = record_id
             self._documents[document_id] = doc
+
+    def unattach_from_record(
+        self,
+        *,
+        organization_id: UUID,
+        document_id: UUID,
+        file_path: str | None = None,
+    ) -> None:
+        doc = self.get(
+            organization_id=organization_id,
+            document_id=document_id,
+        )
+        if not doc:
+            return
+        if doc.financial_record_id is None:
+            return
+
+        updated = replace(
+            doc,
+            financial_record_id=None,
+            document_status=DocumentStatus.READY,
+            file_path=file_path or doc.file_path,
+        )
+        self._documents[document_id] = updated
 
     # ============================================================
     # DELETE

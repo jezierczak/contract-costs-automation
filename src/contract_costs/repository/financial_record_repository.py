@@ -1,3 +1,4 @@
+from decimal import Decimal
 from uuid import UUID
 from abc import ABC, abstractmethod
 
@@ -144,4 +145,15 @@ class FinancialRecordRepository(ABC):
             organization_id: UUID,
             query: FinancialRecordReviewQuery,
     ) -> int:
+        ...
+
+    @abstractmethod
+    def find_by_total(
+            self,
+            *,
+            organization_id: UUID,
+            total: Decimal,
+            tolerance: Decimal,
+            seller_id: UUID,
+    ) -> list[UUID]:
         ...

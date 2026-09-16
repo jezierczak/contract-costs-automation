@@ -8,15 +8,18 @@ from contract_costs.repository.company_dashboard.company_dashboard_repository im
 from contract_costs.repository.company_dashboard.dto.company_dashboard_raw_data import (
     CompanyDashboardRawData,
 )
+from contract_costs.repository.company_dashboard.dto.company_fixed_cost_raw import CompanyFixedCostRaw
+from contract_costs.repository.company_dashboard.dto.company_month_breakdown_raw import CompanyMonthBreakdownRaw
+from contract_costs.repository.company_dashboard.dto.counterparty_ledger_line_raw import CounterpartyLedgerLineRaw
 
 
 class InMemoryCompanyDashboardRepository(CompanyDashboardRepository):
 
-    def __init__(self, ledger_rows: list[dict]) -> None:
+    def __init__(self, ledger_rows: list[dict] | None = None) -> None:
         """
         ledger_rows = dane odpowiadające financial_ledger view
         """
-        self._rows = ledger_rows
+        self._rows = ledger_rows or []
 
     def fetch_dashboard_data(
         self,
@@ -125,3 +128,39 @@ class InMemoryCompanyDashboardRepository(CompanyDashboardRepository):
             contract_costs_ytd=contract_costs_ytd,
             fixed_costs_ytd=fixed_costs_ytd,
         )
+
+    # =====================================================
+    # STUBS
+    # (TODO: to nieaktualna implementacja względem MySQL –
+    #  wymaga osobnej pracy, poza zakresem partial payments;
+    #  na razie tylko odblokowują instancjonowanie InMemoryUnitOfWork)
+    # =====================================================
+
+    def fetch_month_breakdown(
+            self,
+            *,
+            organization_id: UUID,
+            company_id: UUID,
+            year: int,
+            month: int,
+    ) -> list[CompanyMonthBreakdownRaw]:
+        return []
+
+    def fetch_fixed_costs(
+            self,
+            *,
+            organization_id: UUID,
+            company_id: UUID,
+            year: int,
+            month: int | None,
+    ) -> list[CompanyFixedCostRaw]:
+        return []
+
+    def fetch_counterparty_lines(
+            self,
+            *,
+            organization_id: UUID,
+            counterparty_id: UUID,
+            owner_company_id: UUID | None,
+    ) -> list[CounterpartyLedgerLineRaw]:
+        return []

@@ -1,11 +1,15 @@
 from contract_costs.repository.inmemory.business_event_repository import InMemoryBusinessEventRepository
 from contract_costs.repository.inmemory.company_dashboard.company_dashboard_repository import \
     InMemoryCompanyDashboardRepository
+from contract_costs.repository.inmemory.company_ksef_settings_repository import InMemoryCompanyKsefSettingsRepository
 from contract_costs.repository.inmemory.company_repository import InMemoryCompanyRepository
 from contract_costs.repository.inmemory.contract_node_repository import InMemoryContractNodeRepository
 from contract_costs.repository.inmemory.contract_repository import InMemoryContractRepository
 from contract_costs.repository.inmemory.document_repository import InMemoryDocumentRepository
 from contract_costs.repository.inmemory.financial_record_line_repository import InMemoryFinancialRecordLineRepository
+from contract_costs.repository.inmemory.financial_record_payment_repository import (
+    InMemoryFinancialRecordPaymentRepository,
+)
 from contract_costs.repository.inmemory.financial_record_repository import InMemoryFinancialRecordRepository
 from contract_costs.repository.inmemory.identity.in_memory_storage_repository import InMemoryIdentityStorage
 from contract_costs.repository.inmemory.identity.organization_repository import InMemoryOrganizationRepository
@@ -31,8 +35,11 @@ class InMemoryUnitOfWork(UnitOfWork):
         identity_storage = InMemoryIdentityStorage()
 
         self._companies = InMemoryCompanyRepository()
-        self._financial_records = InMemoryFinancialRecordRepository()
         self._financial_record_lines = InMemoryFinancialRecordLineRepository()
+        self._financial_records = InMemoryFinancialRecordRepository(
+            line_repository=self._financial_record_lines,
+        )
+        self._financial_record_payments = InMemoryFinancialRecordPaymentRepository()
         self._contracts = InMemoryContractRepository()
         self._contract_nodes = InMemoryContractNodeRepository()
         self._value_types = InMemoryValueTypeRepository()
@@ -47,6 +54,7 @@ class InMemoryUnitOfWork(UnitOfWork):
         self._business_events = InMemoryBusinessEventRepository()
         self._sessions =InMemorySessionRepository()
         self._company_dashboard = InMemoryCompanyDashboardRepository()
+        self._company_ksef_settings = InMemoryCompanyKsefSettingsRepository()
 
     @property
     def companies(self):
@@ -59,6 +67,10 @@ class InMemoryUnitOfWork(UnitOfWork):
     @property
     def financial_record_lines(self):
         return self._financial_record_lines
+
+    @property
+    def financial_record_payments(self):
+        return self._financial_record_payments
 
     @property
     def contracts(self):
@@ -110,6 +122,10 @@ class InMemoryUnitOfWork(UnitOfWork):
     @property
     def company_dashboard(self):
         return self._company_dashboard
+
+    @property
+    def company_ksef_settings(self):
+        return self._company_ksef_settings
 
     @property
     def sessions(self) -> SessionRepository:

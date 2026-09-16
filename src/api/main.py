@@ -42,20 +42,28 @@ def cleanup_sessions():
 @app.on_event("startup")
 def start_workers():
 
-    worker = services.document_parse_worker
+    document_worker = services.document_parse_worker
+    ksef_worker = services.ksef_import_worker
 
     thread = threading.Thread(
-        target=worker.run,
+        target=document_worker.run,
         name="document-worker",
+    )
+    ksef_thread = threading.Thread(
+        target=ksef_worker.run,
+        name="ksef-import-worker",
     )
 
     thread.start()
+    ksef_thread.start()
 
 @app.on_event("shutdown")
 def shutdown_event():
-    worker = services.document_parse_worker
+    document_worker = services.document_parse_worker
+    ksef_worker = services.ksef_import_worker
 
-    worker.stop()
+    document_worker.stop()
+    ksef_worker.stop()
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):

@@ -7,11 +7,13 @@ from typing import Callable
 
 from contract_costs.repository.business_event_repository import BusinessEventRepository
 from contract_costs.repository.company_dashboard.company_dashboard_repository import CompanyDashboardRepository
+from contract_costs.repository.company_ksef_settings_repository import CompanyKsefSettingsRepository
 from contract_costs.repository.company_repository import CompanyRepository
 from contract_costs.repository.contract_node_repository import ContractNodeRepository
 from contract_costs.repository.contract_repository import ContractRepository
 from contract_costs.repository.document_repository import DocumentRepository
 from contract_costs.repository.financial_record_line_repository import FinancialRecordLineRepository
+from contract_costs.repository.financial_record_payment_repository import FinancialRecordPaymentRepository
 from contract_costs.repository.financial_record_repository import FinancialRecordRepository
 from contract_costs.repository.identity.organization_repository import OrganizationRepository
 from contract_costs.repository.identity.organization_user_repository import OrganizationUserRepository
@@ -45,6 +47,11 @@ class UnitOfWork(ABC):
     @property
     @abstractmethod
     def financial_record_lines(self) -> FinancialRecordLineRepository:
+        ...
+
+    @property
+    @abstractmethod
+    def financial_record_payments(self) -> FinancialRecordPaymentRepository:
         ...
 
     @property
@@ -115,6 +122,11 @@ class UnitOfWork(ABC):
     @property
     @abstractmethod
     def company_dashboard(self) -> CompanyDashboardRepository:
+        ...
+
+    @property
+    @abstractmethod
+    def company_ksef_settings(self) -> CompanyKsefSettingsRepository:
         ...
 
     @abstractmethod

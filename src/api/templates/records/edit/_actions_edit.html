@@ -4,10 +4,21 @@
     <div>
          <button
             onclick="
+                const target = sessionStorage.getItem('records.return_to');
+                if (target) {
+                    sessionStorage.removeItem('records.return_to');
+                    if (window.htmx) {
+                        window.history.pushState({}, '', target);
+                        window.htmx.ajax('GET', target, {
+                            target: '#content-area',
+                            swap: 'innerHTML'
+                        });
+                    } else {
+                        window.location.href = target;
+                    }
+                    return;
+                }
                 history.back();
-                setTimeout(() => {
-                    document.body.dispatchEvent(new Event('recordUpdated'));
-                }, 50);
             "
         >
             ← Powrót

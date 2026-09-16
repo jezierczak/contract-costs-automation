@@ -1,29 +1,18 @@
 <div class="flex items-center justify-between">
 
     <h1 class="text-2xl font-bold leading-none">
-        Firmy
+        Kontrahenci
     </h1>
 
     <div class="flex items-center gap-2">
-
         <button
             hx-get="/companies/new"
             hx-target="#modal-area"
             hx-swap="innerHTML"
-            class="inline-flex items-center bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 leading-none"
+            class="inline-flex items-center bg-green-600 px-4 py-2 rounded text-white hover:bg-green-700 leading-none"
         >
-            + Dodaj firmę
+            + Dodaj firme
         </button>
-
-        <button
-            hx-get="/companies/new-owner"
-            hx-target="#modal-area"
-            hx-swap="innerHTML"
-            class="inline-flex items-center bg-gray-100 border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 leading-none"
-        >
-            + Dodaj własną firmę
-        </button>
-
     </div>
 
 </div>

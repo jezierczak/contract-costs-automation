@@ -50,6 +50,43 @@
             {% endfor %}
         </select>
 
+        <select
+            name="sort_by"
+            class="border rounded-lg px-3 py-2 text-sm"
+            hx-get="/companies/table"
+            hx-trigger="change"
+            hx-target="#companies-table"
+            hx-swap="innerHTML"
+            hx-include="#companies-filters"
+        >
+            <option value="name" {% if request.query_params.get('sort_by', 'name') == 'name' %}selected{% endif %}>
+                Sort: nazwa
+            </option>
+            <option value="invoice_count" {% if request.query_params.get('sort_by') == 'invoice_count' %}selected{% endif %}>
+                Sort: liczba faktur
+            </option>
+            <option value="last_invoice_date" {% if request.query_params.get('sort_by') == 'last_invoice_date' %}selected{% endif %}>
+                Sort: ostatnia faktura
+            </option>
+        </select>
+
+        <select
+            name="sort_dir"
+            class="border rounded-lg px-3 py-2 text-sm"
+            hx-get="/companies/table"
+            hx-trigger="change"
+            hx-target="#companies-table"
+            hx-swap="innerHTML"
+            hx-include="#companies-filters"
+        >
+            <option value="asc" {% if request.query_params.get('sort_dir', 'asc') == 'asc' %}selected{% endif %}>
+                Rosnaco
+            </option>
+            <option value="desc" {% if request.query_params.get('sort_dir') == 'desc' %}selected{% endif %}>
+                Malejaco
+            </option>
+        </select>
+
         <label class="flex items-center gap-2 whitespace-nowrap text-sm">
             <input
                 type="checkbox"
