@@ -4,12 +4,13 @@ import logging
 import os
 from collections.abc import Iterator
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 from ksef_client import KsefClient, KsefClientOptions
 from ksef_client import KsefEnvironment as LibKsefEnvironment
 from ksef_client.client import InvoicesClient
+from ksef_client.clients.invoices import INVOICE_QUERY_MAX_RANGE_DAYS
 from ksef_client.models import InvoiceQueryDateType, InvoiceQuerySubjectType
 from ksef_client.openapi_models import InvoiceMetadata
 from ksef_client.services import AuthCoordinator
@@ -121,42 +122,56 @@ class KsefApiClient:
             )
             access_token = auth_result.access_token
 
-            date_from = f"{from_date.isoformat()}T00:00:00Z"
-            date_to = f"{to_date.isoformat()}T23:59:59Z"
-
             seen_ksef_numbers: set[str] = set()
             result: list[KsefDownloadedInvoice] = []
 
-            # Faktury, w których firma jest sprzedawcą (Subject1 – przychody)
-            # i nabywcą (Subject2 – koszty) – pobieramy obie role.
-            for subject_type in (
-                InvoiceQuerySubjectType.SUBJECT1,
-                InvoiceQuerySubjectType.SUBJECT2,
-            ):
-                for metadata in self._iter_invoice_metadata(
-                    invoices_client=client.invoices,
-                    subject_type=subject_type,
-                    date_from=date_from,
-                    date_to=date_to,
-                    access_token=access_token,
-                ):
-                    if metadata.ksef_number in seen_ksef_numbers:
-                        continue
-                    seen_ksef_numbers.add(metadata.ksef_number)
+            # KSeF nie pozwala pytać o zakres dłuższy niż
+            # INVOICE_QUERY_MAX_RANGE_DAYS – dzielimy import na kawałki.
+            for chunk_from, chunk_to in self._iter_date_chunks(from_date, to_date):
+                date_from = f"{chunk_from.isoformat()}T00:00:00Z"
+                date_to = f"{chunk_to.isoformat()}T23:59:59Z"
 
-                    content = client.invoices.get_invoice_bytes(
-                        ksef_number=metadata.ksef_number,
+                # Faktury, w których firma jest sprzedawcą (Subject1 – przychody)
+                # i nabywcą (Subject2 – koszty) – pobieramy obie role.
+                for subject_type in (
+                    InvoiceQuerySubjectType.SUBJECT1,
+                    InvoiceQuerySubjectType.SUBJECT2,
+                ):
+                    for metadata in self._iter_invoice_metadata(
+                        invoices_client=client.invoices,
+                        subject_type=subject_type,
+                        date_from=date_from,
+                        date_to=date_to,
                         access_token=access_token,
-                    )
-                    result.append(
-                        KsefDownloadedInvoice(
-                            external_id=metadata.ksef_number,
-                            filename=f"ksef_{company.tax_number}_{metadata.ksef_number}.xml",
-                            xml_content=content.content,
+                    ):
+                        if metadata.ksef_number in seen_ksef_numbers:
+                            continue
+                        seen_ksef_numbers.add(metadata.ksef_number)
+
+                        content = client.invoices.get_invoice_bytes(
+                            ksef_number=metadata.ksef_number,
+                            access_token=access_token,
                         )
-                    )
+                        result.append(
+                            KsefDownloadedInvoice(
+                                external_id=metadata.ksef_number,
+                                filename=f"ksef_{company.tax_number}_{metadata.ksef_number}.xml",
+                                xml_content=content.content,
+                            )
+                        )
 
             return result
+
+    @staticmethod
+    def _iter_date_chunks(from_date: date, to_date: date) -> Iterator[tuple[date, date]]:
+        chunk_start = from_date
+        while chunk_start <= to_date:
+            chunk_end = min(
+                chunk_start + timedelta(days=INVOICE_QUERY_MAX_RANGE_DAYS),
+                to_date,
+            )
+            yield chunk_start, chunk_end
+            chunk_start = chunk_end + timedelta(days=1)
 
     def _iter_invoice_metadata(
         self,
