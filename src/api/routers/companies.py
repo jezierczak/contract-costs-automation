@@ -1,11 +1,13 @@
 import json
+import shutil
 from datetime import date
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Form, Request, HTTPException
+from fastapi import APIRouter, Depends, Form, Request, HTTPException, UploadFile, File
 from fastapi.responses import RedirectResponse
 from starlette.responses import HTMLResponse
 
+import contract_costs.config as cfg
 from api.dependencies import get_services
 from contract_costs.model.company import CompanyType, Address, Contact, BankAccount
 from contract_costs.model.company_ksef_settings import KsefEnvironment
@@ -535,7 +537,7 @@ def company_ksef_settings_save(
     company_id: UUID,
     environment: str = Form(...),
     is_enabled: str | None = Form(None),
-    certificate_path: str | None = Form(None),
+    certificate_file: UploadFile | None = File(None),
     certificate_password: str | None = Form(None),
     last_import_from: str | None = Form(None),
     services=Depends(get_services),
@@ -548,6 +550,19 @@ def company_ksef_settings_save(
         raise HTTPException(status_code=404)
 
     try:
+        certificate_path = None
+        if certificate_file is not None and certificate_file.filename:
+            suffix = certificate_file.filename.rsplit(".", 1)[-1].lower() if "." in certificate_file.filename else ""
+            if suffix not in {"p12", "pfx"}:
+                raise ValueError("Certyfikat musi byc plikiem .p12 lub .pfx")
+
+            certs_dir = cfg.WORK_DIR / str(ctx.organization_id) / cfg.KSEF_CERTS_DIR
+            certs_dir.mkdir(parents=True, exist_ok=True)
+            certificate_path = certs_dir / f"{company_id}.{suffix}"
+            with open(certificate_path, "wb") as f:
+                shutil.copyfileobj(certificate_file.file, f)
+            certificate_path = str(certificate_path)
+
         settings = services.action_bus.execute(
             action=SaveCompanyKsefSettingsCommand(
                 organization_id=ctx.organization_id,
@@ -555,7 +570,7 @@ def company_ksef_settings_save(
                 company_id=company_id,
                 environment=KsefEnvironment(environment),
                 is_enabled=is_enabled == "1",
-                certificate_path=(certificate_path or "").strip() or None,
+                certificate_path=certificate_path,
                 certificate_password=(certificate_password or "").strip() or None,
                 last_import_from=date.fromisoformat(last_import_from) if last_import_from else None,
             ),

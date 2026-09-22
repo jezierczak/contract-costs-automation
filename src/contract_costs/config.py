@@ -80,6 +80,9 @@ WORK_DIR = Path(os.getenv("WORK_DIR", "./.test_work_dir" if APP_ENV == "test" el
 #OWNERS_DIR = WORK_DIR / "companies"
 OWNERS_DIR = Path("owners")
 
+# --- KSeF (certyfikaty per firma) ---
+KSEF_CERTS_DIR = Path("ksef_certs")
+
 # --- invoices (automatyczne) ---
 #INCOMING_DIR = WORK_DIR / "incoming"
 INCOMING_DIR = Path("incoming")

@@ -23,6 +23,7 @@
             hx-post="/companies/{{ company.id }}/ksef-settings"
             hx-target="#modal-area"
             hx-swap="innerHTML"
+            hx-encoding="multipart/form-data"
         >
             <div class="space-y-6 px-5 py-5">
 
@@ -72,15 +73,20 @@
 
                     <div>
                         <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">
-                            Sciezka certyfikatu
+                            Certyfikat (.p12 / .pfx)
                         </label>
                         <input
-                            type="text"
-                            name="certificate_path"
-                            value="{{ settings.certificate_path if settings else '' }}"
-                            placeholder="Np. C:\\certs\\ksef\\company-cert.pfx"
+                            type="file"
+                            name="certificate_file"
+                            accept=".p12,.pfx"
                             class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                         >
+                        {% if settings and settings.certificate_path %}
+                        <div class="mt-1 text-xs text-gray-500">
+                            Obecnie wgrany: {{ settings.certificate_path.replace('\\', '/').split('/')[-1] }}
+                            (zostaw puste, aby nie zmieniac)
+                        </div>
+                        {% endif %}
                     </div>
 
                     <div>

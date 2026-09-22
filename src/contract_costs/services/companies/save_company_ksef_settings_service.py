@@ -46,8 +46,10 @@ class SaveCompanyKsefSettingsService(ActionHandler[SaveCompanyKsefSettingsComman
 
         now = self._clock()
 
-        # Puste pole hasła w formularzu = "zostaw bez zmian", żeby nie trzeba
-        # było wpisywać hasła od nowa przy każdym zapisie pozostałych ustawień.
+        # Brak nowego uploadu/hasła w formularzu = "zostaw bez zmian", żeby nie
+        # trzeba było wgrywać certyfikatu/hasła od nowa przy każdym zapisie
+        # pozostałych ustawień (np. samego przełącznika is_enabled).
+        certificate_path = action.certificate_path or (current.certificate_path if current else None)
         encrypted_password = (
             encrypt_secret(action.certificate_password)
             if action.certificate_password
@@ -61,7 +63,7 @@ class SaveCompanyKsefSettingsService(ActionHandler[SaveCompanyKsefSettingsComman
                 company_id=action.company_id,
                 environment=action.environment,
                 is_enabled=action.is_enabled,
-                certificate_path=action.certificate_path,
+                certificate_path=certificate_path,
                 certificate_password=encrypted_password,
                 last_import_from=action.last_import_from,
                 last_import_at=None,
@@ -81,7 +83,7 @@ class SaveCompanyKsefSettingsService(ActionHandler[SaveCompanyKsefSettingsComman
             current,
             environment=action.environment,
             is_enabled=action.is_enabled,
-            certificate_path=action.certificate_path,
+            certificate_path=certificate_path,
             certificate_password=encrypted_password,
             last_import_from=action.last_import_from,
             updated_at=now,

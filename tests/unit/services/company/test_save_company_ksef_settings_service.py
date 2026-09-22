@@ -13,14 +13,21 @@ from contract_costs.services.companies.save_company_ksef_settings_service import
 from tests.builders.company_builder import CompanyBuilder
 
 
-def _command(*, organization_id, company_id, actor_user_id, certificate_password) -> SaveCompanyKsefSettingsCommand:
+def _command(
+    *,
+    organization_id,
+    company_id,
+    actor_user_id,
+    certificate_password,
+    certificate_path: str | None = "C:\\certs\\company.p12",
+) -> SaveCompanyKsefSettingsCommand:
     return SaveCompanyKsefSettingsCommand(
         organization_id=organization_id,
         actor_user_id=actor_user_id,
         company_id=company_id,
         environment=KsefEnvironment.TEST,
         is_enabled=True,
-        certificate_path="C:\\certs\\company.p12",
+        certificate_path=certificate_path,
         certificate_password=certificate_password,
         last_import_from=date(2026, 1, 1),
     )
@@ -82,3 +89,39 @@ def test_blank_password_on_update_keeps_existing_encrypted_value(monkeypatch, uo
 
     assert second.certificate_password == first.certificate_password
     assert decrypt_secret(second.certificate_password) == "original-password"
+
+
+def test_no_new_certificate_file_keeps_existing_path(monkeypatch, uow, company_repo):
+    monkeypatch.setenv("KSEF_SECRETS_KEY", "Heggxv__2jUy7ocBV8xsK5jaAJIyidvCPpAvgWWTPFk=")
+
+    organization_id = uuid4()
+    actor_user_id = uuid4()
+    company = CompanyBuilder().with_organization_id(organization_id).with_role(CompanyType.OWN).build()
+    company_repo.add(company)
+
+    service = SaveCompanyKsefSettingsService()
+
+    first = service.execute(
+        action=_command(
+            organization_id=organization_id,
+            company_id=company.id,
+            actor_user_id=actor_user_id,
+            certificate_password="pw",
+            certificate_path="C:\\certs\\uploaded.p12",
+        ),
+        uow=uow,
+    )
+
+    second = service.execute(
+        action=_command(
+            organization_id=organization_id,
+            company_id=company.id,
+            actor_user_id=actor_user_id,
+            certificate_password=None,
+            certificate_path=None,
+        ),
+        uow=uow,
+    )
+
+    assert first.certificate_path == "C:\\certs\\uploaded.p12"
+    assert second.certificate_path == first.certificate_path
