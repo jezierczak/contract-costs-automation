@@ -14,7 +14,7 @@ from contract_costs.model.financial_record import (
     PaymentStatus,
 )
 from contract_costs.model.unit_of_measure import UnitOfMeasure
-from contract_costs.model.amount import Amount, VatRate
+from contract_costs.model.amount import Amount, AmountInputType, VatRate
 from contract_costs.services.financial_records.assigment.apply.commands.invoice_command import (
     InvoiceCommand,
 )
@@ -89,7 +89,7 @@ def _make_parse_result() -> DocumentParseResult:
         description=None,
         quantity=Decimal("1"),
         unit=UnitOfMeasure.PIECE,
-        amount=Amount(value=Decimal("100"), vat_rate=VatRate.VAT_23),
+        amount=Amount(value=Decimal("100"), input_type=AmountInputType.NET, vat_rate=VatRate.VAT_23),
         contract_reference=None,
         contract_node_reference=None,
         value_type_reference=None,

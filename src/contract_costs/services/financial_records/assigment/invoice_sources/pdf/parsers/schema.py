@@ -37,8 +37,9 @@ AI_SCHEMA: dict[str, str | list[dict[str,str]]] = {
             "description": "string | null",
             "quantity": "number | null",
             "unit": "string | null",
-            "net_unit_price": "number | null",
-            "net_total": "number | null",
+            "unit_price": "number | null",
+            "line_total": "number | null",
+            "amount_type": 'Literal["net", "gross"]',
             "vat_rate": "string | null"
         }
     ]
@@ -66,14 +67,23 @@ Each invoice_items element MUST have exactly these fields:
 - item_name
 - quantity
 - unit
-- net_unit_price
-- net_total
+- unit_price
+- line_total
+- amount_type
 - vat_rate
 
 Rules:
-- quantity, net_unit_price, net_total MUST be numbers (use dot as decimal separator)
+- quantity, unit_price, line_total MUST be numbers (use dot as decimal separator)
 - unit should be short (e.g. pcs, kg, m2, h)
 - vat_rate must be one of: 0, 5, 8, 23
+- Extract unit_price and line_total EXACTLY as printed on the document.
+  Do NOT calculate or convert between net and gross yourself.
+- Set amount_type to "gross" if the printed amount already includes VAT
+  (this is the common case on receipts/paragony, which usually show only
+  the final price paid). Set amount_type to "net" if the printed amount
+  is the pre-VAT amount (this is the common case on VAT invoices/faktury
+  VAT, which usually list net, VAT and gross separately).
+- If unsure whether the amount is net or gross, use "net".
 - If any value is missing or unclear, use null
 - Do NOT invent items
 - document_type must be one of:

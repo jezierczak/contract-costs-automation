@@ -2,6 +2,7 @@ from decimal import Decimal
 
 import pytest
 
+from contract_costs.model.amount import AmountInputType
 from contract_costs.services.financial_records.assigment.invoice_sources.pdf.parsers.ai_invoice_mapper import \
     AIDocumentMapper
 
@@ -20,7 +21,8 @@ def test_map_minimal_invoice():
                 "item_name": "Roboty ziemne",
                 "quantity": "10",
                 "unit": "m3",
-                "net_total": "1000",
+                "line_total": "1000",
+                "amount_type": "net",
                 "vat_rate": "23",
             }
         ],
@@ -41,10 +43,66 @@ def test_map_minimal_invoice():
     assert line.quantity == Decimal("10")
     assert line.unit.name == "CUBIC_METER"
     assert line.amount.value == Decimal("1000")
+    assert line.amount.input_type == AmountInputType.NET
     assert line.amount.vat_rate.name == "VAT_23"
 
     assert result.buyer.name == "ABC Sp z o.o."
     assert result.seller.name == "Jan Kowalski"
+
+
+def test_map_uses_gross_amount_type_from_receipt():
+    mapper = AIDocumentMapper()
+
+    data = {
+        "document_type": "receipt",
+        "invoice_items": [
+            {
+                "item_name": "Zakupy",
+                "quantity": "1",
+                "unit": "szt",
+                "line_total": "123.00",
+                "amount_type": "gross",
+                "vat_rate": "23",
+            }
+        ],
+    }
+
+    result = mapper.map(data)
+    line = result.lines[0]
+
+    assert line.amount.value == Decimal("123.00")
+    assert line.amount.input_type == AmountInputType.GROSS
+    assert line.amount.net == Decimal("100.00")
+
+
+def test_map_defaults_to_net_when_amount_type_missing_or_invalid():
+    mapper = AIDocumentMapper()
+
+    data = {
+        "document_type": "invoice",
+        "invoice_items": [
+            {
+                "item_name": "A",
+                "quantity": "1",
+                "unit": "szt",
+                "line_total": "100",
+                "vat_rate": "23",
+            },
+            {
+                "item_name": "B",
+                "quantity": "1",
+                "unit": "szt",
+                "line_total": "100",
+                "amount_type": "???",
+                "vat_rate": "23",
+            },
+        ],
+    }
+
+    result = mapper.map(data)
+
+    assert result.lines[0].amount.input_type == AmountInputType.NET
+    assert result.lines[1].amount.input_type == AmountInputType.NET
 
 def test_generates_invoice_number_when_missing():
     mapper = AIDocumentMapper()
@@ -72,7 +130,7 @@ def test_mapper_handles_garbage_data():
                 "item_name": None,
                 "quantity": "abc",
                 "unit": "???",
-                "net_total": "xyz",
+                "line_total": "xyz",
                 "vat_rate": "???",
             }
         ],

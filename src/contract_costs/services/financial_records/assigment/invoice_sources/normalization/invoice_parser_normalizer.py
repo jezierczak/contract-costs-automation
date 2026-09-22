@@ -212,17 +212,13 @@ class DocumentParseNormalizer:
 
         )
 
-    # @staticmethod
-    # def _parse_input_type(value) -> AmountInputType:
-    #     try:
-    #         return AmountInputType(value)
-    #     except Exception:
-    #         return AmountInputType.NET  # fallback
-
     @staticmethod
     def _parse_input_type(value) -> AmountInputType:
+        # Pipeline AI zawsze ekstrahuje kwoty netto (patrz ai_invoice_mapper.py),
+        # a starsze zapisane payloady (sprzed dodania tego pola) go w ogóle nie mają –
+        # NET jest bezpiecznym domyślnym fallbackiem, nie zgadywaniem.
         if not value:
-            raise ValueError("Missing input_type in payload")
+            return AmountInputType.NET
 
         try:
             return AmountInputType(str(value).lower())

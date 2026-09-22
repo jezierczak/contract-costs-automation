@@ -133,9 +133,10 @@ class AIDocumentMapper:
 
         for item in data.get("invoice_items", []) or []:
             quantity = self._parse_decimal(item.get("quantity"))
-            net_total = self._parse_decimal(item.get("net_total"))
+            line_total = self._parse_decimal(item.get("line_total"))
             vat_rate = self._parse_vat(item.get("vat_rate"))
             unit = self._parse_unit(item.get("unit")) or UnitOfMeasure.UNKNOWN
+            input_type = self._parse_input_type(item.get("amount_type"))
 
             lines.append(
                 FinancialRecordLineUpdate(
@@ -146,9 +147,9 @@ class AIDocumentMapper:
                     quantity=quantity,
                     unit=unit,
                     amount=Amount(
-                        value=net_total,
+                        value=line_total,
                         vat_rate=vat_rate,
-                        input_type=AmountInputType.NET
+                        input_type=input_type,
                     ),
                     contract_reference=None,
                     contract_node_reference=None,
@@ -245,6 +246,16 @@ class AIDocumentMapper:
         except (InvalidOperation, ValueError):
             logger.warning("Invalid decimal from AI: %s", value)
             return Decimal("0")
+
+    @staticmethod
+    def _parse_input_type(value: str | None) -> AmountInputType:
+        if not value:
+            return AmountInputType.NET
+        try:
+            return AmountInputType(str(value).strip().lower())
+        except Exception:
+            logger.warning("Invalid amount_type from AI: %s", value)
+            return AmountInputType.NET
 
     @staticmethod
     def _parse_enum(enum_cls: Type[E], value: str | None) -> E | None:
