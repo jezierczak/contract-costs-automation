@@ -106,12 +106,16 @@ def test_same_tax_number_allowed_in_different_org(create_system_contract, uow):
     service.execute(action=cmd2, uow=uow)  # should not raise
 
 
-def test_only_one_own_company_allowed(create_system_contract, uow):
+def test_multiple_own_companies_allowed(create_system_contract, uow):
+    """
+    System monitoruje wiele własnych firm (nie tylko koszty jednego kontraktu),
+    więc więcej niż jedna firma z rolą OWN w organizacji jest dozwolona.
+    """
     service = CreateCompanyService(create_system_contract=create_system_contract)
 
     org_id = uuid4()
 
-    cmd = CreateOwnerCompanyCommand(
+    cmd1 = CreateOwnerCompanyCommand(
         organization_id=org_id,
         actor_user_id=uuid4(),
         name="Owner",
@@ -123,23 +127,22 @@ def test_only_one_own_company_allowed(create_system_contract, uow):
         role=CompanyType.OWN,
         tags=None,
     )
+    cmd2 = CreateOwnerCompanyCommand(
+        organization_id=org_id,
+        actor_user_id=uuid4(),
+        name="Owner2",
+        description=None,
+        tax_number="9876543210",
+        address=None,
+        contact=None,
+        bank_account=None,
+        role=CompanyType.OWN,
+        tags=None,
+    )
 
-    service.execute(action=cmd, uow=uow)
+    company1 = service.execute(action=cmd1, uow=uow)
+    company2 = service.execute(action=cmd2, uow=uow)  # should not raise
 
-    with pytest.raises(ValueError):
-        service.execute(
-            action=
-            CreateOwnerCompanyCommand(
-                organization_id=org_id,
-                actor_user_id=uuid4(),
-                name="Owner2",
-                description=None,
-                tax_number="9876543210",
-                address=None,
-                contact=None,
-                bank_account=None,
-                role=CompanyType.OWN,
-                tags=None,
-            ),
-            uow=uow,
-        )
+    assert company1.role == CompanyType.OWN
+    assert company2.role == CompanyType.OWN
+    assert company1.id != company2.id
