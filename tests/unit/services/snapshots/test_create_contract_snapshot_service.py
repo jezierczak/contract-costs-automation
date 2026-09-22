@@ -5,7 +5,7 @@ from uuid import uuid4
 
 import pytest
 
-from contract_costs.model.amount import Amount, VatRate
+from contract_costs.model.amount import Amount, AmountInputType, VatRate
 from contract_costs.model.contract_node import ContractNode
 from contract_costs.services.snapshots.create_contract_snapshot_service import (
     CreateContractSnapshotService,
@@ -152,7 +152,7 @@ def test_execute_builds_and_persists_aggregated_snapshot():
         .with_contract_node_id(leaf_a.id)
         .with_value_type_id(vt_id)
         .with_created_at(datetime(2026, 2, 10, 12, 0, 0))
-        .with_amount(Amount(Decimal("100"), VatRate.VAT_23))
+        .with_amount(Amount(value=Decimal("100"), input_type=AmountInputType.NET, vat_rate=VatRate.VAT_23))
         .build()
     )
     line_b = (
@@ -162,7 +162,7 @@ def test_execute_builds_and_persists_aggregated_snapshot():
         .with_contract_node_id(leaf_b.id)
         .with_value_type_id(vt_id)
         .with_created_at(datetime(2026, 2, 11, 12, 0, 0))
-        .with_amount(Amount(Decimal("200"), VatRate.VAT_23))
+        .with_amount(Amount(value=Decimal("200"), input_type=AmountInputType.NET, vat_rate=VatRate.VAT_23))
         .build()
     )
 
@@ -231,7 +231,7 @@ def test_execute_builds_and_persists_aggregated_snapshot():
     by_node_snapshot_id = {v.node_snapshot_id: v for v in value_snapshots}
 
     root_values = by_node_snapshot_id[root_snapshot.id]
-    assert root_values.amount_value == Decimal("300")
+    assert root_values.net == Decimal("300")
     assert root_values.vat == Decimal("69.00")
     assert root_values.gross == Decimal("369.00")
     assert root_values.non_deductible == Decimal("0")
