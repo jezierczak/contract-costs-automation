@@ -1,12 +1,21 @@
 from __future__ import annotations
 
-import json
+import logging
 import os
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+
+from ksef_client import KsefClient, KsefClientOptions
+from ksef_client import KsefEnvironment as LibKsefEnvironment
+from ksef_client.client import InvoicesClient
+from ksef_client.models import InvoiceQueryDateType, InvoiceQuerySubjectType
+from ksef_client.openapi_models import InvoiceMetadata
+from ksef_client.services import AuthCoordinator
+from ksef_client.services.xades import XadesKeyPair
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,12 +27,18 @@ class KsefDownloadedInvoice:
 
 class KsefApiClient:
     """
-    Lightweight KSeF client wrapper.
+    KSeF API 2.0 client wrapper (delegates the protocol/crypto to the
+    `ksef-client` PyPI SDK: https://github.com/smekcio/ksef-client-python).
 
     Modes:
     - mock (default): reads XML files from KSEF_MOCK_XML_DIR
-    - http: generic HTTP flow with configurable endpoints
+    - http: real KSeF API, authenticated with the company's qualified
+      certificate (XAdES) stored in CompanyKsefSettings
     """
+
+    _PAGE_SIZE = 100
+    _MAX_PAGES = 200  # safety guard against runaway pagination
+    _SUBJECT_IDENTIFIER_TYPE = "certificateSubject"
 
     def __init__(self, *, mode: str | None = None) -> None:
         self._mode = (mode or os.getenv("KSEF_IMPORT_MODE") or "mock").strip().lower()
@@ -39,7 +54,7 @@ class KsefApiClient:
         if self._mode == "mock":
             return self._fetch_mock(company=company)
         if self._mode == "http":
-            return self._fetch_http(
+            return self._fetch_ksef(
                 settings=settings,
                 company=company,
                 from_date=from_date,
@@ -70,7 +85,7 @@ class KsefApiClient:
             )
         return result
 
-    def _fetch_http(
+    def _fetch_ksef(
         self,
         *,
         settings,
@@ -78,108 +93,90 @@ class KsefApiClient:
         from_date: date,
         to_date: date,
     ) -> list[KsefDownloadedInvoice]:
-        token = os.getenv("KSEF_API_TOKEN")
-        if not token:
-            raise RuntimeError("KSEF_API_TOKEN is missing for KSEF_IMPORT_MODE=http")
+        if not settings.certificate_path:
+            raise RuntimeError(
+                f"Missing certificate_path in KSeF settings for company {company.tax_number}"
+            )
 
-        base_url = self._resolve_base_url(settings.environment.value)
-        query_endpoint = os.getenv("KSEF_API_QUERY_ENDPOINT", "/invoices/query")
-        download_endpoint = os.getenv("KSEF_API_DOWNLOAD_ENDPOINT", "/invoices/{invoice_id}/xml")
+        base_url = LibKsefEnvironment[settings.environment.name].value
 
-        query_url = f"{base_url.rstrip('/')}/{query_endpoint.lstrip('/')}"
-        payload = {
-            "sellerTaxNumber": company.tax_number,
-            "fromDate": from_date.isoformat(),
-            "toDate": to_date.isoformat(),
-        }
+        with KsefClient(KsefClientOptions(base_url=base_url)) as client:
+            key_pair = XadesKeyPair.from_pkcs12_file(
+                pkcs12_path=settings.certificate_path,
+                pkcs12_password=settings.certificate_password,
+            )
+            auth_result = AuthCoordinator(client.auth).authenticate_with_xades_key_pair(
+                key_pair=key_pair,
+                context_identifier_type="nip",
+                context_identifier_value=company.tax_number,
+                subject_identifier_type=self._SUBJECT_IDENTIFIER_TYPE,
+            )
+            access_token = auth_result.access_token
 
-        response = self._request_json(
-            method="POST",
-            url=query_url,
-            token=token,
-            body=payload,
+            date_from = f"{from_date.isoformat()}T00:00:00Z"
+            date_to = f"{to_date.isoformat()}T23:59:59Z"
+
+            seen_ksef_numbers: set[str] = set()
+            result: list[KsefDownloadedInvoice] = []
+
+            # Faktury, w których firma jest sprzedawcą (Subject1 – przychody)
+            # i nabywcą (Subject2 – koszty) – pobieramy obie role.
+            for subject_type in (
+                InvoiceQuerySubjectType.SUBJECT1,
+                InvoiceQuerySubjectType.SUBJECT2,
+            ):
+                for metadata in self._iter_invoice_metadata(
+                    invoices_client=client.invoices,
+                    subject_type=subject_type,
+                    date_from=date_from,
+                    date_to=date_to,
+                    access_token=access_token,
+                ):
+                    if metadata.ksef_number in seen_ksef_numbers:
+                        continue
+                    seen_ksef_numbers.add(metadata.ksef_number)
+
+                    content = client.invoices.get_invoice_bytes(
+                        ksef_number=metadata.ksef_number,
+                        access_token=access_token,
+                    )
+                    result.append(
+                        KsefDownloadedInvoice(
+                            external_id=metadata.ksef_number,
+                            filename=f"ksef_{company.tax_number}_{metadata.ksef_number}.xml",
+                            xml_content=content.content,
+                        )
+                    )
+
+            return result
+
+    def _iter_invoice_metadata(
+        self,
+        *,
+        invoices_client: InvoicesClient,
+        subject_type: InvoiceQuerySubjectType,
+        date_from: str,
+        date_to: str,
+        access_token: str,
+    ) -> Iterator[InvoiceMetadata]:
+        offset = 0
+        for _ in range(self._MAX_PAGES):
+            response = invoices_client.query_invoice_metadata_by_date_range(
+                subject_type=subject_type,
+                date_type=InvoiceQueryDateType.ISSUE,
+                date_from=date_from,
+                date_to=date_to,
+                access_token=access_token,
+                page_offset=offset,
+                page_size=self._PAGE_SIZE,
+            )
+            yield from response.invoices
+
+            if not response.has_more:
+                return
+            offset += len(response.invoices)
+
+        logger.warning(
+            "KSeF invoice metadata pagination hit the safety limit (%s pages)",
+            self._MAX_PAGES,
         )
-
-        invoices = response.get("items") or response.get("invoices") or []
-        result: list[KsefDownloadedInvoice] = []
-        for item in invoices:
-            invoice_id = (
-                item.get("id")
-                or item.get("invoiceId")
-                or item.get("ksefReferenceNumber")
-            )
-            if not invoice_id:
-                continue
-
-            dl_path = download_endpoint.replace("{invoice_id}", str(invoice_id))
-            dl_url = f"{base_url.rstrip('/')}/{dl_path.lstrip('/')}"
-            xml_content = self._request_bytes(
-                method="GET",
-                url=dl_url,
-                token=token,
-            )
-            result.append(
-                KsefDownloadedInvoice(
-                    external_id=str(invoice_id),
-                    filename=f"ksef_{company.tax_number}_{invoice_id}.xml",
-                    xml_content=xml_content,
-                )
-            )
-        return result
-
-    @staticmethod
-    def _resolve_base_url(environment: str) -> str:
-        mapping = {
-            "test": os.getenv("KSEF_BASE_URL_TEST", ""),
-            "demo": os.getenv("KSEF_BASE_URL_DEMO", ""),
-            "prod": os.getenv("KSEF_BASE_URL_PROD", ""),
-        }
-        base = mapping.get(environment)
-        if not base:
-            raise RuntimeError(f"Missing KSeF base URL for environment: {environment}")
-        return base
-
-    @staticmethod
-    def _request_json(
-        *,
-        method: str,
-        url: str,
-        token: str,
-        body: dict | None = None,
-    ) -> dict:
-        raw_body = json.dumps(body).encode("utf-8") if body is not None else None
-        request = Request(url=url, data=raw_body, method=method)
-        request.add_header("Authorization", f"Bearer {token}")
-        request.add_header("Content-Type", "application/json")
-        request.add_header("Accept", "application/json")
-        try:
-            with urlopen(request, timeout=60) as response:
-                raw = response.read()
-                if not raw:
-                    return {}
-                parsed = json.loads(raw.decode("utf-8"))
-                if isinstance(parsed, dict):
-                    return parsed
-                return {"items": parsed}
-        except HTTPError as exc:
-            raise RuntimeError(f"KSeF HTTP error {exc.code}: {exc.reason}") from exc
-        except URLError as exc:
-            raise RuntimeError(f"KSeF connection error: {exc.reason}") from exc
-
-    @staticmethod
-    def _request_bytes(
-        *,
-        method: str,
-        url: str,
-        token: str,
-    ) -> bytes:
-        request = Request(url=url, method=method)
-        request.add_header("Authorization", f"Bearer {token}")
-        request.add_header("Accept", "application/xml")
-        try:
-            with urlopen(request, timeout=60) as response:
-                return response.read()
-        except HTTPError as exc:
-            raise RuntimeError(f"KSeF download HTTP error {exc.code}: {exc.reason}") from exc
-        except URLError as exc:
-            raise RuntimeError(f"KSeF download connection error: {exc.reason}") from exc
