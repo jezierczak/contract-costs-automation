@@ -142,6 +142,47 @@ def test_parse_raises_when_totals_do_not_match(tmp_path):
         KsefDocumentParser().parse(xml_path)
 
 
+def test_parse_settlement_invoice_against_advance_skips_totals_check(tmp_path):
+    """
+    Faktura rozliczeniowa (ROZ) rozliczająca zaliczkę: nagłówek P_13/P_14/P_15
+    zawiera tylko pozostałą kwotę do zapłaty, a FaWiersz pełną wartość
+    dostarczonego towaru – suma linii z definicji nie zgadza się z nagłówkiem
+    i nie powinno to być traktowane jako błąd parsowania.
+    """
+    xml_path = _write_xml(
+        tmp_path,
+        """
+        <k:Fa>
+          <k:RodzajFaktury>ROZ</k:RodzajFaktury>
+          <k:P_2>FV/ROZ/1</k:P_2>
+          <k:P_1>2026-09-21T00:00:00Z</k:P_1>
+          <k:P_13_1>100.00</k:P_13_1>
+          <k:P_14_1>23.00</k:P_14_1>
+          <k:P_15>123.00</k:P_15>
+          <k:FakturaZaliczkowa>
+            <k:NrKSeFFaZaliczkowej>5261032852-20260917-67C5F5400015-E7</k:NrKSeFFaZaliczkowej>
+          </k:FakturaZaliczkowa>
+        </k:Fa>
+        <k:Podmiot1><k:DaneIdentyfikacyjne><k:Nazwa>S</k:Nazwa><k:NIP>2</k:NIP></k:DaneIdentyfikacyjne></k:Podmiot1>
+        <k:Podmiot2><k:DaneIdentyfikacyjne><k:Nazwa>B</k:Nazwa><k:NIP>1</k:NIP></k:DaneIdentyfikacyjne></k:Podmiot2>
+        <k:FaWiersz>
+          <k:P_7>Kabel</k:P_7><k:P_8A>m</k:P_8A><k:P_8B>500</k:P_8B>
+          <k:P_11>3070.00</k:P_11><k:P_11Vat>706.10</k:P_11Vat><k:P_12>23</k:P_12>
+        </k:FaWiersz>
+        <k:FaWiersz>
+          <k:P_7>Przewod</k:P_7><k:P_8A>m</k:P_8A><k:P_8B>100</k:P_8B>
+          <k:P_11>140.00</k:P_11><k:P_11Vat>32.20</k:P_11Vat><k:P_12>23</k:P_12>
+        </k:FaWiersz>
+        """,
+    )
+
+    result = KsefDocumentParser().parse(xml_path)
+
+    assert result.document_type == DocumentType.SETTLEMENT
+    assert len(result.lines) == 2
+    assert sum(l.amount.net for l in result.lines) == Decimal("3210.00")
+
+
 def test_parse_maps_new_fa3_document_types(tmp_path):
     xml_path = _write_xml(
         tmp_path,

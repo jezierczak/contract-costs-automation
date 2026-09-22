@@ -524,6 +524,22 @@ class KsefDocumentParser(DocumentParser):
                 )
                 return
 
+        if document_type == DocumentType.SETTLEMENT:
+            # Faktura rozliczeniowa (ROZ) rozliczająca wcześniejszą zaliczkę:
+            # nagłówek P_13/P_14/P_15 to tylko pozostała kwota do zapłaty
+            # (pełna wartość minus już rozliczone zaliczki), a FaWiersz
+            # pokazuje pełną wartość dostarczonego towaru/usługi – więc
+            # suma linii z definicji nie zgadza się z nagłówkiem.
+            has_advance_ref = root.find(".//k:FakturaZaliczkowa", self.NS) is not None
+            if has_advance_ref:
+                invoice_no = self._text(root, ".//k:Fa/k:P_2")
+                logger.warning(
+                    f"Settlement (ROZ) invoice against an advance – header "
+                    f"P_13/P_14 reflect only the remaining balance, not full "
+                    f"line totals. Skipping totals check. invoice={invoice_no}"
+                )
+                return
+
 
 
         logger.debug(f"KSEF NET: {ksef_net}, DOMAIN NET: {domain_net}")
