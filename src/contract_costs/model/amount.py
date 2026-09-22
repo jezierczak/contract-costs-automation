@@ -93,7 +93,8 @@ class Amount:
     @property
     def gross(self) -> Decimal:
         if self.tax_treatment == TaxTreatment.NON_DEDUCTIBLE:
-            return Decimal("0.00")
+            # realny wydatek/przepływ pieniężny – tylko nie obniża podatku
+            return self.value
         if self.input_type == AmountInputType.GROSS:
             return self.value
         return self.net + self.tax
