@@ -78,7 +78,11 @@ def test_mark_paid_updates_payment_status_and_paid_date(financial_record_repo, l
     assert payments[0].amount == Decimal("1000.00")
 
 
-def test_mark_paid_is_noop_when_no_lines(financial_record_repo, uow):
+def test_mark_paid_auto_pays_when_no_cashflow(financial_record_repo, uow):
+    """
+    Rekord bez linii (lub z samych linii non_cash_cost) ma total_cashflow == 0 –
+    nie ma czego płacić, więc z automatu dostaje status PAID zamiast wisieć jako UNPAID.
+    """
     organization_id = uuid4()
     actor_user_id = uuid4()
 
@@ -102,7 +106,8 @@ def test_mark_paid_is_noop_when_no_lines(financial_record_repo, uow):
     service.execute(action=cmd, uow=uow)
 
     updated = financial_record_repo.get(organization_id=organization_id, record_id=record.id)
-    assert updated.payment_status == PaymentStatus.UNPAID
+    assert updated.payment_status == PaymentStatus.PAID
+    assert updated.paid_date is None
 
 
 def test_add_payment_then_mark_paid_tops_up_remaining(financial_record_repo, line_repo, uow):

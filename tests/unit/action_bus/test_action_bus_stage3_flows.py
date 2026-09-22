@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 from uuid import uuid4
 
 import pytest
@@ -6,6 +7,7 @@ import pytest
 from contract_costs.action_bus.action_bus import ActionBus
 from contract_costs.action_bus.permission_resolver import PermissionResolver
 from contract_costs.action_bus.permission_validator import PermissionValidator
+from contract_costs.model.amount import Amount, AmountInputType, TaxTreatment, VatRate
 from contract_costs.model.company import CompanyType
 from contract_costs.model.financial_record import FinancialRecordStatus, PaymentStatus
 from contract_costs.services.companies.apply.command import (
@@ -20,6 +22,7 @@ from contract_costs.services.financial_records.actions.dto.invoice_action_comman
 )
 from tests.builders.company_builder import CompanyBuilder
 from tests.builders.financial_record_builder import FinancialRecordBuilder
+from tests.builders.financial_record_line_builder import FinancialRecordLineBuilder
 
 
 class _AllowAllResolver(PermissionResolver):
@@ -186,6 +189,22 @@ def test_action_bus_financial_record_mark_unpaid_sets_unpaid(services_memory, uo
         .build()
     )
     uow.financial_records.add(record)
+
+    line = (
+        FinancialRecordLineBuilder()
+        .with_organization_id(org_id)
+        .with_financial_record_id(record.id)
+        .with_amount(
+            Amount(
+                value=Decimal("1000.00"),
+                input_type=AmountInputType.NET,
+                vat_rate=VatRate.VAT_23,
+                tax_treatment=TaxTreatment.TAX_DEDUCTIBLE,
+            )
+        )
+        .build()
+    )
+    uow.financial_record_lines.add(organization_id=org_id, line=line)
 
     bus.execute(
         action=FinancialRecordActionCommand(

@@ -128,6 +128,16 @@ class FinancialRecordActionService(
             )
             remaining = total - already_paid
 
+            if total <= 0:
+                # brak przepływu pieniężnego (np. same linie non_cash_cost) – nie ma czego płacić
+                self._recompute_payment_state(
+                    uow=uow,
+                    organization_id=organization_id,
+                    actor_user_id=actor_user_id,
+                    record=record,
+                )
+                continue
+
             if remaining <= 0:
                 continue  # już w pełni zapłacone / nadpłacone – no-op
 
@@ -413,7 +423,12 @@ class FinancialRecordActionService(
 
         now = self._clock()
 
-        if paid <= 0:
+        if total <= 0:
+            # brak przepływu pieniężnego (np. same linie non_cash_cost) – z automatu "zapłacone"
+            updated = record.mark_paid(
+                paid_at=last_paid_date, updated_at=now, updated_by_user_id=actor_user_id,
+            )
+        elif paid <= 0:
             updated = record.mark_unpaid(
                 updated_at=now, updated_by_user_id=actor_user_id,
             )

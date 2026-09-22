@@ -1,7 +1,9 @@
 from datetime import datetime
+from decimal import Decimal
 from types import SimpleNamespace
 from uuid import uuid4
 
+from contract_costs.model.amount import Amount, AmountInputType, TaxTreatment, VatRate
 from contract_costs.model.company import CompanyType
 from contract_costs.model.financial_record import PaymentStatus
 from contract_costs.services.financial_records.actions.dto.invoice_action_command import (
@@ -20,6 +22,7 @@ from contract_costs.services.financial_records.assigment.invoice_sources.dto.com
 from contract_costs.services.financial_records.assigment.prepare.dto.company_export import CompanyExport
 from contract_costs.unit_of_work.inmemory_unit_of_work import InMemoryUnitOfWork
 from tests.builders.financial_record_builder import FinancialRecordBuilder
+from tests.builders.financial_record_line_builder import FinancialRecordLineBuilder
 
 
 class _FakeCompanyApplyService:
@@ -59,6 +62,22 @@ def test_financial_record_action_service_uses_uow():
         .build()
     )
     uow.financial_records.add(record)
+
+    line = (
+        FinancialRecordLineBuilder()
+        .with_organization_id(org_id)
+        .with_financial_record_id(record.id)
+        .with_amount(
+            Amount(
+                value=Decimal("1000.00"),
+                input_type=AmountInputType.NET,
+                vat_rate=VatRate.VAT_23,
+                tax_treatment=TaxTreatment.TAX_DEDUCTIBLE,
+            )
+        )
+        .build()
+    )
+    uow.financial_record_lines.add(organization_id=org_id, line=line)
 
     service = FinancialRecordActionService(clock=lambda: datetime(2026, 2, 16, 12, 0, 0))
     action = FinancialRecordActionCommand(
