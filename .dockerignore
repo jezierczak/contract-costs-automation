@@ -1,0 +1,15 @@
+.venv
+.git
+.idea
+.mypy_cache
+.pytest_cache
+.ruff_cache
+htmlcov
+__pycache__
+*.pyc
+work_dir
+.test_work_dir
+Examples
+.env
+.env.backup
+.env.docker

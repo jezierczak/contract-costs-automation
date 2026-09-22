@@ -214,3 +214,4 @@ Examples/
 .env.test
 .env.backup
 .env.local
+.env.docker

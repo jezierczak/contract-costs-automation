@@ -15,5 +15,20 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
 
+  app:
+    build: .
+    container_name: contract_costs_app
+    restart: unless-stopped
+    environment:
+      APP_ENV: prod
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - /app/.venv
+      - ./.env.docker:/app/.env.prod:ro
+    depends_on:
+      - mysql
+
 volumes:
   mysql_data:
