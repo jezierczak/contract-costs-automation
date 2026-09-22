@@ -6,7 +6,7 @@ from uuid import uuid4
 
 from contract_costs.common.ids import new_uuid
 from contract_costs.common.time import utc_now
-from contract_costs.model.amount import Amount, VatRate
+from contract_costs.model.amount import Amount, AmountInputType, VatRate
 from contract_costs.model.contract import ContractStatus
 from contract_costs.model.contract_node import ContractNode
 from contract_costs.model.contract_node_progress import ContractNodeProgress
@@ -250,14 +250,14 @@ def test_financial_rollup(
 
     line_repo.list_by_contract = lambda **kwargs: [
         SimpleNamespace(
-            contract_node_code=leaf.id,
-            value_type_code=cost_type.id,
-            amount=Amount(Decimal("100"), VatRate.VAT_23),
+            contract_node_id=leaf.id,
+            value_type_id=cost_type.id,
+            amount=Amount(value=Decimal("100"), input_type=AmountInputType.NET, vat_rate=VatRate.VAT_23),
         ),
         SimpleNamespace(
-            contract_node_code=leaf.id,
-            value_type_code=revenue_type.id,
-            amount=Amount(Decimal("200"), VatRate.VAT_23),
+            contract_node_id=leaf.id,
+            value_type_id=revenue_type.id,
+            amount=Amount(value=Decimal("200"), input_type=AmountInputType.NET, vat_rate=VatRate.VAT_23),
         ),
     ]
 

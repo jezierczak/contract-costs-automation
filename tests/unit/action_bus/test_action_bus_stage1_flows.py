@@ -8,11 +8,11 @@ import pytest
 from contract_costs.action_bus.action_bus import ActionBus
 from contract_costs.action_bus.permission_resolver import PermissionResolver
 from contract_costs.action_bus.permission_validator import PermissionValidator
-from contract_costs.model.amount import Amount, VatRate
+from contract_costs.model.amount import Amount, AmountInputType, VatRate
 from contract_costs.model.company import CompanyType
 from contract_costs.model.company import CompanyType as CompanyRole
 from contract_costs.model.contract import ContractStatus, ContractType
-from contract_costs.model.document import DocumentSource
+from contract_costs.model.document import DocumentSource, DocumentStatus
 from contract_costs.model.financial_record import FinancialRecordStatus, PaymentMethod, PaymentStatus
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 from contract_costs.services.companies.apply.command import (
@@ -69,6 +69,7 @@ from tests.builders.company_builder import CompanyBuilder
 from tests.builders.contract_builder import ContractBuilder
 from tests.builders.document_builder import DocumentBuilder
 from tests.builders.financial_record_builder import FinancialRecordBuilder
+from tests.builders.financial_record_line_builder import FinancialRecordLineBuilder
 from tests.helpers.contracts_helpers import make_contract_node
 
 
@@ -221,6 +222,7 @@ def test_action_bus_apply_document_create_new_creates_record_and_links_document(
         DocumentBuilder()
         .with_organization_id(org_id)
         .with_document_source(DocumentSource.PDF)
+        .with_document_status(DocumentStatus.READY)
         .with_parsed_payload(payload)
         .build()
     )
@@ -284,7 +286,7 @@ def test_action_bus_apply_financial_records_batch_creates_record(services_memory
                 description=None,
                 quantity=Decimal("1"),
                 unit=UnitOfMeasure.PIECE,
-                amount=Amount(value=Decimal("100"), vat_rate=VatRate.VAT_23),
+                amount=Amount(value=Decimal("100"), input_type=AmountInputType.NET, vat_rate=VatRate.VAT_23),
                 contract_reference=None,
                 contract_node_reference=None,
                 value_type_reference=None,
@@ -332,13 +334,24 @@ def test_action_bus_financial_records_paid_marks_record_paid(uow):
     )
     uow.financial_records.add(record)
 
+    line = (
+        FinancialRecordLineBuilder()
+        .with_organization_id(org_id)
+        .with_financial_record_id(record.id)
+        .with_amount(
+            Amount(value=Decimal("1000.00"), input_type=AmountInputType.NET, vat_rate=VatRate.VAT_23)
+        )
+        .build()
+    )
+    uow.financial_record_lines.add(organization_id=org_id, line=line)
+
     bus.execute(
         action=FinancialRecordActionCommand(
             organization_id=org_id,
             actor_user_id=user_id,
             action=FinancialRecordAction.MARK_PAID,
             selectors=[FinancialRecordSelector(record_reference="PAY-1")],
-            payload={"paid_at": date(2026, 2, 17)},
+            payload={"paid_date": date(2026, 2, 17)},
         ),
         handler=services_memory_financial_record_action_handler(),
     )

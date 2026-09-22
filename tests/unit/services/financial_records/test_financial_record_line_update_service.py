@@ -1,7 +1,7 @@
 from decimal import Decimal
 from uuid import uuid4
 
-from contract_costs.model.amount import Amount, VatRate
+from contract_costs.model.amount import Amount, AmountInputType, VatRate
 from contract_costs.model.company import CompanyType
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 from contract_costs.model.value_direction import ValueDirection
@@ -36,7 +36,7 @@ def _line_update(*, record_reference: str | None, record_line_id=None) -> Financ
         description="desc",
         quantity=Decimal("1"),
         unit=UnitOfMeasure.PIECE,
-        amount=Amount(Decimal("100"), VatRate.VAT_23),
+        amount=Amount(value=Decimal("100"), input_type=AmountInputType.NET, vat_rate=VatRate.VAT_23),
         contract_reference="C-1",
         contract_node_reference="N-1",
         value_type_reference="VT-1",
@@ -71,7 +71,7 @@ def test_apply_creates_line_and_returns_assignment_facts():
 
     line_repo = InMemoryFinancialRecordLineRepository()
     contract_repo = type("R", (), {"get_by_code": lambda self, org, code: type("E", (), {"id": contract_id})()})()
-    node_repo = type("R", (), {"get_by_code": lambda self, org, code: type("E", (), {"id": node_id})()})()
+    node_repo = type("R", (), {"get_by_code": lambda self, **kwargs: type("E", (), {"id": node_id})()})()
     value_type_repo = type(
         "R",
         (),
@@ -131,7 +131,7 @@ def test_apply_skips_line_when_reference_not_found_in_batch():
         "R",
         (),
         {
-            "get_by_code": lambda self, org, code: None,
+            "get_by_code": lambda self, *args, **kwargs: None,
             "list_all": lambda self, organization_id: [],
         },
     )()

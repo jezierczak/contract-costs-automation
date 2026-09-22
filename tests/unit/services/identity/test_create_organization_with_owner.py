@@ -27,12 +27,13 @@ def test_create_organization_with_owner(organization_repo, user_repo, organizati
         organization_code="REMONTIVO",
         organization_name="Remontivo Sp. z o.o.",
         owner_login="jarek",
+        owner_password_hash="argon2$fake-hash-for-tests",
         owner_email="jarek@remontivo.pl",
         owner_full_name="Jarosław Kowalski",
         created_by_user_id=None,
     )
 
-    org_id = service.execute(
+    org_id, owner_user_id = service.execute(
         action=cmd,
         uow=_FakeUow(
             organization_repo=organization_repo,

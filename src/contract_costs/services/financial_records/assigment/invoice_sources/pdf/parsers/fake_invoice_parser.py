@@ -13,7 +13,7 @@ from contract_costs.services.financial_records.assigment.invoice_sources.pdf.par
     FinancialRecordLineUpdate,
     CompanyInput,
 )
-from contract_costs.model.amount import VatRate, Amount
+from contract_costs.model.amount import AmountInputType, VatRate, Amount
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 
 class FakeDocumentParser(DocumentParser):
@@ -48,7 +48,11 @@ class FakeDocumentParser(DocumentParser):
                     description="Material A",
                     quantity=Decimal("2"),
                     unit=UnitOfMeasure.PIECE,
-                    amount=Amount(Decimal("200"),VatRate.VAT_23),
+                    amount=Amount(
+                        value=Decimal("200"),
+                        input_type=AmountInputType.NET,
+                        vat_rate=VatRate.VAT_23,
+                    ),
 
                     contract_reference=None,
                     contract_node_reference=None,

@@ -109,6 +109,8 @@ def test_update_value_type_changes_name_and_description(value_type_repo, uow):
             value_type_id=value_type.id,
             name="Nowa nazwa",
             description="Nowy opis",
+            code=value_type.code,
+            direction=value_type.direction,
         ),
         uow=uow,
     )

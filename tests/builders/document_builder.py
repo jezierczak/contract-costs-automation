@@ -7,6 +7,8 @@ from contract_costs.model.document import (
     Document,
     DocumentType,
     DocumentSource,
+    DocumentStatus,
+    ScoringResult,
 )
 
 
@@ -22,6 +24,7 @@ class DocumentBuilder:
         self._updated_by_user_id = None
 
         self._financial_record_id = None
+        self._document_status = DocumentStatus.NEW
         self._document_source = DocumentSource.PDF
         self._document_type = None
         self._document_number = None
@@ -33,6 +36,7 @@ class DocumentBuilder:
         self._filename = "test.pdf"
         self._mime_type = "application/pdf"
         self._size = 100
+        self._scoring = None
 
     # =====================================================
     # BUILD
@@ -47,6 +51,7 @@ class DocumentBuilder:
             updated_at=self._updated_at,
             updated_by_user_id=self._updated_by_user_id,
             financial_record_id=self._financial_record_id,
+            document_status=self._document_status,
             document_source=self._document_source,
             document_type=self._document_type,
             document_number=self._document_number,
@@ -57,6 +62,7 @@ class DocumentBuilder:
             filename=self._filename,
             mime_type=self._mime_type,
             size=self._size,
+            scoring=self._scoring,
         )
 
     # =====================================================
@@ -81,6 +87,20 @@ class DocumentBuilder:
     # =====================================================
     # DOCUMENT META
     # =====================================================
+
+    def with_document_status(
+        self,
+        status: DocumentStatus,
+    ) -> "DocumentBuilder":
+        self._document_status = status
+        return self
+
+    def with_scoring(
+        self,
+        scoring: Optional[ScoringResult],
+    ) -> "DocumentBuilder":
+        self._scoring = scoring
+        return self
 
     def with_document_source(
         self,

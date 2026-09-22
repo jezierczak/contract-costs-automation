@@ -4,7 +4,7 @@ from contract_costs.common.ids import new_uuid
 from contract_costs.common.time import utc_now
 
 from contract_costs.model.financial_record_line import FinancialRecordLine
-from contract_costs.model.amount import Amount, VatRate, TaxTreatment
+from contract_costs.model.amount import Amount, AmountInputType, VatRate, TaxTreatment
 
 
 def build_line(
@@ -28,6 +28,7 @@ def build_line(
         unit=None,
         amount=Amount(
             value=amount_value,
+            input_type=AmountInputType.NET,
             vat_rate=VatRate.VAT_23,
             tax_treatment=TaxTreatment.TAX_DEDUCTIBLE,
         ),

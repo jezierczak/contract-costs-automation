@@ -8,7 +8,7 @@ from tests.builders.contract_builder import ContractBuilder
 from tests.builders.document_builder import DocumentBuilder
 from tests.builders.financial_record_builder import FinancialRecordBuilder
 from tests.builders.financial_record_line_builder import FinancialRecordLineBuilder
-from contract_costs.model.amount import Amount, TaxTreatment, VatRate
+from contract_costs.model.amount import Amount, AmountInputType, TaxTreatment, VatRate
 from contract_costs.model.company import CompanyType
 from contract_costs.model.contract import ContractType
 from contract_costs.model.document import DocumentType
@@ -42,7 +42,12 @@ def test_financial_record_review_list_query_service_filters_by_contract_code(mon
         FinancialRecordLineBuilder()
         .with_financial_record_id(record.id)
         .with_contract_id(contract.id)
-        .with_amount(Amount(Decimal("100"), VatRate.VAT_23, TaxTreatment.TAX_DEDUCTIBLE))
+        .with_amount(Amount(
+            value=Decimal("100"),
+            input_type=AmountInputType.NET,
+            vat_rate=VatRate.VAT_23,
+            tax_treatment=TaxTreatment.TAX_DEDUCTIBLE,
+        ))
         .build()
     )
 
@@ -54,8 +59,8 @@ def test_financial_record_review_list_query_service_filters_by_contract_code(mon
     uow = SimpleNamespace(
         financial_records=SimpleNamespace(list_for_review=lambda **_: [record]),
         companies=SimpleNamespace(get=lambda **kwargs: buyer if kwargs["company_id"] == buyer.id else seller),
-        financial_record_lines=SimpleNamespace(list_by_financial_record=lambda **_: [line]),
-        contracts=SimpleNamespace(list_contracts=lambda **_: [contract]),
+        financial_record_lines=SimpleNamespace(list_by_financial_record_ids=lambda **_: [line]),
+        contracts=SimpleNamespace(list_all_by_type=lambda **_: [contract]),
     )
     query = FinancialRecordReviewQuery(
         organization_id=org_id,

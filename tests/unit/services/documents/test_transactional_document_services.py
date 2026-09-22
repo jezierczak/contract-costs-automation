@@ -38,7 +38,13 @@ def test_upload_document_raises_for_missing_file():
 
 
 def test_process_document_raises_when_document_missing():
-    service = ProcessDocumentService(parse_service=_FakeParser())
+    service = ProcessDocumentService(
+        parse_service=_FakeParser(),
+        scoring_policy=None,
+        decision_service=None,
+        apply_service=None,
+        event_service=None,
+    )
 
     with pytest.raises(ValueError, match="Document not found"):
         service.execute(

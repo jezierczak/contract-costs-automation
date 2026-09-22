@@ -8,7 +8,7 @@ import pytest
 from contract_costs.action_bus.action_bus import ActionBus
 from contract_costs.action_bus.permission_resolver import PermissionResolver
 from contract_costs.action_bus.permission_validator import PermissionValidator
-from contract_costs.model.amount import Amount, VatRate
+from contract_costs.model.amount import Amount, AmountInputType, VatRate
 from contract_costs.model.company import CompanyType
 from contract_costs.model.contract import ContractStatus, ContractType
 from contract_costs.model.identity.organization_role import OrganizationRole
@@ -308,6 +308,7 @@ def test_action_bus_add_create_organization_command_creates_org_with_owner(servi
             organization_code=org_code,
             organization_name="Org Name",
             owner_login=f"owner-{uuid4().hex[:6]}",
+            owner_password_hash="argon2$fake-hash-for-tests",
             owner_email="owner@example.com",
             owner_full_name="Owner",
             created_by_user_id=None,
@@ -346,6 +347,8 @@ def test_action_bus_edit_value_type_and_code(services_memory, uow):
             value_type_id=value_type_id,
             name="Labor Updated",
             description="upd",
+            code="LAB",
+            direction=ValueDirection.COST,
         ),
         handler=services_memory.update_value_type_service,
     )
@@ -390,7 +393,7 @@ def test_action_bus_add_contract_snapshot_command_creates_snapshot(services_memo
             .with_contract_id(contract.id)
             .with_contract_node_id(node.id)
             .with_created_at(datetime.combine(date.today(), datetime.min.time()))
-            .with_amount(Amount(value=Decimal("10"), vat_rate=VatRate.VAT_23))
+            .with_amount(Amount(value=Decimal("10"), input_type=AmountInputType.NET, vat_rate=VatRate.VAT_23))
             .build()
         ),
     )

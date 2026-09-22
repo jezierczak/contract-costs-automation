@@ -23,6 +23,7 @@ def _cmd() -> CreateOrganizationCommand:
         organization_code="ORG-1",
         organization_name="Org",
         owner_login="owner",
+        owner_password_hash="argon2$fake-hash-for-tests",
         owner_email="owner@example.com",
         owner_full_name="Owner",
         created_by_user_id=None,
@@ -34,7 +35,7 @@ def test_create_organization_with_owner_uses_uow():
     init_app = _FakeInitAppService()
     service = CreateOrganizationWithOwnerService(init_app_service=init_app)
 
-    org_id = service.execute(action=_cmd(), uow=uow)
+    org_id, _user_id = service.execute(action=_cmd(), uow=uow)
 
     assert uow.organizations.get(org_id) is not None
 

@@ -9,7 +9,7 @@ from tests.builders.company_builder import CompanyBuilder
 from tests.builders.contract_builder import ContractBuilder
 from tests.builders.financial_record_builder import FinancialRecordBuilder
 from tests.builders.financial_record_line_builder import FinancialRecordLineBuilder
-from contract_costs.model.amount import Amount, TaxTreatment, VatRate
+from contract_costs.model.amount import Amount, AmountInputType, TaxTreatment, VatRate
 from contract_costs.model.company import CompanyType
 from contract_costs.model.value_direction import ValueDirection
 from contract_costs.services.financial_records.queries.dto.financial_record_details_query import (
@@ -47,7 +47,12 @@ def test_financial_record_details_query_service_builds_view(monkeypatch) -> None
         .with_contract_id(contract.id)
         .with_contract_node_id(uuid4())
         .with_value_type_id(uuid4())
-        .with_amount(Amount(Decimal("100"), VatRate.VAT_23, TaxTreatment.TAX_DEDUCTIBLE))
+        .with_amount(Amount(
+            value=Decimal("100"),
+            input_type=AmountInputType.NET,
+            vat_rate=VatRate.VAT_23,
+            tax_treatment=TaxTreatment.TAX_DEDUCTIBLE,
+        ))
         .build()
     )
 

@@ -49,6 +49,8 @@ def test_document_prepare_excel_export_service_exports_candidate_dictionary(tmp_
         seller_nip="1234567890",
         file_path="incoming/documents/fv_123.pdf",
         candidates=[candidate],
+        confidence_score=None,
+        confidence_breakdown=None,
     )
     bundle = PrepareDocumentsBundle(documents=[document])
     out = tmp_path / "documents_with_candidate.xlsx"

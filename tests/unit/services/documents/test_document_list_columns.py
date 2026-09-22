@@ -18,10 +18,14 @@ def _sample_item() -> DocumentListItemDto:
         document_type="invoice",
         document_number="FV/1",
         seller_nip="1234567890",
+        document_status="READY",
+        financial_record_id=None,
         has_payload=True,
         has_record=False,
         created_at=datetime(2026, 2, 17, 10, 0, 0),
         file_path="incoming/documents/invoice.pdf",
+        confidence_score=None,
+        confidence_breakdown=None,
     )
 
 

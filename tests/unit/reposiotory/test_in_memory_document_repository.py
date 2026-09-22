@@ -174,7 +174,14 @@ def test_exists_by_hash(document_repo):
 
     document_repo.add(doc)
 
-    assert document_repo.get_by_hash(
+    found = document_repo.get_by_hash(
         organization_id=org_id,
         file_hash="abc123",
-    ) is True
+    )
+    assert found is not None
+    assert found.id == doc.id
+
+    assert document_repo.get_by_hash(
+        organization_id=org_id,
+        file_hash="does-not-exist",
+    ) is None

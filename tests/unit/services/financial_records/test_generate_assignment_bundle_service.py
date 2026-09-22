@@ -108,7 +108,7 @@ def test_generate_assignment_bundle_service_builds_domain_bundle_and_updates_sta
         get=lambda **kwargs: owner if kwargs["company_id"] == owner.id else supplier,
     )
     contract_repo = SimpleNamespace(
-        list_contracts=lambda **kwargs: (
+        list_all_by_type=lambda **kwargs: (
             [project] if kwargs["contract_type"] == ContractType.PROJECT
             else [system] if kwargs["contract_type"] == ContractType.SYSTEM
             else [agreement]
@@ -183,7 +183,7 @@ def test_generate_assignment_bundle_service_raises_when_contract_code_missing() 
             list_all=lambda **_: [owner, supplier],
             get=lambda **kwargs: owner if kwargs["company_id"] == owner.id else supplier,
         ),
-        contracts=SimpleNamespace(list_contracts=lambda **_: []),
+        contracts=SimpleNamespace(list_all_by_type=lambda **_: []),
         contract_nodes=SimpleNamespace(list_leaf_nodes_for_active_contracts=lambda **_: [bad_node]),
         value_types=SimpleNamespace(list_all=lambda **_: []),
     )
