@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from contract_costs.common.ids import new_uuid
 from contract_costs.common.time import utc_now
-from contract_costs.model.amount import Amount, VatRate
+from contract_costs.model.amount import Amount, AmountInputType, VatRate
 from contract_costs.model.contract import ContractType
 from contract_costs.model.contract_node import ContractNode
 from contract_costs.model.value_direction import ValueDirection
@@ -186,7 +186,7 @@ def test_financial_aggregation(
             .with_organization_id(organization_id)
             .with_contract_id(contract.id)
             .with_value_type_id(cost_type.id)
-            .with_amount(Amount(Decimal("100"), VatRate.VAT_23))
+            .with_amount(Amount(value=Decimal("100"), input_type=AmountInputType.NET, vat_rate=VatRate.VAT_23))
             .build()
         ),
     )
@@ -199,7 +199,7 @@ def test_financial_aggregation(
             .with_organization_id(organization_id)
             .with_contract_id(contract.id)
             .with_value_type_id(revenue_type.id)
-            .with_amount(Amount(Decimal("200"), VatRate.VAT_23))
+            .with_amount(Amount(value=Decimal("200"), input_type=AmountInputType.NET, vat_rate=VatRate.VAT_23))
             .build()
         ),
     )
@@ -222,13 +222,17 @@ def test_financial_aggregation(
     assert dto.gross > Decimal("0")
 
 
-def test_contract_without_nodes_is_skipped(
+def test_contract_without_nodes_shows_up_with_zero_values(
     contract_repo,
     contract_node_repo,
     line_repo,
     value_type_repo,
     uow,
 ):
+    """
+    Kontrakt bez jeszcze zbudowanych węzłów (same metadane) ma się pojawiać
+    na liście z zerowymi wartościami finansowymi, a nie być pomijany.
+    """
     organization_id = uuid4()
 
     contract = (
@@ -249,4 +253,9 @@ def test_contract_without_nodes_is_skipped(
         uow=uow,
     )
 
-    assert result == []
+    assert len(result) == 1
+    dto = result[0]
+    assert dto.contract_id == contract.id
+    assert dto.net == Decimal("0")
+    assert dto.gross == Decimal("0")
+    assert dto.revenue == Decimal("0")
