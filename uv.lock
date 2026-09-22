@@ -237,6 +237,7 @@ version = "0.8.5"
 source = { editable = "." }
 dependencies = [
     { name = "argon2-cffi" },
+    { name = "cryptography" },
     { name = "fastapi" },
     { name = "jinja2" },
     { name = "ksef-client", extra = ["fa3", "qr", "xml"] },
@@ -272,6 +273,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "argon2-cffi", specifier = ">=25.1.0" },
+    { name = "cryptography", specifier = ">=46.0.3" },
     { name = "fastapi", specifier = ">=0.129.0" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "ksef-client", extras = ["fa3", "qr", "xml"], specifier = ">=0.17.1" },

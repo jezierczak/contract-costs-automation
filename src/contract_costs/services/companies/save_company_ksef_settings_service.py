@@ -4,6 +4,7 @@ from typing import Callable
 from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.common.ids import new_uuid
 from contract_costs.common.time import utc_now
+from contract_costs.infrastructure.secrets_cipher import encrypt_secret
 from contract_costs.model.company import CompanyType
 from contract_costs.model.company_ksef_settings import CompanyKsefSettings
 from contract_costs.services.companies.dto.save_company_ksef_settings_command import (
@@ -45,6 +46,14 @@ class SaveCompanyKsefSettingsService(ActionHandler[SaveCompanyKsefSettingsComman
 
         now = self._clock()
 
+        # Puste pole hasła w formularzu = "zostaw bez zmian", żeby nie trzeba
+        # było wpisywać hasła od nowa przy każdym zapisie pozostałych ustawień.
+        encrypted_password = (
+            encrypt_secret(action.certificate_password)
+            if action.certificate_password
+            else (current.certificate_password if current else None)
+        )
+
         if current is None:
             settings = CompanyKsefSettings(
                 id=self._id_generator(),
@@ -53,7 +62,7 @@ class SaveCompanyKsefSettingsService(ActionHandler[SaveCompanyKsefSettingsComman
                 environment=action.environment,
                 is_enabled=action.is_enabled,
                 certificate_path=action.certificate_path,
-                certificate_password=action.certificate_password,
+                certificate_password=encrypted_password,
                 last_import_from=action.last_import_from,
                 last_import_at=None,
                 last_error=None,
@@ -73,7 +82,7 @@ class SaveCompanyKsefSettingsService(ActionHandler[SaveCompanyKsefSettingsComman
             environment=action.environment,
             is_enabled=action.is_enabled,
             certificate_path=action.certificate_path,
-            certificate_password=action.certificate_password,
+            certificate_password=encrypted_password,
             last_import_from=action.last_import_from,
             updated_at=now,
             updated_by_user_id=action.actor_user_id,

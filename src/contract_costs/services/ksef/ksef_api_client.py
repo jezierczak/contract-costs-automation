@@ -15,6 +15,8 @@ from ksef_client.openapi_models import InvoiceMetadata
 from ksef_client.services import AuthCoordinator
 from ksef_client.services.xades import XadesKeyPair
 
+from contract_costs.infrastructure.secrets_cipher import decrypt_secret
+
 logger = logging.getLogger(__name__)
 
 
@@ -100,10 +102,16 @@ class KsefApiClient:
 
         base_url = LibKsefEnvironment[settings.environment.name].value
 
+        certificate_password = (
+            decrypt_secret(settings.certificate_password)
+            if settings.certificate_password
+            else None
+        )
+
         with KsefClient(KsefClientOptions(base_url=base_url)) as client:
             key_pair = XadesKeyPair.from_pkcs12_file(
                 pkcs12_path=settings.certificate_path,
-                pkcs12_password=settings.certificate_password,
+                pkcs12_password=certificate_password,
             )
             auth_result = AuthCoordinator(client.auth).authenticate_with_xades_key_pair(
                 key_pair=key_pair,
