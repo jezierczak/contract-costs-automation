@@ -1,4 +1,7 @@
 import logging
+import os
+import shutil
+
 import pytesseract
 
 from contract_costs.services.documents.exeptions import DocumentRetryableError, DocumentFatalError
@@ -7,7 +10,12 @@ from contract_costs.services.financial_records.assigment.invoice_sources.pdf.par
 from contract_costs.services.financial_records.assigment.invoice_sources.pdf.parsers.exceptions import \
      OCRInfrastructureError
 
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+# TESSERACT_CMD z env > tesseract w PATH (np. Docker: /usr/bin/tesseract) > domyślna instalacja Windows
+pytesseract.pytesseract.tesseract_cmd = (
+    os.getenv("TESSERACT_CMD")
+    or shutil.which("tesseract")
+    or r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+)
 
 
 logging.basicConfig(level=logging.INFO)

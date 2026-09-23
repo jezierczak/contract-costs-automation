@@ -561,7 +561,8 @@ def company_ksef_settings_save(
             certificate_path = certs_dir / f"{company_id}.{suffix}"
             with open(certificate_path, "wb") as f:
                 shutil.copyfileobj(certificate_file.file, f)
-            certificate_path = str(certificate_path)
+            # zapis w formacie POSIX, żeby ścieżka działała i na Windows, i w kontenerze Linux
+            certificate_path = certificate_path.as_posix()
 
         settings = services.action_bus.execute(
             action=SaveCompanyKsefSettingsCommand(
