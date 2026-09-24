@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import date
 from decimal import Decimal
 from uuid import UUID
 
@@ -122,6 +123,34 @@ class MySQLFinancialRecordRepository(FinancialRecordRepository):
 
         self._attach_documents(organization_id=organization_id, records=[record])
         return record
+
+    def get_record_dates(
+            self,
+            *,
+            organization_id: UUID,
+            record_ids: list[UUID],
+    ) -> dict[UUID, date | None]:
+        if not record_ids:
+            return {}
+
+        placeholders = ", ".join(["%s"] * len(record_ids))
+        sql = f"""
+              SELECT id, COALESCE(selling_date, invoice_date) AS record_date
+              FROM financial_records
+              WHERE organization_id = %s
+                AND id IN ({placeholders})
+              """
+        params = [str(organization_id), *map(str, record_ids)]
+
+        conn = self._get_connection()
+        try:
+            with conn.cursor(dictionary=True) as cur:
+                cur.execute(sql, params)
+                rows = cur.fetchall()
+        finally:
+            self._maybe_close(conn)
+
+        return {UUID(r["id"]): r["record_date"] for r in rows}
 
     def exists(self, *, organization_id: UUID, record_id: UUID) -> bool:
         sql = """

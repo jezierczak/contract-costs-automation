@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 from uuid import UUID
 from abc import ABC, abstractmethod
@@ -60,6 +61,16 @@ class FinancialRecordRepository(ABC):
             organization_id: UUID,
             record_id: UUID,
     ) -> FinancialRecord | None:
+        ...
+
+    @abstractmethod
+    def get_record_dates(
+            self,
+            *,
+            organization_id: UUID,
+            record_ids: list[UUID],
+    ) -> dict[UUID, date | None]:
+        """Data rekordu jak w financial_ledger: selling_date, a gdy brak — invoice_date."""
         ...
 
     @abstractmethod

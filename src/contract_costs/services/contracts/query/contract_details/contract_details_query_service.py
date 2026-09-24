@@ -11,6 +11,7 @@ from contract_costs.services.contracts.financials.contract_financials import Con
 from contract_costs.services.contracts.financials.contract_financials_calculator import (
     ContractFinancialsCalculator,
 )
+from contract_costs.services.contracts.financials.contract_timeline import ContractTimelineCalculator
 from contract_costs.services.contracts.prepare.contract_node_tree_index import ContractNodeTreeIndex
 from contract_costs.services.contracts.query.contract_details.contract_details_query_command import (
     ContractDetailsQuery,
@@ -69,20 +70,37 @@ class ContractDetailsQueryService(ActionHandler[ContractDetailsQuery,ContractDet
 
         tree = ContractNodeTreeIndex(nodes)
 
+        lines = record_line_repo.list_by_contract(
+            organization_id=action.organization_id,
+            contract_id=action.contract_id,
+        )
+        value_type_directions = {
+            vt.id: vt.direction
+            for vt in value_type_repo.list_all(organization_id=action.organization_id)
+        }
+        today = self._today()
+
         financials = ContractFinancialsCalculator.calculate(
             nodes=nodes,
-            lines=record_line_repo.list_by_contract(
-                organization_id=action.organization_id,
-                contract_id=action.contract_id,
-            ),
-            value_type_directions={
-                vt.id: vt.direction
-                for vt in value_type_repo.list_all(organization_id=action.organization_id)
-            },
+            lines=lines,
+            value_type_directions=value_type_directions,
             start_date=contract.start_date,
             end_date=contract.end_date,
-            today=self._today(),
+            today=today,
             at_date=action.at_date,
+        )
+
+        timeline = ContractTimelineCalculator.calculate(
+            nodes=nodes,
+            lines=lines,
+            record_dates=uow.financial_records.get_record_dates(
+                organization_id=action.organization_id,
+                record_ids=list({l.financial_record_id for l in lines if l.financial_record_id}),
+            ),
+            value_type_directions=value_type_directions,
+            start_date=contract.start_date,
+            end_date=contract.end_date,
+            today=action.at_date or today,
         )
 
         breakdown_map = self._aggregate_by_value_type(
@@ -127,6 +145,7 @@ class ContractDetailsQueryService(ActionHandler[ContractDetailsQuery,ContractDet
             margin=margin,
             margin_percent=margin_percent,
             financials=financials,
+            timeline=timeline,
         )
 
     # =====================================================

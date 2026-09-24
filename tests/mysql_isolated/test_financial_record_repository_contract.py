@@ -210,3 +210,35 @@ def test_financial_record_has_documents(financial_record_repo_contract):
         organization_id=org_id,
         record_id=record.id,
     ) is True
+
+
+def test_financial_record_get_record_dates_prefers_selling_date(financial_record_repo_contract):
+    org_id = new_uuid()
+    with_selling = (
+        FinancialRecordBuilder()
+        .with_organization_id(org_id)
+        .with_invoice_date(date(2026, 2, 1))
+        .with_selling_date(date(2026, 1, 31))
+        .build()
+    )
+    invoice_only = (
+        FinancialRecordBuilder()
+        .with_organization_id(org_id)
+        .with_invoice_date(date(2026, 3, 1))
+        .with_selling_date(None)
+        .build()
+    )
+    other_org = FinancialRecordBuilder().with_organization_id(new_uuid()).build()
+    for record in (with_selling, invoice_only, other_org):
+        financial_record_repo_contract.add(record)
+
+    dates = financial_record_repo_contract.get_record_dates(
+        organization_id=org_id,
+        record_ids=[with_selling.id, invoice_only.id, other_org.id],
+    )
+
+    assert dates == {
+        with_selling.id: date(2026, 1, 31),
+        invoice_only.id: date(2026, 3, 1),
+    }
+    assert financial_record_repo_contract.get_record_dates(organization_id=org_id, record_ids=[]) == {}

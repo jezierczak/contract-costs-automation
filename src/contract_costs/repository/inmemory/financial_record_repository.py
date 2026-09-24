@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 from uuid import UUID
 
@@ -94,6 +95,18 @@ class InMemoryFinancialRecordRepository(FinancialRecordRepository):
         if not r or r.organization_id != organization_id:
             return None
         return r
+
+    def get_record_dates(
+        self,
+        *,
+        organization_id: UUID,
+        record_ids: list[UUID],
+    ) -> dict[UUID, date | None]:
+        return {
+            r.id: r.selling_date or r.invoice_date
+            for record_id in record_ids
+            if (r := self._records.get(record_id)) and r.organization_id == organization_id
+        }
 
     def exists(
         self,

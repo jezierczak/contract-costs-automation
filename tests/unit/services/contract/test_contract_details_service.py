@@ -250,11 +250,13 @@ def test_financial_rollup(
 
     line_repo.list_by_contract = lambda **kwargs: [
         SimpleNamespace(
+            financial_record_id=None,
             contract_node_id=leaf.id,
             value_type_id=cost_type.id,
             amount=Amount(value=Decimal("100"), input_type=AmountInputType.NET, vat_rate=VatRate.VAT_23),
         ),
         SimpleNamespace(
+            financial_record_id=None,
             contract_node_id=leaf.id,
             value_type_id=revenue_type.id,
             amount=Amount(value=Decimal("200"), input_type=AmountInputType.NET, vat_rate=VatRate.VAT_23),
