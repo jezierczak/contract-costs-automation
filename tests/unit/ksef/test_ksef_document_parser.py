@@ -73,7 +73,7 @@ def test_parse_ksef_invoice_success(tmp_path):
     assert result.lines[0].amount.gross == Decimal("123.00")
 
 
-def test_parse_ksef_correction_makes_amounts_negative(tmp_path):
+def test_parse_ksef_correction_to_zero_gives_negative_difference(tmp_path):
     xml_path = _write_xml(
         tmp_path,
         """
@@ -82,19 +82,29 @@ def test_parse_ksef_correction_makes_amounts_negative(tmp_path):
           <k:P_2>FV/2/2026</k:P_2>
           <k:P_1>2026-02-10T00:00:00Z</k:P_1>
           <k:P_6>2026-02-10T00:00:00Z</k:P_6>
-          <k:P_13_1>100.00</k:P_13_1>
-          <k:P_14_1>23.00</k:P_14_1>
-          <k:P_15>123.00</k:P_15>
+          <k:P_13_1>-100.00</k:P_13_1>
+          <k:P_14_1>-23.00</k:P_14_1>
+          <k:P_15>-123.00</k:P_15>
         </k:Fa>
         <k:NrFaKorygowanej>FV/OLD/2025</k:NrFaKorygowanej>
         <k:Podmiot1><k:DaneIdentyfikacyjne><k:Nazwa>S</k:Nazwa><k:NIP>2</k:NIP></k:DaneIdentyfikacyjne></k:Podmiot1>
         <k:Podmiot2><k:DaneIdentyfikacyjne><k:Nazwa>B</k:Nazwa><k:NIP>1</k:NIP></k:DaneIdentyfikacyjne></k:Podmiot2>
+        <!-- korekta do zera: stan przed = 123 brutto, stan po = 0 -->
         <k:FaWiersz>
           <k:P_7>Korekta</k:P_7>
           <k:P_8A>szt</k:P_8A>
           <k:P_8B>1</k:P_8B>
           <k:P_11A>123.00</k:P_11A>
           <k:P_11Vat>23.00</k:P_11Vat>
+          <k:P_12>23</k:P_12>
+          <k:StanPrzed>1</k:StanPrzed>
+        </k:FaWiersz>
+        <k:FaWiersz>
+          <k:P_7>Korekta</k:P_7>
+          <k:P_8A>szt</k:P_8A>
+          <k:P_8B>0</k:P_8B>
+          <k:P_11A>0.00</k:P_11A>
+          <k:P_11Vat>0.00</k:P_11Vat>
           <k:P_12>23</k:P_12>
         </k:FaWiersz>
         """,

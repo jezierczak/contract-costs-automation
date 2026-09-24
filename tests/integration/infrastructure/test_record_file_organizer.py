@@ -1,3 +1,4 @@
+import re
 
 from contract_costs.config import RECORD_DRAFT_DIR
 from contract_costs.services.catalogues.record_file_organizer import RecordFileOrganizer
@@ -104,10 +105,11 @@ def test_move_to_owner_builds_correct_path(tmp_path):
         / "03"
     )
 
-    expected_file = expected_dir / "MEGA__FV_12_2025.pdf"
-
-    assert expected_file.exists()
-    assert relative == expected_file.relative_to(root)
+    # nazwa: 5 znaków klienta + numer faktury + losowy 6-znakowy sufiks (unikanie kolizji)
+    assert relative.parent == expected_dir.relative_to(root)
+    assert re.fullmatch(r"MEGA__FV_12_2025_[0-9a-f]{6}\.pdf", relative.name)
+    assert (root / relative).exists()
+    assert not source.exists()
 
 
 def test_move_to_owner_handles_missing_values(tmp_path):

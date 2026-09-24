@@ -3,7 +3,7 @@ from decimal import Decimal
 from uuid import uuid4
 
 from contract_costs.common.time import utc_now
-from contract_costs.model.amount import Amount, VatRate
+from contract_costs.model.amount import Amount, AmountInputType, VatRate
 from contract_costs.model.company import CompanyType
 from contract_costs.model.document import DocumentSource
 from contract_costs.model.financial_record import FinancialRecordStatus
@@ -122,7 +122,7 @@ def test_core_flow_e2e_uses_shared_services_memory_context(services_memory):
         .with_contract_id(contract.id)
         .with_contract_node_id(leaf.id)
         .with_value_type_id(value_type.id)
-        .with_amount(Amount(Decimal("100"), VatRate.VAT_23))
+        .with_amount(Amount(Decimal("100"), AmountInputType.NET, VatRate.VAT_23))
         .build()
     )
     uow.financial_record_lines.add(organization_id=organization_id, line=line)
