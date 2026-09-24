@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from decimal import Decimal
 from uuid import UUID
 
+from contract_costs.services.contracts.financials.contract_financials import ContractFinancials, ScopeFinancials
+
 from contract_costs.services.contracts.query.contract_details.contract_node_value_type_breakdown_dto import \
     ContractNodeValueTypeBreakdownDTO
 
@@ -26,3 +28,4 @@ class ContractNodeDetailsDTO:
     revenue_non_deductible: Decimal
     value_type_breakdown: list[dict[str,str]]
 
+    financials: ScopeFinancials

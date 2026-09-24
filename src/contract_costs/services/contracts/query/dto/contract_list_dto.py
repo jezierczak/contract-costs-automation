@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from decimal import Decimal
 from uuid import UUID
 
+from contract_costs.services.contracts.financials.contract_financials import ContractFinancials
+
 
 @dataclass
 class ContractListDTO:
@@ -15,8 +17,9 @@ class ContractListDTO:
     progress: Decimal | None
 
     net: Decimal
-    gross: Decimal
     non_deduction: Decimal
     revenue_non_deductible:Decimal
 
     revenue: Decimal
+
+    financials: ContractFinancials

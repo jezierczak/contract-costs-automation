@@ -1,4 +1,5 @@
 from collections import defaultdict
+from collections.abc import Callable
 from decimal import Decimal
 from uuid import UUID
 from datetime import date
@@ -6,6 +7,10 @@ from datetime import date
 from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.model.value_direction import ValueDirection
 from contract_costs.repository.contract_repository import ContractRepository
+from contract_costs.services.contracts.financials.contract_financials import ContractFinancials
+from contract_costs.services.contracts.financials.contract_financials_calculator import (
+    ContractFinancialsCalculator,
+)
 from contract_costs.services.contracts.prepare.contract_node_tree_index import ContractNodeTreeIndex
 from contract_costs.services.contracts.query.contract_details.contract_details_query_command import (
     ContractDetailsQuery,
@@ -22,6 +27,9 @@ from contract_costs.unit_of_work import UnitOfWork
 
 
 class ContractDetailsQueryService(ActionHandler[ContractDetailsQuery,ContractDetailsDTO]):
+
+    def __init__(self, *, today: Callable[[], date] = date.today) -> None:
+        self._today = today
 
     # def __init__(
     #     self,
@@ -61,18 +69,22 @@ class ContractDetailsQueryService(ActionHandler[ContractDetailsQuery,ContractDet
 
         tree = ContractNodeTreeIndex(nodes)
 
-        planned_budget, progress_map = self._calculate_budget_and_progress(
-            tree=tree,
+        financials = ContractFinancialsCalculator.calculate(
+            nodes=nodes,
+            lines=record_line_repo.list_by_contract(
+                organization_id=action.organization_id,
+                contract_id=action.contract_id,
+            ),
+            value_type_directions={
+                vt.id: vt.direction
+                for vt in value_type_repo.list_all(organization_id=action.organization_id)
+            },
+            start_date=contract.start_date,
+            end_date=contract.end_date,
+            today=self._today(),
             at_date=action.at_date,
         )
 
-        values = self._aggregate_financials(
-            value_type_repo=value_type_repo,
-            record_line_repo=record_line_repo,
-            organization_id=action.organization_id,
-            contract_id=action.contract_id,
-            tree=tree,
-        )
         breakdown_map = self._aggregate_by_value_type(
             value_type_repo=value_type_repo,
             record_line_repo=record_line_repo,
@@ -83,46 +95,17 @@ class ContractDetailsQueryService(ActionHandler[ContractDetailsQuery,ContractDet
 
         node_dtos = self._build_node_dtos(
             tree=tree,
-            planned_budget=planned_budget,
-            progress_map=progress_map,
-            values=values,
+            financials=financials,
             breakdown_map=breakdown_map,
         )
 
-        roots = tree.roots()
-        root = roots[0] if roots else None
-
-        contract_budget = None
-        contract_progress = None
-        executed_value = Decimal("0")
-        cost_total = Decimal("0")
-        revenue_total = Decimal("0")
-        margin = Decimal("0")
-        margin_percent = None
-
-
-        if root:
-            contract_budget = planned_budget.get(root.id)
-            contract_progress = progress_map.get(root.id)
-
-            if contract_budget is not None and contract_progress is not None:
-                executed_value = contract_budget * contract_progress
-
-            vals = values.get(root.id, {})
-
-            cost_total = vals.get("net", Decimal("0")) + vals.get("non_deductible", Decimal("0"))
-            revenue_total = vals.get("revenue", Decimal("0"))
-
-            margin = executed_value - cost_total
-            if contract_budget not in (None, Decimal("0")):
-                margin_percent = margin / contract_budget
-
-        time_progress = self._calculate_time_progress(
-            start_date=contract.start_date,
-            end_date=contract.end_date,
+        total = financials.total
+        margin = total.result_on_progress
+        margin_percent = (
+            margin / total.budget
+            if margin is not None and total.budget
+            else None
         )
-
-
 
         return ContractDetailsDTO(
             contract_id=contract.id,
@@ -135,141 +118,16 @@ class ContractDetailsQueryService(ActionHandler[ContractDetailsQuery,ContractDet
             nodes=node_dtos,
             owner=contract.owner,
             client=contract.client,
-            budget=contract_budget,
-            time_progress=time_progress,
-            overall_progress=contract_progress,
-            executed_value = executed_value,
-            cost_total = cost_total,
-            revenue_total = revenue_total,
-            margin = margin,
-            margin_percent =margin_percent
-
+            budget=total.budget,
+            time_progress=financials.indicators.time_progress,
+            overall_progress=total.progress,
+            executed_value=total.executed,
+            cost_total=total.cost.cashflow,
+            revenue_total=total.revenue.net,
+            margin=margin,
+            margin_percent=margin_percent,
+            financials=financials,
         )
-
-    # =====================================================
-    # AGGREGATION: BUDGET + PROGRESS
-    # =====================================================
-    @staticmethod
-    def _calculate_budget_and_progress(
-        *,
-        tree: ContractNodeTreeIndex,
-        at_date: date | None,
-    ) -> tuple[
-        dict[UUID, Decimal],
-        dict[UUID, Decimal | None],
-    ]:
-
-        planned_budget: dict[UUID, Decimal] = {}
-        progress_map: dict[UUID, Decimal | None] = {}
-
-        # --- initialize leaves ---
-        for node in tree.leaves():
-            planned_budget[node.id] = node.budget or Decimal("0")
-            progress_map[node.id] = (
-                node.progress_at(at_date)
-                if at_date
-                else node.progress
-            )
-
-        # --- rollup ---
-        for node in tree.postorder():
-            if tree.is_leaf(node):
-                continue
-
-            children = tree.children_of(node.id)
-
-            total_budget = sum(
-                (planned_budget[c.id] for c in children),
-                Decimal("0"),
-            )
-
-            planned_budget[node.id] = total_budget
-
-            if total_budget > 0:
-                weighted = sum(
-                    planned_budget[c.id] * (progress_map[c.id] or Decimal("0"))
-                    for c in children
-                )
-                progress_map[node.id] = weighted / total_budget
-            else:
-                progress_map[node.id] = None
-
-        return planned_budget, progress_map
-
-    # =====================================================
-    # AGGREGATION: FINANCIALS
-    # =====================================================
-    @staticmethod
-    def _aggregate_financials(
-        *,
-        value_type_repo,
-        record_line_repo,
-        organization_id: UUID,
-        contract_id: UUID,
-        tree: ContractNodeTreeIndex,
-    ) -> dict[UUID, dict[str, Decimal]]:
-
-        value_types = value_type_repo.list_all(
-            organization_id=organization_id
-        )
-
-        vt_direction = {
-            vt.id: vt.direction
-            for vt in value_types
-        }
-
-        record_lines = record_line_repo.list_by_contract(
-            organization_id=organization_id,
-            contract_id=contract_id,
-        )
-
-        values: dict[UUID, dict[str, Decimal]] = defaultdict(
-            lambda: {
-                "net": Decimal("0"),
-                "non_deductible": Decimal("0"),
-                "revenue": Decimal("0"),
-                "revenue_non_deductible": Decimal("0"),
-            }
-        )
-
-        # --- aggregate leaves ---
-        for line in record_lines:
-            if (
-                line.contract_node_id is None
-                or line.value_type_id is None
-                or line.amount is None
-            ):
-                continue
-
-            direction = vt_direction.get(line.value_type_id)
-            if not direction:
-                continue
-
-            node_id = line.contract_node_id
-            amt = line.amount
-
-            if direction == ValueDirection.COST:
-                values[node_id]["net"] += amt.net
-                values[node_id]["non_deductible"] += amt.non_tax_cost
-
-            elif direction == ValueDirection.REVENUE:
-                values[node_id]["revenue"] += amt.net
-                values[node_id]["revenue_non_deductible"] += amt.non_tax_cost
-
-        # --- rollup ---
-        for node in tree.postorder():
-            if tree.is_leaf(node):
-                continue
-
-            children = tree.children_of(node.id)
-
-            for child in children:
-                values[node.id]["net"] += values[child.id]["net"]
-                values[node.id]["non_deductible"] += values[child.id]["non_deductible"]
-                values[node.id]["revenue"] += values[child.id]["revenue"]
-                values[node.id]["revenue_non_deductible"] += values[child.id]["revenue_non_deductible"]
-
-        return values
 
     # =====================================================
     # DTO BUILD
@@ -278,15 +136,14 @@ class ContractDetailsQueryService(ActionHandler[ContractDetailsQuery,ContractDet
     def _build_node_dtos(
         *,
         tree: ContractNodeTreeIndex,
-        planned_budget: dict[UUID, Decimal],
-        progress_map: dict[UUID, Decimal | None],
-        values: dict[UUID, dict[str, Decimal]],
+        financials: ContractFinancials,
         breakdown_map: dict[UUID, list[ContractNodeValueTypeBreakdownDTO]]
     ) -> list[ContractNodeDetailsDTO]:
 
         result: list[ContractNodeDetailsDTO] = []
 
         for node in tree.preorder():
+            node_financials = financials.nodes[node.id]
 
             result.append(
                 ContractNodeDetailsDTO(
@@ -296,14 +153,15 @@ class ContractDetailsQueryService(ActionHandler[ContractDetailsQuery,ContractDet
                     name=node.name,
                     is_active=node.is_active,
                     is_leaf=tree.is_leaf(node),
-                    planned_budget=planned_budget[node.id],
-                    progress=progress_map[node.id],
-                    net=values[node.id]["net"],
-                    non_deductible=values[node.id]["non_deductible"],
-                    revenue=values[node.id]["revenue"],
-                    revenue_non_deductible=values[node.id]["revenue_non_deductible"],
+                    planned_budget=node_financials.budget,
+                    progress=node_financials.progress,
+                    net=node_financials.cost.net,
+                    non_deductible=node_financials.cost.non_tax,
+                    revenue=node_financials.revenue.net,
+                    revenue_non_deductible=node_financials.revenue.non_tax,
                     level=tree.depth_of(node.id),
-                    value_type_breakdown=[v.to_dict() for v in breakdown_map.get(node.id, [])]
+                    value_type_breakdown=[v.to_dict() for v in breakdown_map.get(node.id, [])],
+                    financials=node_financials,
                 )
             )
 
@@ -468,33 +326,6 @@ class ContractDetailsQueryService(ActionHandler[ContractDetailsQuery,ContractDet
 
         return output
 
-
-    @staticmethod
-    def _calculate_time_progress(
-            *,
-            start_date: date | None,
-            end_date: date | None
-    ) -> Decimal | None:
-
-        if not start_date or not end_date:
-            return None
-
-        today = date.today()
-
-        total_days = (end_date - start_date).days
-
-        if total_days <= 0:
-            return None
-
-        elapsed_days = (today - start_date).days
-
-        if elapsed_days <= 0:
-            return Decimal("0")
-
-        if elapsed_days >= total_days:
-            return Decimal("1")
-
-        return Decimal(elapsed_days) / Decimal(total_days)
 
     # @staticmethod
     # def _aggregate_by_value_type_all_nodes(

@@ -3,6 +3,8 @@ from datetime import date
 from decimal import Decimal
 from uuid import UUID
 
+from contract_costs.services.contracts.financials.contract_financials import ContractFinancials, ScopeFinancials
+
 from contract_costs.model.company import Company
 from contract_costs.services.contracts.query.dto.contract_node_details_dto import ContractNodeDetailsDTO
 
@@ -28,3 +30,5 @@ class ContractDetailsDTO:
     margin_percent: Decimal | None
 
     nodes: list[ContractNodeDetailsDTO]
+
+    financials: ContractFinancials

@@ -219,7 +219,6 @@ def test_financial_aggregation(
 
     assert dto.net == Decimal("100")
     assert dto.revenue == Decimal("200")
-    assert dto.gross > Decimal("0")
 
 
 def test_contract_without_nodes_shows_up_with_zero_values(
@@ -257,5 +256,4 @@ def test_contract_without_nodes_shows_up_with_zero_values(
     dto = result[0]
     assert dto.contract_id == contract.id
     assert dto.net == Decimal("0")
-    assert dto.gross == Decimal("0")
     assert dto.revenue == Decimal("0")
