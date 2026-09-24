@@ -1,0 +1,229 @@
+{% from "contracts/_indicators.html" import signed_money %}
+{% set tl = contract.timeline %}
+
+{% if not tl.months %}
+<div class="bg-white rounded-xl shadow p-6 text-sm text-gray-500">
+    Brak danych na osi czasu — kontrakt nie ma jeszcze faktur ani wpisów postępu.
+</div>
+{% else %}
+
+<style>
+    .scurve {
+        --surface-1: #ffffff;
+        --text-primary: #0b0b0b;
+        --text-secondary: #52514e;
+        --text-muted: #8a8983;
+        --grid: #ececea;
+        --series-executed: #2a78d6;
+        --series-cost: #eb6834;
+        --series-revenue: #1baf7a;
+    }
+    .scurve svg text { font-size: 11px; fill: var(--text-secondary); }
+    .scurve .scurve-tooltip { pointer-events: none; }
+</style>
+
+<!-- ===================================================== -->
+<!-- S-CURVE -->
+<!-- ===================================================== -->
+
+<div class="scurve bg-white rounded-xl shadow p-4 mb-4">
+
+    <div class="flex flex-wrap items-baseline justify-between gap-2 mb-2">
+        <div>
+            <div class="text-sm font-semibold text-gray-800">Narastająco: wykonane vs koszty vs przychody</div>
+            <div class="text-xs text-gray-500">Koszty nad linią wykonanego = kontrakt przepala budżet. Przychody idą z opóźnieniem płatności.</div>
+        </div>
+        <div class="flex flex-wrap gap-4 text-xs text-gray-700" aria-label="Legenda">
+            <span class="inline-flex items-center gap-1.5"><span class="inline-block h-0.5 w-4 rounded" style="background: var(--series-executed)"></span>Wykonane</span>
+            <span class="inline-flex items-center gap-1.5"><span class="inline-block h-0.5 w-4 rounded" style="background: var(--series-cost)"></span>Koszty cashflow</span>
+            <span class="inline-flex items-center gap-1.5"><span class="inline-block h-0.5 w-4 rounded" style="background: var(--series-revenue)"></span>Przychody cashflow</span>
+        </div>
+    </div>
+
+    <div id="scurve-{{ contract.contract_id }}" class="relative w-full" style="height: 280px;"></div>
+
+    <script type="application/json" id="scurve-data-{{ contract.contract_id }}">{{ timeline_chart | tojson }}</script>
+</div>
+
+<script>
+(function () {
+    const root = document.getElementById("scurve-{{ contract.contract_id }}");
+    const data = JSON.parse(document.getElementById("scurve-data-{{ contract.contract_id }}").textContent);
+    if (!root || !data.length) return;
+
+    const SERIES = [
+        { key: "executed", label: "Wykonane", color: "var(--series-executed)" },
+        { key: "cost", label: "Koszty cashflow", color: "var(--series-cost)" },
+        { key: "revenue", label: "Przychody cashflow", color: "var(--series-revenue)" },
+    ];
+    const NS = "http://www.w3.org/2000/svg";
+    const fmt = new Intl.NumberFormat("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const fmtShort = new Intl.NumberFormat("pl-PL", { notation: "compact", maximumFractionDigits: 1 });
+
+    function el(name, attrs, parent) {
+        const node = document.createElementNS(NS, name);
+        for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+        if (parent) parent.appendChild(node);
+        return node;
+    }
+
+    function niceTicks(max, count) {
+        if (max <= 0) return [0, 1];
+        const raw = max / count;
+        const pow = Math.pow(10, Math.floor(Math.log10(raw)));
+        const step = [1, 2, 2.5, 5, 10].map(m => m * pow).find(s => s >= raw);
+        const ticks = [];
+        for (let v = 0; v <= max + step * 0.001; v += step) ticks.push(v);
+        if (ticks[ticks.length - 1] < max) ticks.push(ticks[ticks.length - 1] + step);
+        return ticks;
+    }
+
+    function render() {
+        root.innerHTML = "";
+        const width = root.clientWidth, height = root.clientHeight;
+        const m = { top: 12, right: 120, bottom: 28, left: 64 };
+        const w = width - m.left - m.right, h = height - m.top - m.bottom;
+
+        const values = data.flatMap(d => SERIES.map(s => d[s.key])).filter(v => v !== null);
+        const ticks = niceTicks(Math.max(0, ...values), 4);
+        const yMax = ticks[ticks.length - 1] || 1;
+        const x = i => m.left + (data.length === 1 ? w / 2 : (i / (data.length - 1)) * w);
+        const y = v => m.top + h - (v / yMax) * h;
+
+        const svg = el("svg", { width, height, role: "img", "aria-label": "Wykres narastający wykonanego, kosztów i przychodów" }, root);
+
+        // siatka i oś Y — recesywne
+        ticks.forEach(t => {
+            el("line", { x1: m.left, x2: m.left + w, y1: y(t), y2: y(t), stroke: "var(--grid)", "stroke-width": 1 }, svg);
+            el("text", { x: m.left - 8, y: y(t) + 4, "text-anchor": "end" }, svg).textContent = fmtShort.format(t);
+        });
+
+        // etykiety miesięcy — co n-ty, żeby się nie nakładały
+        const every = Math.max(1, Math.ceil(data.length / Math.max(1, Math.floor(w / 64))));
+        data.forEach((d, i) => {
+            if (i % every !== 0 && i !== data.length - 1) return;
+            el("text", { x: x(i), y: m.top + h + 18, "text-anchor": "middle" }, svg).textContent = d.label;
+        });
+
+        // linie + etykiety bezpośrednie na końcu serii
+        const ends = [];
+        SERIES.forEach(s => {
+            const pts = data.map((d, i) => d[s.key] === null ? null : [x(i), y(d[s.key])]);
+            let path = "", pen = false;
+            pts.forEach(p => {
+                if (!p) { pen = false; return; }
+                path += (pen ? "L" : "M") + p[0].toFixed(1) + "," + p[1].toFixed(1);
+                pen = true;
+            });
+            if (path) el("path", { d: path, fill: "none", stroke: s.color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+            const last = [...pts].reverse().find(Boolean);
+            if (last) ends.push({ s, y: last[1], x: last[0] });
+        });
+
+        // rozsuń etykiety końcowe, żeby się nie nakładały
+        ends.sort((a, b) => a.y - b.y);
+        for (let i = 1; i < ends.length; i++) ends[i].y = Math.max(ends[i].y, ends[i - 1].y + 14);
+        ends.forEach(e => {
+            const label = el("text", { x: m.left + w + 8, y: e.y + 4 }, svg);
+            label.textContent = e.s.label;
+            label.setAttribute("style", "fill: var(--text-primary)");
+        });
+
+        // crosshair + tooltip
+        const cross = el("line", { y1: m.top, y2: m.top + h, stroke: "var(--text-muted)", "stroke-width": 1, visibility: "hidden" }, svg);
+        const dots = SERIES.map(s => el("circle", { r: 4, fill: s.color, stroke: "var(--surface-1)", "stroke-width": 2, visibility: "hidden" }, svg));
+        const tip = document.createElement("div");
+        tip.className = "scurve-tooltip absolute z-10 hidden rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs shadow-lg";
+        root.appendChild(tip);
+
+        const hit = el("rect", { x: m.left, y: m.top, width: Math.max(w, 1), height: h, fill: "transparent" }, svg);
+        hit.addEventListener("mousemove", ev => {
+            const box = svg.getBoundingClientRect();
+            const px = ev.clientX - box.left;
+            const i = data.length === 1 ? 0 : Math.round(((px - m.left) / w) * (data.length - 1));
+            const idx = Math.min(data.length - 1, Math.max(0, i));
+            const d = data[idx];
+            cross.setAttribute("x1", x(idx)); cross.setAttribute("x2", x(idx)); cross.setAttribute("visibility", "visible");
+            SERIES.forEach((s, k) => {
+                if (d[s.key] === null) { dots[k].setAttribute("visibility", "hidden"); return; }
+                dots[k].setAttribute("cx", x(idx)); dots[k].setAttribute("cy", y(d[s.key])); dots[k].setAttribute("visibility", "visible");
+            });
+            const onProgress = d.executed === null ? null : d.executed - d.cost;
+            tip.innerHTML =
+                `<div class="font-semibold text-gray-900 mb-1">${d.label}</div>` +
+                SERIES.map(s => `<div class="flex items-center justify-between gap-4"><span class="inline-flex items-center gap-1.5 text-gray-600"><span class="inline-block h-2 w-2 rounded-full" style="background:${s.color}"></span>${s.label}</span><span class="text-gray-900 tabular-nums">${d[s.key] === null ? "—" : fmt.format(d[s.key])}</span></div>`).join("") +
+                `<div class="mt-1 flex justify-between gap-4 border-t border-gray-100 pt-1"><span class="text-gray-600">Wynik na postępie</span><span class="tabular-nums text-gray-900">${onProgress === null ? "—" : fmt.format(onProgress)}</span></div>`;
+            tip.classList.remove("hidden");
+            const left = x(idx) + 12 + tip.offsetWidth > width ? x(idx) - tip.offsetWidth - 12 : x(idx) + 12;
+            tip.style.left = left + "px";
+            tip.style.top = m.top + "px";
+        });
+        hit.addEventListener("mouseleave", () => {
+            cross.setAttribute("visibility", "hidden");
+            dots.forEach(dot => dot.setAttribute("visibility", "hidden"));
+            tip.classList.add("hidden");
+        });
+    }
+
+    render();
+    let timer;
+    window.addEventListener("resize", () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => { if (document.body.contains(root)) render(); }, 150);
+    });
+})();
+</script>
+
+<!-- ===================================================== -->
+<!-- MONTH TABLE -->
+<!-- ===================================================== -->
+
+<div class="bg-white rounded-xl shadow overflow-x-auto">
+<table class="w-full text-sm">
+<thead class="bg-gray-100 text-gray-700 text-xs">
+<tr class="border-b border-gray-200">
+    <th class="px-3 pt-2"></th>
+    <th class="px-3 pt-2 text-center border-l border-gray-200" colspan="3">KOSZTY W MIESIĄCU</th>
+    <th class="px-3 pt-2 text-center border-l border-gray-200" colspan="2">PRZYCHODY W MIESIĄCU</th>
+    <th class="px-3 pt-2 text-center border-l border-gray-200" colspan="4">NARASTAJĄCO</th>
+</tr>
+<tr>
+    <th class="p-2 text-left">MIESIĄC</th>
+    <th class="p-2 text-right border-l border-gray-200">KSIĘGOWE</th>
+    <th class="p-2 text-right">NIEKSIĘGOWE</th>
+    <th class="p-2 text-right">CASHFLOW</th>
+    <th class="p-2 text-right border-l border-gray-200">KSIĘGOWE</th>
+    <th class="p-2 text-right">CASHFLOW</th>
+    <th class="p-2 text-right border-l border-gray-200">WYKONANE</th>
+    <th class="p-2 text-right">KOSZTY CF</th>
+    <th class="p-2 text-right">PRZYCHODY CF</th>
+    <th class="p-2 text-right">NA POSTĘPIE</th>
+</tr>
+</thead>
+<tbody>
+{% for m in tl.months %}
+<tr class="border-t">
+    <td class="p-2 font-mono text-xs">{{ m.year }}-{{ '%02d' % m.month }}</td>
+    <td class="p-2 text-right whitespace-nowrap border-l border-gray-100">{{ m.cost.net|money }}</td>
+    <td class="p-2 text-right whitespace-nowrap">{{ m.cost.non_tax|money }}</td>
+    <td class="p-2 text-right whitespace-nowrap">{{ m.cost.cashflow|money }}</td>
+    <td class="p-2 text-right whitespace-nowrap border-l border-gray-100">{{ m.revenue.net|money }}</td>
+    <td class="p-2 text-right whitespace-nowrap">{{ m.revenue.cashflow|money }}</td>
+    <td class="p-2 text-right whitespace-nowrap border-l border-gray-100">{{ m.executed_cumulative|money }}</td>
+    <td class="p-2 text-right whitespace-nowrap">{{ m.cumulative_cost.cashflow|money }}</td>
+    <td class="p-2 text-right whitespace-nowrap">{{ m.cumulative_revenue.cashflow|money }}</td>
+    <td class="p-2 text-right whitespace-nowrap">{{ signed_money(m.result_on_progress_cumulative) }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+{% if tl.undated_cost.cashflow or tl.undated_revenue.cashflow %}
+<div class="border-t p-3 text-xs text-amber-800 bg-amber-50">
+    Faktury bez daty (poza osią czasu): koszty cashflow {{ tl.undated_cost.cashflow|money }},
+    przychody cashflow {{ tl.undated_revenue.cashflow|money }}.
+</div>
+{% endif %}
+</div>
+
+{% endif %}

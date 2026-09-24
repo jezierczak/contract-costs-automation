@@ -1,20 +1,35 @@
+{% from "contracts/_indicators.html" import indicator, stale_badge, signed_money %}
+
 <div class="bg-white rounded-xl shadow overflow-x-auto">
 
 <table class="w-full text-left text-sm">
 
-<thead class="bg-gray-100 text-gray-700">
+<thead class="bg-gray-100 text-gray-700 text-xs">
+<tr class="border-b border-gray-200">
+    <th class="px-3 pt-2" colspan="3"></th>
+    <th class="px-3 pt-2 text-center border-l border-gray-200" colspan="3">PLAN</th>
+    <th class="px-3 pt-2 text-center border-l border-gray-200" colspan="3">KOSZTY</th>
+    <th class="px-3 pt-2 text-center border-l border-gray-200" colspan="2">PRZYCHODY</th>
+    <th class="px-3 pt-2 text-center border-l border-gray-200" colspan="4">WYNIK</th>
+    <th class="px-3 pt-2 text-center border-l border-gray-200">WSKAŹNIKI</th>
+</tr>
 <tr>
     <th class="p-3">KOD</th>
     <th class="p-3">NAZWA</th>
     <th class="p-3">STATUS</th>
-    <th class="p-3 text-right">BUDŻET</th>
-    <th class="p-3 text-right">PROGRESS %</th>
-    <th class="p-3 text-right">WYKONANE</th>
-    <th class="p-3 text-right">NET</th>
-    <th class="p-3 text-right">NON-DEDUCT</th>
-    <th class="p-3 text-right">SUMA WYDATKÓW</th>
-    <th class="p-3 text-right">WYNIK</th>
-    <th class="p-3 text-right">ZAKS. PRZYCHÓD</th>
+    <th class="p-3 text-right border-l border-gray-200">BUDŻET</th>
+    <th class="p-3 text-right">POSTĘP</th>
+    <th class="p-3 text-right" title="Budżet × postęp">WYKONANE</th>
+    <th class="p-3 text-right border-l border-gray-200" title="Obniżają podatek (z amortyzacją)">KSIĘGOWE</th>
+    <th class="p-3 text-right" title="Wydatki, które nie obniżają podatku">NIEKSIĘGOWE</th>
+    <th class="p-3 text-right" title="Realny przepływ pieniężny (netto)">CASHFLOW</th>
+    <th class="p-3 text-right border-l border-gray-200">KSIĘGOWE</th>
+    <th class="p-3 text-right">CASHFLOW</th>
+    <th class="p-3 text-right border-l border-gray-200" title="Przychód księgowy − koszt księgowy">KSIĘGOWY</th>
+    <th class="p-3 text-right" title="Przychód cashflow − koszt cashflow">CASHFLOW</th>
+    <th class="p-3 text-right" title="Wykonane − koszty cashflow: predyktor niezależny od terminów płatności klienta">NA POSTĘPIE</th>
+    <th class="p-3 text-right" title="Budżet − koszty cashflow / postęp (przy postępie ≥ 5%)">PROGNOZA</th>
+    <th class="p-3 border-l border-gray-200"></th>
 </tr>
 </thead>
 
@@ -22,22 +37,18 @@
 
 {% if not contracts %}
 <tr>
-    <td colspan="11" class="p-8 text-center text-gray-500">
+    <td colspan="16" class="p-8 text-center text-gray-500">
         Brak kontraktów
     </td>
 </tr>
 {% else %}
 
 {% for c in contracts %}
-
-{% set progress = c.progress or 0 %}
-{% set planned = c.planned_budget or 0 %}
-{% set done = (planned * progress)|round(2) %}
-{% set spend = (c.net or 0) + (c.non_deduction or 0) %}
-{% set result = done - spend %}
+{% set t = c.financials.total %}
+{% set ind = c.financials.indicators %}
 
 <tr
-    class="cursor-pointer hover:bg-gray-50"
+    class="cursor-pointer border-t hover:bg-gray-50"
     hx-get="/contracts/{{ c.contract_id }}"
     hx-target="#content-area"
     hx-swap="innerHTML"
@@ -45,114 +56,62 @@
     hx-indicator="#global-indicator"
 >
 
-<!-- CODE -->
-<td class="p-2 font-medium">
-    {{ c.code }}
-</td>
+<td class="p-2 font-medium whitespace-nowrap">{{ c.code }}</td>
+<td class="p-2">{{ c.name }}</td>
 
-<!-- NAME -->
-<td class="p-2">
-    {{ c.name }}
-</td>
-
-<!-- STATUS -->
 <td class="p-2">
     {% if c.status == "active" %}
-        <span class="px-2 py-1 text-xs bg-green-100 text-green-700 rounded">
-            active
-        </span>
+        <span class="px-2 py-1 text-xs bg-green-100 text-green-700 rounded">active</span>
     {% elif c.status == "planned" %}
-        <span class="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded">
-            planned
-        </span>
+        <span class="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded">planned</span>
     {% elif c.status == "completed" %}
-        <span class="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded">
-            completed
-        </span>
+        <span class="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded">completed</span>
     {% elif c.status == "cancelled" %}
-        <span class="px-2 py-1 text-xs bg-red-100 text-red-700 rounded">
-            cancelled
-        </span>
+        <span class="px-2 py-1 text-xs bg-red-100 text-red-700 rounded">cancelled</span>
     {% else %}
-        <span class="px-2 py-1 text-xs bg-gray-100 text-gray-500 rounded">
-            {{ c.status }}
-        </span>
+        <span class="px-2 py-1 text-xs bg-gray-100 text-gray-500 rounded">{{ c.status }}</span>
     {% endif %}
 </td>
 
-<!-- BUDGET -->
-<td class="p-2 text-right">
-    {{ c.planned_budget }}
-</td>
-
-<!-- PROGRESS -->
+<!-- PLAN -->
+<td class="p-2 text-right whitespace-nowrap border-l border-gray-100">{{ t.budget|money }}</td>
 <td class="p-2">
-
-{% if c.progress is not none %}
-<div class="flex items-center justify-end gap-2">
-
-    <div class="w-20 bg-gray-200 rounded-full h-2 overflow-hidden">
-        <div
-            class="bg-blue-500 h-2"
-            style="width: {{ (progress * 100)|round(1) }}%;">
+    {% if t.progress is not none %}
+    <div class="flex items-center justify-end gap-2">
+        <div class="w-16 bg-gray-200 rounded-full h-2 overflow-hidden">
+            <div class="bg-blue-500 h-2" style="width: {{ [t.progress * 100, 100]|min }}%;"></div>
         </div>
+        <span class="text-xs text-gray-600 w-12 text-right">{{ t.progress|pct }}</span>
     </div>
-
-    <span class="text-xs text-gray-600 w-10 text-right">
-        {{ (progress * 100)|round(1) }}%
-    </span>
-
-</div>
-{% else %}
-<div class="text-right">—</div>
-{% endif %}
-
-</td>
-
-<!-- DONE -->
-<td class="p-2 text-right">
-    {% if c.progress %}
-        {{ done }}
     {% else %}
-        —
+    <div class="text-right">—</div>
     {% endif %}
 </td>
+<td class="p-2 text-right whitespace-nowrap">{{ t.executed|money }}</td>
 
-<!-- NET -->
-<td class="p-2 text-right">
-    {{ c.net }}
-</td>
+<!-- KOSZTY -->
+<td class="p-2 text-right whitespace-nowrap border-l border-gray-100">{{ t.cost.net|money }}</td>
+<td class="p-2 text-right whitespace-nowrap">{{ t.cost.non_tax|money }}</td>
+<td class="p-2 text-right whitespace-nowrap">{{ t.cost.cashflow|money }}</td>
 
-<!-- NON-DEDUCT -->
-<td class="p-2 text-right">
-    {{ c.non_deduction }}
-</td>
+<!-- PRZYCHODY -->
+<td class="p-2 text-right whitespace-nowrap border-l border-gray-100">{{ t.revenue.net|money }}</td>
+<td class="p-2 text-right whitespace-nowrap">{{ t.revenue.cashflow|money }}</td>
 
-<!-- SPEND -->
-<td class="p-2 text-right">
-    {{ spend }}
-</td>
+<!-- WYNIK -->
+<td class="p-2 text-right whitespace-nowrap border-l border-gray-100">{{ signed_money(t.result_net) }}</td>
+<td class="p-2 text-right whitespace-nowrap">{{ signed_money(t.result_cashflow) }}</td>
+<td class="p-2 text-right whitespace-nowrap">{{ signed_money(t.result_on_progress, strong=True) }}</td>
+<td class="p-2 text-right whitespace-nowrap">{{ signed_money(t.forecast_result) }}</td>
 
-<!-- RESULT -->
-<td class="p-2 text-right font-semibold
-    {% if c.planned_budget %}
-        {% if result >= 0 %}
-            text-green-700
-        {% else %}
-            text-red-700
-        {% endif %}
-    {% endif %}
-">
-    {% if c.planned_budget %}
-        {{ result }}
-    {% else %}
-        —
-    {% endif %}
-</td>
-
-<!-- REVENUE -->
-<td class="p-2 text-right">
-    {{ c.revenue }}
+<!-- WSKAŹNIKI -->
+<td class="p-2 border-l border-gray-100">
+    <div class="flex flex-wrap gap-1">
+        {{ indicator(ind.cost, "koszty", "Koszty cashflow vs wykonane") }}
+        {{ indicator(ind.schedule, "czas", "Postęp prac vs upływ czasu kontraktu") }}
+        {{ indicator(ind.billing, "faktury", "Zafakturowany przychód vs wykonane") }}
+        {{ stale_badge(ind) }}
+    </div>
 </td>
 
 </tr>

@@ -5,6 +5,7 @@
 {% endblock %}
 
 {% block workspace_content %}
+{% from "contracts/_indicators.html" import indicator, stale_badge, signed_money %}
 
 <div class="w-full">
 
@@ -38,11 +39,11 @@
             onchange="this.form.requestSubmit()"
             class="
                 border rounded px-3 py-1 text-sm
-                {% if contract.status == 'ACTIVE' %}
+                {% if contract.status == 'active' %}
                     bg-green-50 text-green-700
-                {% elif contract.status == 'PLANNED' %}
+                {% elif contract.status == 'planned' %}
                     bg-blue-50 text-blue-700
-                {% elif contract.status == 'DONE' %}
+                {% elif contract.status == 'completed' %}
                     bg-gray-100 text-gray-600
                 {% endif %}
             "
@@ -98,144 +99,133 @@
 </div>
 
 
+{% set t = contract.financials.total %}
+{% set ind = contract.financials.indicators %}
+
 <!-- ===================================================== -->
 <!-- PROGRESS BARS -->
 <!-- ===================================================== -->
 
 <div class="grid md:grid-cols-2 gap-6 mb-6">
 
-{% if contract.time_progress is not none %}
-
 <div class="bg-white rounded-xl shadow p-4">
-
     <div class="flex justify-between text-sm mb-2">
         <span class="text-gray-500">Postęp czasu</span>
-        <span class="font-medium">
-            {{ (contract.time_progress * 100)|round(1) }}%
-        </span>
+        <span class="font-medium">{{ ind.time_progress|pct }}</span>
     </div>
-
+    {% if ind.time_progress is not none %}
     <div class="w-full bg-gray-200 rounded-full h-2">
-
-        <div
-            class="
-                h-2
-                {% if contract.time_progress >= 1 %}
-                    bg-gray-500
-                {% elif contract.time_progress > 0.9 %}
-                    bg-red-500
-                {% elif contract.time_progress > 0.7 %}
-                    bg-yellow-500
-                {% else %}
-                    bg-blue-500
-                {% endif %}
-            "
-            style="width: {{ (contract.time_progress * 100)|round(2) }}%;"
-        ></div>
-
+        <div class="h-2 rounded-full bg-gray-500" style="width: {{ ind.time_progress * 100 }}%;"></div>
     </div>
-
+    {% else %}
+    <div class="text-xs text-gray-400">Ustaw daty rozpoczęcia i zakończenia w edycji kontraktu.</div>
+    {% endif %}
 </div>
 
-{% endif %}
-
-
-{% if contract.overall_progress is not none %}
-
 <div class="bg-white rounded-xl shadow p-4">
-
     <div class="flex justify-between text-sm mb-2">
         <span class="text-gray-500">Postęp prac</span>
         <span class="font-medium">
-            {{ (contract.overall_progress * 100)|round(1) }}%
+            {{ t.progress|pct }}
+            {% if ind.last_progress_date %}
+            <span class="text-xs font-normal text-gray-400">(wpis {{ ind.last_progress_date }})</span>
+            {% endif %}
         </span>
     </div>
-
+    {% if t.progress is not none %}
     <div class="w-full bg-gray-200 rounded-full h-2">
-
-        <div
-            class="
-                h-2
-                {% if contract.overall_progress >= 1 %}
-                    bg-green-700
-                {% elif contract.overall_progress > 0.9 %}
-                    bg-green-500
-                {% elif contract.overall_progress > 0.7 %}
-                    bg-yellow-500
-                {% else %}
-                    bg-blue-500
-                {% endif %}
-            "
-            style="width: {{ (contract.overall_progress * 100)|round(2) }}%;"
-        ></div>
-
+        <div class="h-2 rounded-full bg-blue-500" style="width: {{ [t.progress * 100, 100]|min }}%;"></div>
     </div>
-
+    {% else %}
+    <div class="text-xs text-gray-400">Brak wpisów postępu.</div>
+    {% endif %}
 </div>
 
-{% endif %}
-
 </div>
-
 
 <!-- ===================================================== -->
-<!-- FINANCIAL SUMMARY -->
+<!-- KEY NUMBERS -->
 <!-- ===================================================== -->
 
-<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
 
 <div class="bg-white rounded-xl shadow p-4">
-    <div class="text-xs text-gray-500">Budżet</div>
-    <div class="text-lg font-semibold">
-        {{ contract.budget | round(2) if contract.budget else "—" }}
+    <div class="text-xs text-gray-500">Budżet (wartość sprzedażowa)</div>
+    <div class="text-lg font-semibold">{{ t.budget|money }}</div>
+</div>
+
+<div class="bg-white rounded-xl shadow p-4" title="Budżet × postęp prac">
+    <div class="text-xs text-gray-500">Wykonane</div>
+    <div class="text-lg font-semibold">{{ t.executed|money }}</div>
+</div>
+
+<div class="bg-white rounded-xl shadow p-4 ring-1 ring-gray-200" title="Wykonane − koszty cashflow. Nie czeka na płatności klienta.">
+    <div class="text-xs text-gray-500">Wynik na postępie</div>
+    <div class="text-lg">{{ signed_money(t.result_on_progress, strong=True) }}</div>
+    <div class="text-xs text-gray-400">wykonane − koszty cashflow</div>
+</div>
+
+<div class="bg-white rounded-xl shadow p-4" title="Przy obecnym tempie: koszty cashflow / postęp">
+    <div class="text-xs text-gray-500">Prognoza wyniku na koniec</div>
+    {% if t.forecast_result is not none %}
+    <div class="text-lg">{{ signed_money(t.forecast_result, strong=True) }}</div>
+    <div class="text-xs text-gray-400">koszt całkowity {{ t.forecast_total_cost|money }}</div>
+    {% else %}
+    <div class="text-lg font-semibold text-gray-400">—</div>
+    <div class="text-xs text-gray-400">wymaga postępu ≥ 5%</div>
+    {% endif %}
+</div>
+
+<div class="bg-white rounded-xl shadow p-4" title="Zafakturowany przychód − wykonane">
+    <div class="text-xs text-gray-500">Fakturowanie vs wykonane</div>
+    <div class="text-lg">{{ signed_money(t.billing_gap, strong=True) }}</div>
+    <div class="text-xs text-gray-400">
+        {% if t.billing_gap is none %}—
+        {% elif t.billing_gap < 0 %}niedofakturowane
+        {% elif t.billing_gap > 0 %}zafakturowane z wyprzedzeniem
+        {% else %}zgodne z wykonaniem{% endif %}
     </div>
 </div>
 
-<div class="bg-white rounded-xl shadow p-4">
-    <div class="text-xs text-gray-500">Wykonanie prac</div>
-    <div class="text-lg font-semibold text-blue-700">
-        {{ contract.executed_value | round(2) if contract.executed_value else "—" }}
-    </div>
 </div>
 
-<div class="bg-white rounded-xl shadow p-4">
-    <div class="text-xs text-gray-500">Koszty</div>
-    <div class="text-lg font-semibold text-red-700">
-        {{ contract.cost_total | round(2) if contract.cost_total else "—" }}
-    </div>
+<!-- ===================================================== -->
+<!-- INDICATORS -->
+<!-- ===================================================== -->
+
+<div class="bg-white rounded-xl shadow p-4 mb-4 flex flex-wrap items-center gap-2 text-sm">
+    <span class="text-gray-500 mr-1">Wskaźniki:</span>
+    {{ indicator(ind.cost, "koszty", "Koszty cashflow vs wykonane: do 0% ✓, do 5% !, powyżej ✕") }}
+    {{ indicator(ind.schedule, "harmonogram", "Postęp vs upływ czasu: opóźnienie do 10 pp !, powyżej ✕") }}
+    {{ indicator(ind.billing, "fakturowanie", "Niedofakturowanie jako % budżetu: do 5% ✓, do 10% !, powyżej ✕") }}
+    {{ stale_badge(ind) }}
 </div>
 
-<div class="bg-white rounded-xl shadow p-4">
-    <div class="text-xs text-gray-500">Zapłacono</div>
-    <div class="text-lg font-semibold text-green-700">
-        {{ contract.revenue_total | round(2) if contract.revenue_total else "—" }}
-    </div>
+<!-- ===================================================== -->
+<!-- PILLARS -->
+<!-- ===================================================== -->
+
+<div class="grid md:grid-cols-3 gap-4 mb-8">
+
+<div class="bg-white rounded-xl shadow p-4 text-sm">
+    <div class="text-xs font-semibold text-gray-500 mb-2">KOSZTY</div>
+    <div class="flex justify-between"><span class="text-gray-500" title="Obniżają podatek (z amortyzacją)">księgowe</span><span>{{ t.cost.net|money }}</span></div>
+    <div class="flex justify-between"><span class="text-gray-500" title="Wydatki, które nie obniżają podatku">nieksięgowe</span><span>{{ t.cost.non_tax|money }}</span></div>
+    <div class="flex justify-between font-medium"><span class="text-gray-500" title="Realny przepływ pieniężny (netto)">cashflow</span><span>{{ t.cost.cashflow|money }}</span></div>
 </div>
 
-<div class="bg-white rounded-xl shadow p-4">
-    <div class="text-xs text-gray-500">Marża</div>
-    <div class="text-lg font-semibold
-        {% if contract.margin is not none and contract.margin >= 0 %}
-            text-green-700
-        {% else %}
-            text-red-700
-        {% endif %}
-    ">
-        {{ contract.margin | round(2) if contract.margin else "—" }}
-    </div>
+<div class="bg-white rounded-xl shadow p-4 text-sm">
+    <div class="text-xs font-semibold text-gray-500 mb-2">PRZYCHODY (zafakturowane)</div>
+    <div class="flex justify-between"><span class="text-gray-500">księgowe</span><span>{{ t.revenue.net|money }}</span></div>
+    <div class="flex justify-between"><span class="text-gray-500">nieksięgowe</span><span>{{ t.revenue.non_tax|money }}</span></div>
+    <div class="flex justify-between font-medium"><span class="text-gray-500">cashflow</span><span>{{ t.revenue.cashflow|money }}</span></div>
 </div>
 
-<div class="bg-white rounded-xl shadow p-4">
-    <div class="text-xs text-gray-500">Marża %</div>
-    <div class="text-lg font-semibold
-        {% if contract.margin_percent is not none and contract.margin_percent >= 0 %}
-            text-green-700
-        {% else %}
-            text-red-700
-        {% endif %}
-    ">
-        {{ (contract.margin_percent * 100) | round(1) if contract.margin_percent else "—" }}%
-    </div>
+<div class="bg-white rounded-xl shadow p-4 text-sm">
+    <div class="text-xs font-semibold text-gray-500 mb-2">WYNIK</div>
+    <div class="flex justify-between"><span class="text-gray-500">księgowy</span>{{ signed_money(t.result_net) }}</div>
+    <div class="flex justify-between"><span class="text-gray-500">cashflow</span>{{ signed_money(t.result_cashflow) }}</div>
+    <div class="flex justify-between font-medium"><span class="text-gray-500">na postępie</span>{{ signed_money(t.result_on_progress) }}</div>
 </div>
 
 </div>
@@ -250,6 +240,16 @@
 </h3>
 
 {% include "contracts/details/_details_tree.html" %}
+
+<!-- ===================================================== -->
+<!-- TIMELINE -->
+<!-- ===================================================== -->
+
+<h3 class="text-lg font-semibold mt-8 mb-3">
+    Oś czasu
+</h3>
+
+{% include "contracts/details/_timeline.html" %}
 
 </div>
 

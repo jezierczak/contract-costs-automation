@@ -1,0 +1,35 @@
+{# Wskaźnik kontraktu: kolor + ikona + etykieta — nigdy sam kolor. #}
+{% macro indicator(level, label, hint) %}
+{% if level %}
+    {% set v = level.value %}
+    <span
+        title="{{ hint }}"
+        class="inline-flex items-center gap-1 whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium
+        {% if v == 'green' %}bg-green-100 text-green-800
+        {% elif v == 'yellow' %}bg-amber-100 text-amber-800
+        {% else %}bg-red-100 text-red-800{% endif %}"
+    >
+        <span aria-hidden="true">{% if v == 'green' %}✓{% elif v == 'yellow' %}!{% else %}✕{% endif %}</span>
+        {{ label }}
+    </span>
+{% else %}
+    <span title="{{ hint }} — brak danych" class="inline-flex items-center gap-1 whitespace-nowrap rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">
+        – {{ label }}
+    </span>
+{% endif %}
+{% endmacro %}
+
+{% macro stale_badge(indicators) %}
+{% if indicators.progress_stale %}
+    <span
+        title="Ostatni wpis postępu: {{ indicators.last_progress_date }} — starszy niż 30 dni, wskaźniki mogą być nieaktualne"
+        class="inline-flex items-center gap-1 whitespace-nowrap rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800"
+    >⚠ postęp</span>
+{% endif %}
+{% endmacro %}
+
+{% macro signed_money(value, strong=False) %}
+<span class="{% if strong %}font-semibold{% endif %} {% if value is not none %}{% if value >= 0 %}text-green-700{% else %}text-red-700{% endif %}{% endif %}">
+    {{ value|money }}
+</span>
+{% endmacro %}

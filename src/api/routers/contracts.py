@@ -178,6 +178,23 @@ def _render_contract_tree(
         },
     )
 
+def _timeline_chart_data(timeline) -> list[dict]:
+    """Narastające serie osi czasu jako liczby dla wykresu (JS nie zna Decimal)."""
+
+    def num(value):
+        return float(value) if value is not None else None
+
+    return [
+        {
+            "label": f"{m.year}-{m.month:02d}",
+            "executed": num(m.executed_cumulative),
+            "cost": num(m.cumulative_cost.cashflow),
+            "revenue": num(m.cumulative_revenue.cashflow),
+        }
+        for m in timeline.months
+    ]
+
+
 def _parse_form_date(value: str | None) -> date | None:
     return date.fromisoformat(value) if value else None
 
@@ -649,6 +666,7 @@ def contract_view(
             "title": details.name,
             "nodes": details.nodes,
             "statuses": [s.value for s in ContractStatus],
+            "timeline_chart": _timeline_chart_data(details.timeline),
         },
     )
 

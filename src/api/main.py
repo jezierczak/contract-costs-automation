@@ -17,6 +17,8 @@ from fastapi import FastAPI, Request
 from starlette.responses import HTMLResponse
 from starlette.templating import Jinja2Templates
 
+from api import template_filters
+
 from contract_costs.cli.context import get_services
 import contract_costs.config as cfg
 
@@ -136,6 +138,7 @@ async def session_middleware(request: Request, call_next):
 
 BASE_DIR = FilePath(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+template_filters.register(templates.env)
 app.state.templates = templates
 
 app.include_router(auth.router)

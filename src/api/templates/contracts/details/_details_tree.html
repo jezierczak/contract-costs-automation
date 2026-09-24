@@ -1,48 +1,31 @@
+{% from "contracts/_indicators.html" import signed_money %}
 <div class="bg-white rounded-xl shadow overflow-x-auto">
 
 <!-- LEGEND -->
-<div class="mb-4 flex flex-wrap gap-3 text-xs p-3">
-
-    <span class="px-2 py-1 bg-gray-100 rounded">
-        BUDŻET — planowany budżet
-    </span>
-
-    <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded">
-        PROGRESS — postęp
-    </span>
-
-    <span class="px-2 py-1 bg-green-100 text-green-700 rounded">
-        WYKONANIE —> BUDŻET × PROGRESS
-    </span>
-
-    <span class="px-2 py-1 bg-red-100 text-red-700 rounded">
-        SUMA WYDATKÓW —> NET + NON-DEDUCT
-    </span>
-
-    <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
-        WYNIK —> WYKONANIE - SUMA WYDATKÓW
-    </span>
-        <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
-        PRZYCHÓD —> suma faktur przychodowych -realnie wystawionych faktur
-    </span>
-
+<div class="mb-2 flex flex-wrap gap-3 text-xs p-3 text-gray-600">
+    <span class="px-2 py-1 bg-gray-100 rounded">WYKONANE = budżet × postęp</span>
+    <span class="px-2 py-1 bg-gray-100 rounded">KSIĘGOWE = obniżają podatek (z amortyzacją)</span>
+    <span class="px-2 py-1 bg-gray-100 rounded">NIEKSIĘGOWE = wydatki bez odliczenia</span>
+    <span class="px-2 py-1 bg-gray-100 rounded">CASHFLOW = realny przepływ (netto)</span>
+    <span class="px-2 py-1 bg-gray-100 rounded">NA POSTĘPIE = wykonane − koszty cashflow</span>
+    <span class="px-2 py-1 bg-gray-100 rounded">PRZYCHÓD = zafakturowany (księgowy)</span>
 </div>
 
 <!-- HEADER -->
 <div class="bg-gray-100 text-gray-700 text-xs font-semibold
-            grid grid-cols-[160px_1fr_100px_120px_100px_100px_100px_100px_100px_100px]
+            grid grid-cols-[160px_1fr_110px_130px_110px_110px_110px_110px_120px_110px]
             px-3 py-2 rounded-t">
 
-    <div>CODE</div>
-    <div>NAME</div>
+    <div>KOD</div>
+    <div>NAZWA</div>
 
     <div class="text-right">BUDŻET</div>
-    <div class="text-right">PROGRESS</div>
-    <div class="text-right">WYKONANIE</div>
-    <div class="text-right">NET</div>
-    <div class="text-right">NON-DEDUCT</div>
-    <div class="text-right">SUMA WYDATKÓW</div>
-    <div class="text-right">WYNIK</div>
+    <div class="text-right">POSTĘP</div>
+    <div class="text-right">WYKONANE</div>
+    <div class="text-right">KSIĘGOWE</div>
+    <div class="text-right">NIEKSIĘGOWE</div>
+    <div class="text-right">CASHFLOW</div>
+    <div class="text-right">NA POSTĘPIE</div>
     <div class="text-right">PRZYCHÓD</div>
 
 </div>
@@ -52,7 +35,7 @@
 <div
     class="
         contract-node-row
-        grid grid-cols-[160px_1fr_100px_120px_100px_100px_100px_100px_100px_100px]
+        grid grid-cols-[160px_1fr_110px_130px_110px_110px_110px_110px_120px_110px]
         border-t px-3 py-2 text-sm items-center cursor-pointer
         {% if n.level == 0 %}
             bg-blue-50 font-semibold
@@ -104,60 +87,31 @@ cursor-pointer text-gray-500 hover:bg-gray-200 rounded select-none"
 
 
 
+    {% set f = n.financials %}
+
     <!-- BUDGET -->
-    <div class="text-right truncate">
-        {{ n.planned_budget }}
-    </div>
+    <div class="text-right truncate">{{ f.budget|money }}</div>
 
     <!-- PROGRESS -->
     <div class="text-right">
-        {% if n.progress %}
+        {% if f.progress is not none %}
         <div class="flex items-center gap-2 justify-end">
             <div class="w-16 bg-gray-200 rounded-full h-2 overflow-hidden">
-                <div class="bg-blue-500 h-2"
-                     style="width: {{ (n.progress*100)|round(1) }}%;">
-                </div>
+                <div class="bg-blue-500 h-2" style="width: {{ [f.progress * 100, 100]|min }}%;"></div>
             </div>
-            <span class="text-xs w-9 text-right">
-                {{ (n.progress*100)|round(1) }}%
-            </span>
+            <span class="text-xs w-11 text-right">{{ f.progress|pct }}</span>
         </div>
         {% else %}
             —
         {% endif %}
     </div>
 
-    <div class="text-right truncate">
-        {% if n.progress %}
-            {{ (n.planned_budget * n.progress)|round(2) }}
-        {% else %}
-            —
-        {% endif %}
-    </div>
-
-    <div class="text-right truncate">{{ n.net }}</div>
-    <div class="text-right truncate">{{ n.non_deductible }}</div>
-
-    <div class="text-right truncate">
-        {{ (n.net + n.non_deductible )|round(2) }}
-    </div>
-
-    <div class="text-right font-semibold truncate
-        {% if  (n.net + n.non_deductible)|round(2) >= 0 %}
-            text-green-700
-        {% else %}
-            text-red-700
-        {% endif %}
-    ">  {% if n.progress %}
-        {{ (n.planned_budget * n.progress)|round(2) - (n.net + n.non_deductible)|round(2) }}
-        {% else %}
-          {{ - (n.net + n.non_deductible)|round(2) }}
-        {% endif %}
-    </div>
-
-    <div class="text-right truncate">
-        {{ n.revenue }}
-    </div>
+    <div class="text-right truncate">{{ f.executed|money }}</div>
+    <div class="text-right truncate">{{ f.cost.net|money }}</div>
+    <div class="text-right truncate">{{ f.cost.non_tax|money }}</div>
+    <div class="text-right truncate">{{ f.cost.cashflow|money }}</div>
+    <div class="text-right truncate">{{ signed_money(f.result_on_progress, strong=True) }}</div>
+    <div class="text-right truncate">{{ f.revenue.net|money }}</div>
 
 </div>
 
