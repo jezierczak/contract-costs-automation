@@ -20,6 +20,9 @@ load_dotenv(".env.test", override=False)
 if APP_ENV == "prod":
     load_dotenv(".env.prod", override=True)
 
+# środowisko wybiera wyłącznie zmienna przy starcie — wpis APP_ENV w pliku .env jej nie nadpisze
+os.environ["APP_ENV"] = APP_ENV
+
 def is_test_env() -> bool:
     return APP_ENV == "test"
 

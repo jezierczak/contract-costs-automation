@@ -25,7 +25,8 @@ def main(argv: list[str] | None = None) -> None:
     logging.info("APP_ENV=%s | WORK_DIR=%s | DB=%s",
                  cfg.APP_ENV, cfg.WORK_DIR, cfg.DB_CONFIG["database"])
 
-    if os.getenv("APP_ENV", "test") == "prod":
+    # cfg.APP_ENV, nie os.getenv — plik .env nie może przełączyć środowiska po starcie
+    if cfg.APP_ENV == "prod":
         print("⚠️  RUNNING IN PRODUCTION MODE ⚠️")
         confirm = input("Type 'PROD' to continue: ")
         if confirm != "PROD":
