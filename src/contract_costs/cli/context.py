@@ -163,6 +163,8 @@ from contract_costs.services.financial_records.review.financial_record_review_li
 from contract_costs.services.ksef.ksef_api_client import KsefApiClient
 from contract_costs.services.workers.document_parse_worker import DocumentParseWorker
 from contract_costs.services.workers.ksef_import_worker import KsefImportWorker
+from contract_costs.services.workers.ksef_scheduler_worker import KsefSchedulerWorker
+import contract_costs.config as cfg
 
 
 class Services:
@@ -219,6 +221,7 @@ class Services:
 
         self._document_parse_worker = None
         self._ksef_import_worker = None
+        self._ksef_scheduler_worker = None
         self._ksef_api_client = None
 
         self._contract_cost_report =None
@@ -654,6 +657,15 @@ class Services:
         if self._ksef_import_worker is None:
             self._ksef_import_worker = KsefImportWorker()
         return self._ksef_import_worker
+
+    @property
+    def ksef_scheduler_worker(self):
+        if self._ksef_scheduler_worker is None:
+            self._ksef_scheduler_worker = KsefSchedulerWorker(
+                schedule_times=KsefSchedulerWorker.parse_schedule_times(cfg.KSEF_SCHEDULE_TIMES),
+                startup_delay_seconds=cfg.KSEF_STARTUP_DELAY_SECONDS,
+            )
+        return self._ksef_scheduler_worker
 
     @property
     def ksef_api_client(self):

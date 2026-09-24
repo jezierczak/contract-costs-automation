@@ -4,6 +4,7 @@ from queue import Queue
 from typing import Callable
 
 from contract_costs.action_bus.action_handler import ActionHandler
+from contract_costs.common.time import local_today
 from contract_costs.model.company import Company
 from contract_costs.services.ksef.dto.enqueue_ksef_auto_import_command import (
     EnqueueKsefAutoImportCommand,
@@ -22,6 +23,7 @@ class KsefAutoImportResult:
     # KSeF włączony, ale nigdy nie było importu – nie wiemy, od kiedy pobierać,
     # więc użytkownik musi najpierw zrobić jednorazowy import ręczny.
     missing_first_import: list[Company] = field(default_factory=list)
+    already_imported_today: list[Company] = field(default_factory=list)
 
 
 class EnqueueKsefAutoImportService(ActionHandler[EnqueueKsefAutoImportCommand, KsefAutoImportResult]):
@@ -35,7 +37,7 @@ class EnqueueKsefAutoImportService(ActionHandler[EnqueueKsefAutoImportCommand, K
         self,
         *,
         queue: Queue[KsefImportQueueItem] = ksef_import_queue,
-        today: Callable[[], date] = date.today,
+        today: Callable[[], date] = local_today,
     ) -> None:
         self._queue = queue
         self._today = today
@@ -62,6 +64,12 @@ class EnqueueKsefAutoImportService(ActionHandler[EnqueueKsefAutoImportCommand, K
 
             if settings.last_import_from is None:
                 result.missing_first_import.append(company)
+                continue
+
+            # last_import_from ustawia się na datę "do" dopiero po udanym
+            # imporcie, więc import zakończony dziś błędem nie jest pomijany.
+            if action.skip_imported_today and settings.last_import_from >= today:
+                result.already_imported_today.append(company)
                 continue
 
             # Zaczynamy od dnia ostatniego pobrania (a nie dnia następnego), bo

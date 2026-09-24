@@ -127,3 +127,44 @@ def test_last_import_in_future_does_not_produce_inverted_range(uow):
 
     assert items[0].from_date == TODAY
     assert items[0].to_date == TODAY
+
+
+def _run_catch_up(uow, organization_id):
+    queue = Queue()
+    service = EnqueueKsefAutoImportService(queue=queue, today=lambda: TODAY)
+    result = service.execute(
+        action=EnqueueKsefAutoImportCommand(
+            organization_id=organization_id,
+            actor_user_id=uuid4(),
+            skip_imported_today=True,
+        ),
+        uow=uow,
+    )
+    items = []
+    while not queue.empty():
+        items.append(queue.get_nowait())
+    return result, items
+
+
+def test_catch_up_skips_companies_already_imported_today(uow):
+    organization_id = uuid4()
+    done_today = _add_company(uow, organization_id, name="Pobrana dziś")
+    _add_settings(uow, organization_id, done_today, last_import_from=TODAY)
+    pending = _add_company(uow, organization_id, name="Pobrana wczoraj")
+    _add_settings(uow, organization_id, pending, last_import_from=date(2026, 9, 23))
+
+    result, items = _run_catch_up(uow, organization_id)
+
+    assert [item.company_id for item in items] == [pending.id]
+    assert [c.id for c in result.already_imported_today] == [done_today.id]
+
+
+def test_regular_run_does_not_skip_companies_imported_today(uow):
+    organization_id = uuid4()
+    company = _add_company(uow, organization_id, name="Pobrana dziś")
+    _add_settings(uow, organization_id, company, last_import_from=TODAY)
+
+    result, items = _run(uow, organization_id, uuid4())
+
+    assert [item.company_id for item in items] == [company.id]
+    assert result.already_imported_today == []

@@ -83,6 +83,14 @@ OWNERS_DIR = Path("owners")
 # --- KSeF (certyfikaty per firma) ---
 KSEF_CERTS_DIR = Path("ksef_certs")
 
+# --- KSeF scheduler (automatyczny import przyrostowy) ---
+# Domyślnie wyłączony – włączany tylko w środowisku Dockera (.env.docker).
+KSEF_SCHEDULER_ENABLED = os.getenv("KSEF_SCHEDULER_ENABLED", "false").strip().lower() in {"1", "true", "yes"}
+# Godziny (czas polski), o których pobieramy wszystkie firmy.
+KSEF_SCHEDULE_TIMES = os.getenv("KSEF_SCHEDULE_TIMES", "08:00,18:00")
+# Opóźnienie nadrabiania po starcie aplikacji (firmy bez udanego importu dziś).
+KSEF_STARTUP_DELAY_SECONDS = int(os.getenv("KSEF_STARTUP_DELAY_SECONDS", "60"))
+
 # --- invoices (automatyczne) ---
 #INCOMING_DIR = WORK_DIR / "incoming"
 INCOMING_DIR = Path("incoming")

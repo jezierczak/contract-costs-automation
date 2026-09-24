@@ -7,6 +7,7 @@ from starlette.responses import HTMLResponse
 from starlette.templating import Jinja2Templates
 
 from contract_costs.cli.context import get_services
+import contract_costs.config as cfg
 
 from pathlib import Path as FilePath
 
@@ -57,6 +58,13 @@ def start_workers():
     thread.start()
     ksef_thread.start()
 
+    if cfg.KSEF_SCHEDULER_ENABLED:
+        threading.Thread(
+            target=services.ksef_scheduler_worker.run,
+            name="ksef-scheduler",
+            daemon=True,
+        ).start()
+
 @app.on_event("shutdown")
 def shutdown_event():
     document_worker = services.document_parse_worker
@@ -64,6 +72,8 @@ def shutdown_event():
 
     document_worker.stop()
     ksef_worker.stop()
+    if cfg.KSEF_SCHEDULER_ENABLED:
+        services.ksef_scheduler_worker.stop()
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
