@@ -14,7 +14,10 @@ from contract_costs.common.context.exceptions import ContextError
 from contract_costs.infrastructure.filesystem.show_file_manager import ContractsShowFileManager
 from contract_costs.model.contract import ContractType
 from contract_costs.reports.contracts.contract_list_columns import contract_list_columns
+from contract_costs.reports.contracts.contract_financials_format import level, money, percent
 from contract_costs.reports.contracts.contract_node_tree_column import contract_node_tree_columns
+from contract_costs.reports.contracts.contract_timeline_columns import contract_timeline_columns
+from contract_costs.services.contracts.financials.contract_financials import ContractFinancials
 from contract_costs.services.contracts.query.contract_details.contract_details_query_command import ContractDetailsQuery
 from contract_costs.services.contracts.query.list_contracts.list_contracts_query_command import ListContractsQuery
 
@@ -149,6 +152,7 @@ def _handle_show_single_contract(args, organization_id, actor_user_id, services)
         "Status": [contract.status],
         "Start date": [str(contract.start_date) if contract.start_date else "-"],
         "End date": [str(contract.end_date) if contract.end_date else "-"],
+        **_financials_summary(contract.financials),
         "Generated": [datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
     }
 
@@ -177,6 +181,45 @@ def _handle_show_single_contract(args, organization_id, actor_user_id, services)
         columns=columns,
         header=header,
     )
+
+    timeline = contract.timeline
+    if timeline.months:
+        CmdPrinter().print(
+            organization_id=organization_id,
+            items=timeline.months,
+            columns=contract_timeline_columns(),
+            header={"Timeline": ["costs and revenue by month (record date)"]},
+        )
+    if timeline.undated_cost.cashflow or timeline.undated_revenue.cashflow:
+        print(
+            f"Without record date: cost CF {money(timeline.undated_cost.cashflow)}"
+            f" | revenue CF {money(timeline.undated_revenue.cashflow)}"
+        )
+
+
+def _financials_summary(financials: ContractFinancials) -> dict[str, list[str]]:
+    total = financials.total
+    ind = financials.indicators
+
+    def fmt(value) -> str:
+        return str(money(value)) if value is not None else "-"
+
+    return {
+        "Budget": [fmt(total.budget)],
+        "Progress": [percent(total.progress), f"time {percent(ind.time_progress)}"],
+        "Last progress": [
+            str(ind.last_progress_date) if ind.last_progress_date else "-",
+            "STALE" if ind.progress_stale else "",
+        ],
+        "Done": [fmt(total.executed)],
+        "Cost": [f"net {fmt(total.cost.net)}", f"non-tax {fmt(total.cost.non_tax)}", f"cashflow {fmt(total.cost.cashflow)}"],
+        "Revenue": [f"net {fmt(total.revenue.net)}", f"non-tax {fmt(total.revenue.non_tax)}", f"cashflow {fmt(total.revenue.cashflow)}"],
+        "Result": [f"net {fmt(total.result_net)}", f"cashflow {fmt(total.result_cashflow)}"],
+        "Result on progress": [fmt(total.result_on_progress)],
+        "Forecast": [f"total cost {fmt(total.forecast_total_cost)}", f"result {fmt(total.forecast_result)}"],
+        "Billing gap": [fmt(total.billing_gap)],
+        "Indicators": [f"cost {level(ind.cost)}", f"schedule {level(ind.schedule)}", f"billing {level(ind.billing)}"],
+    }
 
 
 def _resolve_contract_id(ref: str, repo,organization_id) -> UUID:
