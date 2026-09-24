@@ -1,0 +1,32 @@
+{% if not has_owner %}
+<!--    {% include "companies/owner_company_form.html" %}-->
+    {% set title = "Dodaj pierwszą firmę" %}
+    {% set subtitle = "Aby rozpocząć pracę, dodaj firmę własną" %}
+    {% set action_url = "/companies/create-own" %}
+    {% set submit_label = "Zapisz i rozpocznij" %}
+    {% set show_role = False %}
+    {% set use_htmx = False %}
+    {% set next = "/" %}
+
+    {% include "companies/_form.html" %}
+{% else %}
+
+<div class="flex justify-between items-center">
+    <h1 class="text-2xl font-bold">
+    Dashboard
+    </h1>
+
+    <button
+        hx-post="/documents/ksef/import-auto"
+        hx-swap="none"
+        hx-disabled-elt="this"
+        title="Dla wszystkich firm własnych z włączonym KSeF, od ostatniego pobrania do dziś"
+        class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 disabled:opacity-50"
+    >
+        Pobierz wszystko z KSeF
+    </button>
+</div>
+
+<p>Witaj 🙂</p>
+
+{% endif %}

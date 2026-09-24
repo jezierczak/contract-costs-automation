@@ -5,6 +5,21 @@ router = APIRouter()
 
 @router.get("/")
 def home(request: Request):
+    return _render_dashboard(request, template="dashboard.html")
+
+
+@router.get("/dashboard")
+def dashboard(request: Request):
+    # kliknięcie w menu (htmx) podmienia tylko obszar treści;
+    # odświeżenie strony pod /dashboard dostaje pełny layout
+    is_htmx = request.headers.get("HX-Request") == "true"
+    return _render_dashboard(
+        request,
+        template="dashboard/_content.html" if is_htmx else "dashboard.html",
+    )
+
+
+def _render_dashboard(request: Request, *, template: str):
 
     if not request.state.ctx.user_id:
         return request.app.state.templates.TemplateResponse(
@@ -20,7 +35,7 @@ def home(request: Request):
         )
 
     return request.app.state.templates.TemplateResponse(
-        "dashboard.html",
+        template,
         {
             "request": request,
             "has_owner": has_owner,
