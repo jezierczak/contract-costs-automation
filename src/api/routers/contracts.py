@@ -178,6 +178,10 @@ def _render_contract_tree(
         },
     )
 
+def _parse_form_date(value: str | None) -> date | None:
+    return date.fromisoformat(value) if value else None
+
+
 @router.get("/contracts")
 def contracts_page(request: Request):
     return request.app.state.templates.TemplateResponse(
@@ -267,6 +271,9 @@ def contract_create(
     owner_id: str | None = Form(None),
     client_id: str | None = Form(None),
 
+    start_date: str | None = Form(None),
+    end_date: str | None = Form(None),
+
     services=Depends(get_services),
 ):
     ctx = request.state.ctx
@@ -306,6 +313,8 @@ def contract_create(
                     "description": description or "",
                     "owner_id": owner_id or "",
                     "client_id": client_id or "",
+                    "start_date": start_date or "",
+                    "end_date": end_date or "",
                 },
             },
         )
@@ -329,6 +338,8 @@ def contract_create(
                     "description": description,
                     "owner_id": owner_id,
                     "client_id": client_id,
+                    "start_date": start_date or "",
+                    "end_date": end_date or "",
                 }
             }
         )
@@ -343,8 +354,8 @@ def contract_create(
             description=description,
             owner=owner,
             client=client,
-            start_date=None,
-            end_date=None,
+            start_date=_parse_form_date(start_date),
+            end_date=_parse_form_date(end_date),
             budget=None,
             path=None,
             status=ContractStatus.PLANNED,
@@ -375,6 +386,8 @@ def contract_create(
                     "description": description,
                     "owner_id": owner_id,
                     "client_id": client_id,
+                    "start_date": start_date or "",
+                    "end_date": end_date or "",
                 }
             }
         )
@@ -810,6 +823,9 @@ def contract_update(
     owner_id: str | None = Form(None),
     client_id: str | None = Form(None),
 
+    start_date: str | None = Form(None),
+    end_date: str | None = Form(None),
+
     services=Depends(get_services),
 ):
     ctx = request.state.ctx
@@ -867,6 +883,8 @@ def contract_update(
                     "description": description or "",
                     "owner_id": owner_id or "",
                     "client_id": client_id or "",
+                    "start_date": start_date or "",
+                    "end_date": end_date or "",
                 },
             },
         )
@@ -883,6 +901,8 @@ def contract_update(
                 description=description,
                 owner=owner,
                 client=client,
+                start_date=_parse_form_date(start_date),
+                end_date=_parse_form_date(end_date),
             ),
             handler=services.update_contract_service,
         )
@@ -906,6 +926,8 @@ def contract_update(
                     "description": description or "",
                     "owner_id": owner_id or "",
                     "client_id": client_id or "",
+                    "start_date": start_date or "",
+                    "end_date": end_date or "",
                 },
             },
         )

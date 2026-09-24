@@ -46,6 +46,11 @@ class Contract(BaseEntity):
         return Path(owner.name) / safe_name
 
 
+    @staticmethod
+    def validate_dates(start_date: date | None, end_date: date | None) -> None:
+        if start_date and end_date and end_date < start_date:
+            raise ValueError("Data zakończenia kontraktu nie może być wcześniejsza niż data rozpoczęcia")
+
     @property
     def is_active(self) -> bool:
         return self.status == ContractStatus.ACTIVE

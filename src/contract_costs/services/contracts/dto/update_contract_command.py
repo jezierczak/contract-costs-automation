@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import date
 from uuid import UUID
 
 from contract_costs.action_bus.command import Command
@@ -18,3 +19,6 @@ class UpdateContractCommand(Command):
 
     owner: Company | None
     client: Company | None
+
+    start_date: date | None = None
+    end_date: date | None = None

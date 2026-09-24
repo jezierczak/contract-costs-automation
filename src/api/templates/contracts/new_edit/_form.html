@@ -47,6 +47,32 @@
     >{{ (form.description if form else (contract.description if contract else '')) or '' }}</textarea>
 </div>
 
+<!-- DATES -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div>
+        <label class="block text-sm font-medium text-gray-600 mb-1">
+            Data rozpoczęcia
+        </label>
+        <input
+            type="date"
+            name="start_date"
+            value="{{ form.start_date if form else (contract.start_date if contract and contract.start_date else '') }}"
+            class="w-full border rounded px-3 py-2 text-sm"
+        >
+    </div>
+    <div>
+        <label class="block text-sm font-medium text-gray-600 mb-1">
+            Data zakończenia
+        </label>
+        <input
+            type="date"
+            name="end_date"
+            value="{{ form.end_date if form else (contract.end_date if contract and contract.end_date else '') }}"
+            class="w-full border rounded px-3 py-2 text-sm"
+        >
+    </div>
+</div>
+
 <!-- OWNER -->
 <div>
     <label class="block text-sm font-medium text-gray-600 mb-1">

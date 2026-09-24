@@ -40,6 +40,8 @@ class CreateContractService(ActionHandler[CreateContractCommand, Contract]):
         uow:UnitOfWork,
     ) -> Contract:
 
+        Contract.validate_dates(action.start_date, action.end_date)
+
         now = self._clock()
         contract_id = self._id_generator()
 
