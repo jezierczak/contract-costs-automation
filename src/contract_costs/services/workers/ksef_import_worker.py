@@ -1,5 +1,6 @@
 import logging
 from dataclasses import replace
+from datetime import date
 from queue import Empty
 
 import contract_costs.config as cfg
@@ -75,6 +76,7 @@ class KsefImportWorker:
                 company=company,
                 from_date=item.from_date,
                 to_date=item.to_date,
+                date_type=item.date_type,
             )
             incoming_dir = (
                 cfg.WORK_DIR
@@ -141,7 +143,10 @@ class KsefImportWorker:
                 return
             updated = replace(
                 settings,
-                last_import_from=item.to_date,
+                last_import_from=self._next_last_import_from(
+                    current=settings.last_import_from,
+                    imported_to=item.to_date,
+                ),
                 last_import_at=now,
                 last_error=None,
                 updated_at=now,
@@ -151,6 +156,14 @@ class KsefImportWorker:
                 organization_id=item.organization_id,
                 settings=updated,
             )
+
+    @staticmethod
+    def _next_last_import_from(*, current: date | None, imported_to: date) -> date:
+        # Ręczny import starszego okresu nie może cofnąć znacznika, bo kolejny
+        # import automatyczny pobierałby wtedy od nowa wszystko od tamtej daty.
+        if current is None:
+            return imported_to
+        return max(current, imported_to)
 
     def _update_settings_error(self, *, services, item, now, error_message: str) -> None:
         with services.uow as uow:

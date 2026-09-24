@@ -6,6 +6,16 @@
 
         <div class="flex items-center gap-2">
         <button
+            hx-post="/documents/ksef/import-auto"
+            hx-swap="none"
+            hx-disabled-elt="this"
+            title="Dla wszystkich firm własnych z włączonym KSeF, od ostatniego pobrania do dziś"
+            class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 disabled:opacity-50"
+        >
+            Pobierz wszystko z KSeF
+        </button>
+
+        <button
             hx-get="/documents/ksef/import-form"
             hx-target="#modal-area"
             hx-swap="innerHTML"

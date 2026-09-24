@@ -27,6 +27,7 @@ from contract_costs.services.companies.providers.name import NameCandidateProvid
 from contract_costs.services.companies.providers.phone import PhoneCandidateProvider
 from contract_costs.services.companies.query.company_query_service import CompanyQueryService
 from contract_costs.services.companies.save_company_ksef_settings_service import SaveCompanyKsefSettingsService
+from contract_costs.services.ksef.enqueue_ksef_auto_import_service import EnqueueKsefAutoImportService
 from contract_costs.services.companies.query.company_detail_query_service import CompanyDetailQueryService
 from contract_costs.services.companies.update_company_service import UpdateCompanyService
 from contract_costs.services.company_dashboard.company_dashboard_query_service import CompanyDashboardQueryService
@@ -207,6 +208,7 @@ class Services:
         self._create_company_service = None
         self._update_company_service = None
         self._save_company_ksef_settings_service = None
+        self._enqueue_ksef_auto_import_service = None
         self._create_value_type = None
         self._create_contract = None
         # self._update_contract_service = None
@@ -695,6 +697,12 @@ class Services:
         if self._save_company_ksef_settings_service is None:
             self._save_company_ksef_settings_service = SaveCompanyKsefSettingsService()
         return self._save_company_ksef_settings_service
+
+    @property
+    def enqueue_ksef_auto_import_service(self):
+        if self._enqueue_ksef_auto_import_service is None:
+            self._enqueue_ksef_auto_import_service = EnqueueKsefAutoImportService()
+        return self._enqueue_ksef_auto_import_service
 
     @property
     def create_value_type(self):

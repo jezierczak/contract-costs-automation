@@ -17,6 +17,7 @@ from ksef_client.services import AuthCoordinator
 from ksef_client.services.xades import XadesKeyPair
 
 from contract_costs.infrastructure.secrets_cipher import decrypt_secret
+from contract_costs.services.workers.dto.ksef_import_queue_item import KsefImportDateType
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,10 @@ class KsefApiClient:
     _PAGE_SIZE = 100
     _MAX_PAGES = 200  # safety guard against runaway pagination
     _SUBJECT_IDENTIFIER_TYPE = "certificateSubject"
+    _DATE_TYPE_MAP = {
+        KsefImportDateType.ISSUE: InvoiceQueryDateType.ISSUE,
+        KsefImportDateType.PERMANENT_STORAGE: InvoiceQueryDateType.PERMANENTSTORAGE,
+    }
 
     def __init__(self, *, mode: str | None = None) -> None:
         self._mode = (mode or os.getenv("KSEF_IMPORT_MODE") or "mock").strip().lower()
@@ -53,6 +58,7 @@ class KsefApiClient:
         company,
         from_date: date,
         to_date: date,
+        date_type: KsefImportDateType = KsefImportDateType.ISSUE,
     ) -> list[KsefDownloadedInvoice]:
         if self._mode == "mock":
             return self._fetch_mock(company=company)
@@ -62,6 +68,7 @@ class KsefApiClient:
                 company=company,
                 from_date=from_date,
                 to_date=to_date,
+                date_type=date_type,
             )
         raise RuntimeError(f"Unsupported KSeF import mode: {self._mode}")
 
@@ -95,6 +102,7 @@ class KsefApiClient:
         company,
         from_date: date,
         to_date: date,
+        date_type: KsefImportDateType,
     ) -> list[KsefDownloadedInvoice]:
         if not settings.certificate_path:
             raise RuntimeError(
@@ -140,6 +148,7 @@ class KsefApiClient:
                     for metadata in self._iter_invoice_metadata(
                         invoices_client=client.invoices,
                         subject_type=subject_type,
+                        date_type=self._DATE_TYPE_MAP[date_type],
                         date_from=date_from,
                         date_to=date_to,
                         access_token=access_token,
@@ -178,6 +187,7 @@ class KsefApiClient:
         *,
         invoices_client: InvoicesClient,
         subject_type: InvoiceQuerySubjectType,
+        date_type: InvoiceQueryDateType,
         date_from: str,
         date_to: str,
         access_token: str,
@@ -186,7 +196,7 @@ class KsefApiClient:
         for _ in range(self._MAX_PAGES):
             response = invoices_client.query_invoice_metadata_by_date_range(
                 subject_type=subject_type,
-                date_type=InvoiceQueryDateType.ISSUE,
+                date_type=date_type,
                 date_from=date_from,
                 date_to=date_to,
                 access_token=access_token,

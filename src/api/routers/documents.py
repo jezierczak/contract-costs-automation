@@ -1,3 +1,4 @@
+import json
 from io import BytesIO
 from datetime import date, timedelta
 from uuid import UUID
@@ -25,6 +26,7 @@ from contract_costs.services.documents.query.list_docuemnts_query_command import
     ListDocumentsQueryCommand,
 )
 from contract_costs.services.documents.upload.dto.upload_document_command import UploadDocumentCommand
+from contract_costs.services.ksef.dto.enqueue_ksef_auto_import_command import EnqueueKsefAutoImportCommand
 from contract_costs.services.queue.ksef_import_queue import ksef_import_queue
 from contract_costs.services.workers.dto.ksef_import_queue_item import KsefImportQueueItem
 import contract_costs.config as cfg
@@ -362,6 +364,53 @@ def documents_ksef_import(
         '{"closeModal": true, '
         '"showMessage": {"type": "success", "text": "Zlecenie importu KSeF zapisane."}}'
     )
+    return response
+
+@router.post("/documents/ksef/import-auto")
+def documents_ksef_import_auto(
+    request: Request,
+    services=Depends(get_services),
+):
+    ctx = request.state.ctx
+    result = services.action_bus.execute(
+        action=EnqueueKsefAutoImportCommand(
+            organization_id=ctx.organization_id,
+            actor_user_id=ctx.user_id,
+        ),
+        handler=services.enqueue_ksef_auto_import_service,
+    )
+
+    for company in result.enqueued:
+        BusinessEventHelper.log(
+            services=services,
+            ctx=ctx,
+            level=BusinessEventLevel.INFO,
+            message=f"Zlecono automatyczny import KSeF dla {company.name} (od ostatniego pobrania)",
+            entity_type="company",
+            entity_id=company.id,
+        )
+
+    parts = []
+    if result.enqueued:
+        parts.append(
+            "Zlecono import KSeF: " + ", ".join(c.name for c in result.enqueued) + "."
+        )
+    if result.missing_first_import:
+        parts.append(
+            "Pominięto (wykonaj najpierw jednorazowy import ręczny): "
+            + ", ".join(c.name for c in result.missing_first_import)
+            + "."
+        )
+    if not parts:
+        parts.append("Brak firm własnych z aktywną konfiguracją KSeF.")
+
+    response = Response(status_code=200)
+    response.headers["HX-Trigger"] = json.dumps({
+        "showMessage": {
+            "type": "success" if result.enqueued else "error",
+            "text": " ".join(parts),
+        },
+    })
     return response
 
 @router.get("/documents/table")

@@ -29,3 +29,14 @@ def test_iter_date_chunks_same_day_range():
     chunks = list(KsefApiClient._iter_date_chunks(date(2026, 1, 1), date(2026, 1, 1)))
 
     assert chunks == [(date(2026, 1, 1), date(2026, 1, 1))]
+
+
+def test_every_import_date_type_maps_to_ksef_query_date_type():
+    from ksef_client.models import InvoiceQueryDateType
+
+    from contract_costs.services.workers.dto.ksef_import_queue_item import KsefImportDateType
+
+    assert KsefApiClient._DATE_TYPE_MAP == {
+        KsefImportDateType.ISSUE: InvoiceQueryDateType.ISSUE,
+        KsefImportDateType.PERMANENT_STORAGE: InvoiceQueryDateType.PERMANENTSTORAGE,
+    }
