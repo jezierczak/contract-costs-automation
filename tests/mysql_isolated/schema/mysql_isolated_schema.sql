@@ -114,6 +114,7 @@ CREATE TABLE IF NOT EXISTS financial_record_lines (
     quantity DECIMAL(18,6) NULL,
     unit VARCHAR(32) NULL,
     amount_value DECIMAL(18,2) NOT NULL,
+    amount_input_type VARCHAR(16) NOT NULL DEFAULT 'net',
     vat_rate DECIMAL(5,2) NOT NULL,
     tax_treatment VARCHAR(32) NOT NULL,
     description TEXT NULL,

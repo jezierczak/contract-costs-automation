@@ -225,6 +225,22 @@ def financial_record_line_repo_contract(request):
 
 
 @pytest.fixture(params=["memory", "mysql"], ids=["memory", "mysql"])
+def record_and_line_repos_contract(request):
+    """Para repozytoriów rekordów i linii na wspólnym backendzie (do zapytań łączących obie tabele)."""
+    backend = request.param
+    if backend == "memory":
+        line_repo = InMemoryFinancialRecordLineRepository()
+        return InMemoryFinancialRecordRepository(line_repository=line_repo), line_repo
+    if backend == "mysql":
+        mysql_contract_connection = request.getfixturevalue("mysql_contract_connection")
+        return (
+            MySQLFinancialRecordRepository(connection=mysql_contract_connection),
+            MySQLFinancialRecordLineRepository(connection=mysql_contract_connection),
+        )
+    raise RuntimeError(f"Unsupported backend in contract tests: {backend}")
+
+
+@pytest.fixture(params=["memory", "mysql"], ids=["memory", "mysql"])
 def contract_repo_contract(request):
     backend = request.param
     if backend == "memory":

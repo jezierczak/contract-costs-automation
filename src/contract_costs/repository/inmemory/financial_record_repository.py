@@ -24,6 +24,12 @@ class InMemoryFinancialRecordRepository(FinancialRecordRepository):
     ) -> None:
         self._records: dict[UUID, FinancialRecord] = {}
         self._line_repository = line_repository
+        if line_repository is not None:
+            line_repository.bind_record_deleted_check(self._is_deleted)
+
+    def _is_deleted(self, record_id: UUID) -> bool:
+        record = self._records.get(record_id)
+        return record is not None and record.status == FinancialRecordStatus.DELETED
 
     # =====================================================
     # CREATE / UPDATE

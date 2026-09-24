@@ -222,7 +222,7 @@ class RecordEditWorkspaceQueryService(
             for l in lines
         ]
 
-        total_amount = sum((l.amount.cashflow for l in lines), Decimal("0"))
+        total_amount = sum((l.amount.payable for l in lines), Decimal("0"))
         paid_amount = sum((p.amount for p in payments), Decimal("0"))
 
         mapped_payments = [

@@ -178,3 +178,48 @@ def test_delete_not_in_ids(line_repo):
         organization_id=org_id,
         line_id=l2.id,
     )
+
+
+def test_list_by_contract_skips_lines_of_deleted_records(line_repo, financial_record_repo):
+    from datetime import date, datetime
+    from contract_costs.model.financial_record import FinancialRecordStatus
+    from tests.builders.financial_record_builder import FinancialRecordBuilder
+
+    org_id = new_uuid()
+    contract_id = new_uuid()
+
+    active = FinancialRecordBuilder().with_organization_id(org_id).build()
+    deleted = (
+        FinancialRecordBuilder()
+        .with_organization_id(org_id)
+        .with_status(FinancialRecordStatus.DELETED)
+        .build()
+    )
+    financial_record_repo.add(active)
+    financial_record_repo.add(deleted)
+
+    kept = (
+        FinancialRecordLineBuilder()
+        .with_organization_id(org_id)
+        .with_contract_id(contract_id)
+        .with_financial_record_id(active.id)
+        .with_created_at(datetime(2026, 1, 1))
+        .build()
+    )
+    dropped = (
+        FinancialRecordLineBuilder()
+        .with_organization_id(org_id)
+        .with_contract_id(contract_id)
+        .with_financial_record_id(deleted.id)
+        .with_created_at(datetime(2026, 1, 1))
+        .build()
+    )
+    line_repo.add(organization_id=org_id, line=kept)
+    line_repo.add(organization_id=org_id, line=dropped)
+
+    assert line_repo.list_by_contract(organization_id=org_id, contract_id=contract_id) == [kept]
+    assert line_repo.list_by_contract_until(
+        organization_id=org_id,
+        contract_id=contract_id,
+        snapshot_date=date(2999, 1, 1),
+    ) == [kept]

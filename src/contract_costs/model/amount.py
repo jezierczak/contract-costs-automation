@@ -115,9 +115,19 @@ class Amount:
 
     @property
     def cashflow(self):
+        # liczony w netto — VAT pomijamy, więc kwota wpisana brutto też daje netto
         if self.tax_treatment == TaxTreatment.NON_CASH_COST:
             return Decimal("0.00")
+        if self.tax_treatment == TaxTreatment.TAX_DEDUCTIBLE:
+            return self.net
         return self.value
+
+    @property
+    def payable(self) -> Decimal:
+        # kwota do zapłaty (brutto) — do rozliczania płatności, nie do analiz
+        if self.tax_treatment == TaxTreatment.NON_CASH_COST:
+            return Decimal("0.00")
+        return self.gross
 
     @property
     def net_or_zero(self) -> Decimal:

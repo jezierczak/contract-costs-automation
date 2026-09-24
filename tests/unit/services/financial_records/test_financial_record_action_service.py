@@ -75,12 +75,13 @@ def test_mark_paid_updates_payment_status_and_paid_date(financial_record_repo, l
         organization_id=organization_id, financial_record_id=record.id,
     )
     assert len(payments) == 1
-    assert payments[0].amount == Decimal("1000.00")
+    # do zapłaty jest brutto: 1000 netto + 23% VAT
+    assert payments[0].amount == Decimal("1230.00")
 
 
-def test_mark_paid_auto_pays_when_no_cashflow(financial_record_repo, uow):
+def test_mark_paid_auto_pays_when_nothing_payable(financial_record_repo, uow):
     """
-    Rekord bez linii (lub z samych linii non_cash_cost) ma total_cashflow == 0 –
+    Rekord bez linii (lub z samych linii non_cash_cost) ma sumę payable == 0 –
     nie ma czego płacić, więc z automatu dostaje status PAID zamiast wisieć jako UNPAID.
     """
     organization_id = uuid4()
@@ -173,7 +174,7 @@ def test_add_payment_then_mark_paid_tops_up_remaining(financial_record_repo, lin
         organization_id=organization_id, financial_record_id=record.id,
     )
     assert len(payments) == 2
-    assert sum(p.amount for p in payments) == Decimal("1000.00")
+    assert sum(p.amount for p in payments) == Decimal("1230.00")
 
 
 def test_mark_unpaid_wipes_payment_history(financial_record_repo, line_repo, uow):

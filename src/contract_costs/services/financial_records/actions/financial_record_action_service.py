@@ -122,14 +122,14 @@ class FinancialRecordActionService(
         for record_id in record_ids:
             record = self._require_record(uow=uow,organization_id=organization_id,record_id=record_id)
 
-            total = self._total_cashflow(uow=uow, organization_id=organization_id, record_id=record_id)
+            total = self._total_payable(uow=uow, organization_id=organization_id, record_id=record_id)
             already_paid = self._sum_payments(
                 uow=uow, organization_id=organization_id, record_id=record_id,
             )
             remaining = total - already_paid
 
             if total <= 0:
-                # brak przepływu pieniężnego (np. same linie non_cash_cost) – nie ma czego płacić
+                # nic do zapłaty (np. same linie non_cash_cost)
                 self._recompute_payment_state(
                     uow=uow,
                     organization_id=organization_id,
@@ -377,7 +377,7 @@ class FinancialRecordActionService(
             )
             uow.financial_records.update(updated)
     @staticmethod
-    def _total_cashflow(
+    def _total_payable(
             *,
             uow: UnitOfWork,
             organization_id: UUID,
@@ -386,7 +386,7 @@ class FinancialRecordActionService(
         lines = uow.financial_record_lines.list_by_financial_record(
             organization_id=organization_id, financial_record_id=record_id,
         )
-        return sum((line.amount.cashflow for line in lines), Decimal("0"))
+        return sum((line.amount.payable for line in lines), Decimal("0"))
 
     @staticmethod
     def _sum_payments(
@@ -410,9 +410,9 @@ class FinancialRecordActionService(
     ) -> None:
         """
         payment_status i paid_date faktury są zawsze pochodną listy wpłat
-        vs. sumy cashflow jej pozycji – przeliczane po każdej zmianie wpłat.
+        vs. sumy kwot do zapłaty (payable) jej pozycji – przeliczane po każdej zmianie wpłat.
         """
-        total = self._total_cashflow(
+        total = self._total_payable(
             uow=uow, organization_id=organization_id, record_id=record.id,
         )
         payments = uow.financial_record_payments.list_by_financial_record(
@@ -424,7 +424,7 @@ class FinancialRecordActionService(
         now = self._clock()
 
         if total <= 0:
-            # brak przepływu pieniężnego (np. same linie non_cash_cost) – z automatu "zapłacone"
+            # nic do zapłaty (np. same linie non_cash_cost) – z automatu "zapłacone"
             updated = record.mark_paid(
                 paid_at=last_paid_date, updated_at=now, updated_by_user_id=actor_user_id,
             )

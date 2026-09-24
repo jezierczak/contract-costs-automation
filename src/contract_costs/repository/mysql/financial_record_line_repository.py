@@ -121,7 +121,15 @@ class MySQLFinancialRecordLineRepository(FinancialRecordLineRepository):
             self._maybe_close(conn)
 
     def list_by_contract(self, *, organization_id: UUID, contract_id: UUID) -> list[FinancialRecordLine]:
-        sql = "SELECT * FROM financial_record_lines WHERE contract_id = %s AND organization_id = %s"
+        sql = """
+              SELECT frl.*
+              FROM financial_record_lines frl
+              LEFT JOIN financial_records fr
+                  ON fr.id = frl.financial_record_id
+              WHERE frl.contract_id = %s
+                AND frl.organization_id = %s
+                AND (fr.id IS NULL OR fr.status != 'deleted')
+              """
         conn = self._get_connection()
         try:
             with conn.cursor(dictionary=True) as cur:
@@ -304,11 +312,14 @@ class MySQLFinancialRecordLineRepository(FinancialRecordLineRepository):
     def list_by_contract_until(self, *, organization_id: UUID, contract_id: UUID, snapshot_date: date) -> list[FinancialRecordLine]:
         cutoff = datetime.combine(snapshot_date, datetime.max.time())
         sql = """
-              SELECT *
-              FROM financial_record_lines
-              WHERE organization_id = %s
-                AND contract_id = %s
-                AND created_at <= %s
+              SELECT frl.*
+              FROM financial_record_lines frl
+              LEFT JOIN financial_records fr
+                  ON fr.id = frl.financial_record_id
+              WHERE frl.organization_id = %s
+                AND frl.contract_id = %s
+                AND frl.created_at <= %s
+                AND (fr.id IS NULL OR fr.status != 'deleted')
               """
 
         conn = self._get_connection()

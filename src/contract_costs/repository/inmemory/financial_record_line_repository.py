@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
@@ -12,6 +13,17 @@ class InMemoryFinancialRecordLineRepository(FinancialRecordLineRepository):
 
     def __init__(self) -> None:
         self._lines: dict[UUID, FinancialRecordLine] = {}
+        # ustawiane przez InMemoryFinancialRecordRepository — linie nie znają rekordów
+        self._is_record_deleted: Callable[[UUID], bool] = lambda record_id: False
+
+    def bind_record_deleted_check(self, is_record_deleted: Callable[[UUID], bool]) -> None:
+        self._is_record_deleted = is_record_deleted
+
+    def _belongs_to_active_record(self, line: FinancialRecordLine) -> bool:
+        return (
+            line.financial_record_id is None
+            or not self._is_record_deleted(line.financial_record_id)
+        )
 
     # =====================================================
     # CREATE / UPDATE
@@ -110,6 +122,7 @@ class InMemoryFinancialRecordLineRepository(FinancialRecordLineRepository):
             l for l in self._lines.values()
             if l.organization_id == organization_id
             and l.contract_id == contract_id
+            and self._belongs_to_active_record(l)
         ]
 
     def list_unassigned(
@@ -147,6 +160,7 @@ class InMemoryFinancialRecordLineRepository(FinancialRecordLineRepository):
             and l.contract_id == contract_id
             and l.created_at
             and l.created_at <= cutoff
+            and self._belongs_to_active_record(l)
         ]
 
     # =====================================================
