@@ -1,5 +1,16 @@
 import logging
+import os
 import threading
+
+# Konfiguracja logowania przed importami aplikacji – inaczej loggery modułów
+# (workery, scheduler KSeF) nie trafiają do stdout / `docker logs`.
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO"),
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    force=True,
+)
+# httpx loguje każde zapytanie HTTP na INFO – przy imporcie KSeF to setki linii
+logging.getLogger("httpx").setLevel(logging.WARNING)
 from uuid import UUID
 
 from fastapi import FastAPI, Request

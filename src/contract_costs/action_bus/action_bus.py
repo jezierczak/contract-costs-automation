@@ -28,7 +28,7 @@ class ActionBus:
         action: Action,
         handler: ActionHandler,
     ):
-        logger.info("ACTION BUS EXECUTE: %s", type(action).__name__)
+        logger.debug("ACTION BUS EXECUTE: %s", type(action).__name__)
 
         action_type = getattr(type(action), "__action_type__", None)
         if action_type is None:
@@ -37,14 +37,14 @@ class ActionBus:
             )
 
         self._permission_validator.validate(action)
-        logger.info("PERMISSION OK")
+        logger.debug("PERMISSION OK")
 
         if not handler:
             raise ValueError(
                 f"No handler registered for {type(action).__name__}"
             )
 
-        logger.info("HANDLER RESOLVED: %s", type(handler).__name__)
+        logger.debug("HANDLER RESOLVED: %s", type(handler).__name__)
 
         if not hasattr(handler, "execute"):
             raise TypeError("Handler must expose execute()")
@@ -54,7 +54,7 @@ class ActionBus:
             try:
                 result = handler.execute(action=action, uow=uow)
 
-                logger.info(
+                logger.debug(
                     "ACTION SUCCESS: %s",
                     type(action).__name__
                 )

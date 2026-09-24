@@ -490,8 +490,8 @@ class MySQLFinancialRecordRepository(FinancialRecordRepository):
         conn = self._get_connection()
         try:
             with conn.cursor(dictionary=True) as cur:
-                logger.info(sql)
-                logger.info(params)
+                logger.debug(sql)
+                logger.debug(params)
                 cur.execute(sql, params)
                 rows = cur.fetchall()
         finally:
