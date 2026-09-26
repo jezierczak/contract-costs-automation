@@ -52,7 +52,11 @@ def handle_show_document_matches(args) -> None:
             score = document.scoring.score if document.scoring else "-"
             source = document.document_source.value if document.document_source else "-"
 
-            print(f"{document.document_number or '—'}  [{source}, score {score}]  → {decision.decision.value}")
+            print(
+                f"{document.document_number or '—'}  [{source}, score {score}, "
+                f"status {document.document_status.value}]  → {decision.decision.value}"
+            )
+            print(f"    plik: {document.file_path}")
             print(f"    sprzedawca: {_company_label(result.seller, result.seller_tax_number)}")
             print(f"    nabywca:    {_company_label(result.buyer, result.buyer_tax_number)}")
             for match in result.matches:
