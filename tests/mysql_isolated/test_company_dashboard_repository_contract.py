@@ -108,28 +108,6 @@ def seeded(ledger_env):
     }
 
 
-def test_dashboard_data_excludes_deleted_records(seeded):
-    data = seeded["dashboard"].fetch_dashboard_data(
-        organization_id=seeded["org_id"],
-        company_id=seeded["company_id"],
-        year=YEAR,
-    )
-
-    assert data.year_costs == Decimal("100.00")
-    assert [m.costs for m in data.months] == [Decimal("100.00")]
-
-
-def test_month_breakdown_excludes_deleted_records(seeded):
-    rows = seeded["dashboard"].fetch_month_breakdown(
-        organization_id=seeded["org_id"],
-        company_id=seeded["company_id"],
-        year=YEAR,
-        month=3,
-    )
-
-    assert sum(r.costs for r in rows) == Decimal("100.00")
-
-
 def test_counterparty_lines_exclude_deleted_records(seeded):
     lines = seeded["dashboard"].fetch_counterparty_lines(
         organization_id=seeded["org_id"],
@@ -151,3 +129,4 @@ def test_company_lines_exclude_deleted_records(seeded):
     assert [str(line.record_id) for line in lines] == [str(seeded["active_record_id"])]
     assert lines[0].amount_value == Decimal("100.00")
     assert lines[0].direction == "COST"
+    assert lines[0].status == "processed"

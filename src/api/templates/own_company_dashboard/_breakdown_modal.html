@@ -1,132 +1,104 @@
+{% macro item_row(i, with_non_tax) -%}
+<tr class="hover:bg-gray-50">
+<td class="px-3 py-2 whitespace-nowrap">
+{{ i.code or "—" }}
+{% if i.is_fixed %}
+<span class="ml-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] uppercase">stały</span>
+{% endif %}
+</td>
+<td class="px-3 py-2">{{ i.name or "bez typu" }}</td>
+<td class="text-right px-3 py-2 whitespace-nowrap">{{ i.pillars.net|money }}</td>
+{% if with_non_tax %}
+<td class="text-right px-3 py-2 whitespace-nowrap text-gray-500">{{ i.pillars.non_tax|money }}</td>
+{% endif %}
+<td class="text-right px-3 py-2 whitespace-nowrap font-medium">{{ i.pillars.cashflow|money }}</td>
+<td class="text-right px-3 py-2 text-xs text-gray-600">{{ i.share|pct }}</td>
+</tr>
+{%- endmacro %}
+
 <div class="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
 
-<div class="bg-white rounded-lg shadow-lg w-[800px] p-6">
+<div class="bg-white rounded-lg shadow-lg w-[860px] max-h-[85vh] overflow-y-auto p-6">
 
 <h2 class="text-lg font-semibold mb-4">
 Rozbicie wg kategorii
 {% if month %}
- — {{month}}/{{year}}
+ — {{ "%02d"|format(month) }}/{{ year }}
 {% else %}
- — rok {{year}}
+ — rok {{ year }}
 {% endif %}
 </h2>
-
-<table class="w-full text-sm border rounded overflow-hidden">
-
-<thead class="bg-gray-100">
-<tr>
-<th class="text-left px-3 py-2">Kod</th>
-<th class="text-left px-3 py-2">Nazwa</th>
-<th class="text-right px-3 py-2">Net</th>
-<th class="text-right px-3 py-2">Non-deduct</th>
-<th class="text-right px-3 py-2">Total</th>
-<th class="text-right px-3 py-2">% udział</th>
-</tr>
-</thead>
-
-<tbody class="divide-y">
 
 <!-- ===================== -->
 <!-- KOSZTY -->
 <!-- ===================== -->
 
-{% for i in costs %}
+<h3 class="text-sm font-semibold text-red-700 mb-1">Koszty</h3>
 
-<tr class="hover:bg-gray-50">
+<table class="w-full text-sm border rounded overflow-hidden mb-6">
 
-<td class="px-3 py-2">{{ i.code }}</td>
-<td class="px-3 py-2">{{ i.name }}</td>
-
-<td class="text-right px-3 py-2">
-{{ i.costs }}
-</td>
-
-<td class="text-right px-3 py-2">
-{{ i.non_deductible }}
-</td>
-
-<td class="text-right px-3 py-2 font-medium">
-{{ i.total }}
-</td>
-
-<td class="text-right px-3 py-2 text-xs text-gray-600">
-{{ i.percent_of_direction|round(1) }}%
-</td>
-
+<thead class="bg-gray-100 text-xs text-gray-600">
+<tr>
+<th class="text-left px-3 py-2">Kod</th>
+<th class="text-left px-3 py-2">Nazwa</th>
+<th class="text-right px-3 py-2">Księgowo</th>
+<th class="text-right px-3 py-2">Bezkosztowe</th>
+<th class="text-right px-3 py-2">Cashflow</th>
+<th class="text-right px-3 py-2">% cashflow</th>
 </tr>
+</thead>
 
+<tbody class="divide-y">
+
+{% for i in costs %}
+{{ item_row(i, True) }}
+{% else %}
+<tr><td colspan="6" class="px-3 py-3 text-center text-gray-400">Brak kosztów.</td></tr>
 {% endfor %}
 
-<tr class="bg-gray-50 font-semibold">
-
-<td class="px-3 py-2 text-right text-red-700">
-SUMA
-</td>
-
-<td class="px-3 py-2 text-left text-red-700">
-(Koszty)
-</td>
-
+<tr class="bg-gray-50 font-semibold text-red-700">
+<td class="px-3 py-2" colspan="2">Suma kosztów</td>
+<td class="text-right px-3 py-2 whitespace-nowrap">{{ cost_total.net|money }}</td>
+<td class="text-right px-3 py-2 whitespace-nowrap">{{ cost_total.non_tax|money }}</td>
+<td class="text-right px-3 py-2 whitespace-nowrap">{{ cost_total.cashflow|money }}</td>
 <td></td>
-<td></td>
-
-<td class="text-right px-3 py-2 text-red-700">
-{{ cost_total }}
-</td>
-
-<td></td>
-
 </tr>
 
+</tbody>
+
+</table>
 
 <!-- ===================== -->
 <!-- PRZYCHODY -->
 <!-- ===================== -->
 
-{% for i in revenues %}
+<h3 class="text-sm font-semibold text-green-700 mb-1">Przychody</h3>
 
-<tr class="hover:bg-gray-50">
+<table class="w-full text-sm border rounded overflow-hidden">
 
-<td class="px-3 py-2">{{ i.code }}</td>
-<td class="px-3 py-2">{{ i.name }}</td>
-
-<td class="text-right px-3 py-2">
-{{ i.revenue }}
-</td>
-
-<td class="text-right px-3 py-2">0</td>
-
-<td class="text-right px-3 py-2 font-medium">
-{{ i.total }}
-</td>
-
-<td class="text-right px-3 py-2 text-xs text-gray-600">
-{{ i.percent_of_direction|round(1) }}%
-</td>
-
+<thead class="bg-gray-100 text-xs text-gray-600">
+<tr>
+<th class="text-left px-3 py-2">Kod</th>
+<th class="text-left px-3 py-2">Nazwa</th>
+<th class="text-right px-3 py-2">Księgowo</th>
+<th class="text-right px-3 py-2">Cashflow</th>
+<th class="text-right px-3 py-2">% cashflow</th>
 </tr>
+</thead>
 
+<tbody class="divide-y">
+
+{% for i in revenues %}
+{{ item_row(i, False) }}
+{% else %}
+<tr><td colspan="5" class="px-3 py-3 text-center text-gray-400">Brak przychodów.</td></tr>
 {% endfor %}
 
-<tr class="bg-gray-50 font-semibold">
-
-<td class="px-3 py-2 text-right text-green-700">
-SUMA
-</td>
-
-<td class="px-3 py-2 text-left text-green-700">
-(Przychody)
-</td>
-
+<tr class="bg-gray-50 font-semibold text-green-700">
+<td class="px-3 py-2" colspan="2">Suma przychodów</td>
+<td class="text-right px-3 py-2 whitespace-nowrap">{{ revenue_total.net|money }}</td>
+<td class="text-right px-3 py-2 whitespace-nowrap">{{ revenue_total.cashflow|money }}</td>
 <td></td>
-<td></td>
-
-<td class="text-right px-3 py-2 text-green-700">
-{{ revenue_total }}
-</td>
-
-<td></td>
-
 </tr>
 
 </tbody>

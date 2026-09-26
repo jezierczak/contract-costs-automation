@@ -1,38 +1,28 @@
 from dataclasses import dataclass
 from datetime import date
-from decimal import Decimal
-from uuid import UUID
+
+from contract_costs.services.common.pillars import Pillars
 
 
 @dataclass(slots=True)
 class FixedCostRecordDTO:
-    record_id: UUID
+    record_id: str
     record_date: date
-    item_name:str
+    item_name: str | None
     description: str | None
-    amount: Decimal
-    tax_treatment: str
+    pillars: Pillars
 
 
 @dataclass(slots=True)
 class FixedCostValueTypeDTO:
-    value_type_code: str
-    value_type_name: str
+    value_type_code: str | None
+    value_type_name: str | None
 
     records: list[FixedCostRecordDTO]
-    total: Decimal
-
-
-# @dataclass(slots=True)
-# class FixedCostContractDTO:
-#     contract_id: UUID
-#     contract_code: str
-#
-#     value_types: list[FixedCostValueTypeDTO]
-#     total: Decimal
+    total: Pillars
 
 
 @dataclass(slots=True)
 class CompanyFixedCostsDTO:
     value_types: list[FixedCostValueTypeDTO]
-    total: Decimal
+    total: Pillars

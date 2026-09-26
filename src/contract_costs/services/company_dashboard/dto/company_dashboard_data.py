@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from decimal import Decimal
 from uuid import UUID
 
 from contract_costs.model.company import Company
@@ -15,21 +14,7 @@ class CompanyDashboardData:
 
     year: int
 
-    # YEAR
-    year_revenue: Decimal = Decimal("0")
-    year_costs: Decimal = Decimal("0")
-    year_profit: Decimal = Decimal("0")
+    financials: CompanyFinancials
 
-    year_non_deductible: Decimal = Decimal("0")
-    year_cashflow: Decimal = Decimal("0")
-
-    year_fixed_costs: Decimal = Decimal("0")
-
-    # CURRENT MONTH
-    current_month: CompanyDashboardMonth | None = None
-
-    # PREVIOUS MONTHS
-    previous_months: list[CompanyDashboardMonth] = field(default_factory=list)
-
-    # NOWE: trzy filary z Amount (zastąpią pola powyżej po przepięciu widoków)
-    financials: CompanyFinancials | None = None
+    # miesiące z danymi, od najnowszego
+    months: list[CompanyDashboardMonth] = field(default_factory=list)

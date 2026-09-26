@@ -6,9 +6,13 @@
 
 <div class="flex justify-between items-center border-b px-6 py-4">
 
-<h2 class="text-lg font-semibold">
-Koszty stałe
-</h2>
+<div>
+<h2 class="text-lg font-semibold">Koszty stałe</h2>
+<p class="text-xs text-gray-500">
+Utrzymanie firmy — wypływy na zewnątrz grupy (ZUS i podatki, księgowość, banki).
+Najważniejszy jest <b>cashflow</b>: ile realnie wyszło pieniędzy.
+</p>
+</div>
 
 <button
 onclick="this.closest('.fixed').remove()"
@@ -23,21 +27,25 @@ class="text-gray-500 hover:text-black text-xl"
 
 <div class="p-6 space-y-6">
 
+<div class="flex justify-end gap-6 text-xs text-gray-500 pr-4">
+<span class="w-28 text-right">cashflow</span>
+<span class="w-28 text-right">księgowo</span>
+</div>
+
 {% for vt in data.value_types %}
 
 <div class="border rounded-lg">
 
 <!-- VALUE TYPE HEADER -->
 
-<div class="bg-gray-50 px-4 py-2 flex justify-between font-semibold">
+<div class="bg-gray-50 px-4 py-2 flex justify-between gap-6 font-semibold">
 
-<span>
-{{ vt.value_type_name }}
+<span class="flex-1">
+{{ vt.value_type_name or "bez typu" }}
 </span>
 
-<span>
-{{ vt.total }}
-</span>
+<span class="w-28 text-right whitespace-nowrap">{{ vt.total.cashflow|money }}</span>
+<span class="w-28 text-right whitespace-nowrap text-gray-500 font-normal">{{ vt.total.net|money }}</span>
 
 </div>
 
@@ -47,15 +55,14 @@ class="text-gray-500 hover:text-black text-xl"
 
 {% for r in vt.records %}
 
-<div class="flex justify-between">
+<div class="flex justify-between gap-6">
 
-<span>
+<span class="flex-1">
 {{ r.record_date }} — {{ r.item_name }}{% if r.description %} ({{ r.description }}){% endif %}
 </span>
 
-<span>
-{{ r.amount }}
-</span>
+<span class="w-28 text-right whitespace-nowrap">{{ r.pillars.cashflow|money }}</span>
+<span class="w-28 text-right whitespace-nowrap text-gray-400">{{ r.pillars.net|money }}</span>
 
 </div>
 
@@ -64,6 +71,10 @@ class="text-gray-500 hover:text-black text-xl"
 </div>
 
 </div>
+
+{% else %}
+
+<p class="text-center text-sm text-gray-400">Brak kosztów stałych w tym okresie.</p>
 
 {% endfor %}
 
@@ -71,15 +82,12 @@ class="text-gray-500 hover:text-black text-xl"
 
 <!-- FOOTER -->
 
-<div class="border-t px-6 py-4 flex justify-between font-semibold">
+<div class="border-t px-6 py-4 flex justify-between gap-6 font-semibold">
 
-<span>
-Suma
-</span>
+<span class="flex-1">Suma</span>
 
-<span>
-{{ data.total }}
-</span>
+<span class="w-28 text-right whitespace-nowrap">{{ data.total.cashflow|money }}</span>
+<span class="w-28 text-right whitespace-nowrap text-gray-500 font-normal">{{ data.total.net|money }}</span>
 
 </div>
 

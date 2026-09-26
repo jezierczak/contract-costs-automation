@@ -28,3 +28,5 @@ class CompanyLedgerLineRaw:
     amount_input_type: str
     vat_rate: Decimal
     tax_treatment: str
+
+    status: str

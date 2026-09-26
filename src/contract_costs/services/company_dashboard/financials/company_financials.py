@@ -43,3 +43,5 @@ class CompanyFinancials:
     total: CompanyPeriodFinancials
     # tylko miesiące, w których były linie; klucz = numer miesiąca
     months: dict[int, CompanyPeriodFinancials] = field(default_factory=dict)
+    # rekordy jeszcze niezatwierdzone (w trakcie przypisywania) — nie wchodzą do sum
+    unapproved_record_count: int = 0

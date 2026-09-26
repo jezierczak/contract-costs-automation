@@ -27,6 +27,7 @@ def _line(
     value_type_id: str = "vt-cost",
     contract_type: str | None = None,
     contract_owner=None,
+    status: str = "processed",
 ) -> CompanyLedgerLineRaw:
     return CompanyLedgerLineRaw(
         record_id=str(new_uuid()),
@@ -45,6 +46,7 @@ def _line(
         amount_input_type=input_type,
         vat_rate=Decimal(vat),
         tax_treatment=tax,
+        status=status,
     )
 
 
@@ -106,13 +108,27 @@ def test_legacy_system_contract_counts_as_fixed_cost():
     assert total.cost.cashflow == Decimal("50.00")
 
 
-def test_fixed_sale_is_revenue_of_seller():
+def test_value_type_contradicting_invoice_side_is_skipped():
+    # takie rekordy nie przechodzą walidacji przypisania (DIRECTION_MISMATCH)
     total = _calc([
         _line(buyer=OTHER_OWN, seller=COMPANY, value="100.00", direction="FIXED"),
+        _line(buyer=OTHER_OWN, seller=COMPANY, value="100.00", direction="COST"),
+        _line(buyer=COMPANY, seller=SUPPLIER, value="100.00", direction="REVENUE"),
     ]).total
 
-    assert total.revenue.cashflow == Decimal("100.00")
-    assert total.fixed.cashflow == Decimal("0")
+    assert total == CompanyFinancialsCalculator.calculate(year=YEAR, company_id=COMPANY, lines=[]).total
+
+
+def test_only_approved_records_are_counted():
+    fin = _calc([
+        _line(buyer=COMPANY, seller=SUPPLIER, value="100.00", status="processed"),
+        _line(buyer=COMPANY, seller=SUPPLIER, value="200.00", status="sent_to_accountant"),
+        _line(buyer=COMPANY, seller=SUPPLIER, value="400.00", status="new_cost"),
+        _line(buyer=COMPANY, seller=SUPPLIER, value="800.00", status="in_progress"),
+    ])
+
+    assert fin.total.cost.cashflow == Decimal("300.00")
+    assert fin.unapproved_record_count == 2
 
 
 def test_internal_side_follows_role_on_invoice():
