@@ -9,3 +9,5 @@ class CandidateRecordDto:
     reference: str | None
     status: str
     invoice_date: date | None
+    # dlaczego rekord pasuje: reference / total / lines / names
+    reasons: tuple[str, ...] = ()

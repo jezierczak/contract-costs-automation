@@ -138,7 +138,6 @@ class ProcessDocumentService(ActionHandler[ProcessDocumentCommand, None]):
         uow.commit()
 
         decision_result = self._decision_service.decide(
-            actor_user_id=action.actor_user_id,
             document=updated,
             uow=uow,
         )

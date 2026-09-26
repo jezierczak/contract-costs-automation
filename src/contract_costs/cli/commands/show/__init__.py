@@ -9,3 +9,4 @@ from contract_costs.cli.commands.show.snapshot import build_show_snapshot
 from contract_costs.cli.commands.show.users_of_organization import build_show_organizations
 # from contract_costs.cli.commands.show.organizations_users import build_show_organization_users
 from contract_costs.cli.commands.show.documents import build_show_documents
+from contract_costs.cli.commands.show.document_matches import build_show_document_matches

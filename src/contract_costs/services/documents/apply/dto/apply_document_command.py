@@ -39,6 +39,12 @@ class ApplyDocumentCommand(Command):
     override_document_number: str | None = None
     override_seller_nip: str | None = None
 
+    # ADD_TO_EXISTING, gdy sprzedawca dokumentu ≠ sprzedawca rekordu:
+    # przypnij mimo to (użytkownik potwierdził) albo – tylko KSeF – przepnij rekord
+    # na sprzedawcę z dokumentu
+    confirm_seller_mismatch: bool = False
+    relink_record_seller: bool = False
+
     # @property
     # def action_type(self) -> ActionType:
     #     return ActionType.APPLY_DOCUMENT

@@ -500,6 +500,9 @@ def apply_document(
     override_document_number: str | None = Form(None),
     override_seller_nip: str | None = Form(None),
 
+    confirm_seller_mismatch: int = Form(0),
+    relink_record_seller: int = Form(0),
+
     services=Depends(get_services),
 ):
     ctx = request.state.ctx
@@ -514,6 +517,8 @@ def apply_document(
         override_document_type=override_document_type,
         override_document_number=override_document_number,
         override_seller_nip=override_seller_nip,
+        confirm_seller_mismatch=bool(confirm_seller_mismatch),
+        relink_record_seller=bool(relink_record_seller),
     )
 
     assigned_record_id = services.action_bus.execute(

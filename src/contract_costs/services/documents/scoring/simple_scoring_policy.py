@@ -1,4 +1,5 @@
 from contract_costs.model.document import ScoringResult
+from contract_costs.services.common.resolve_utils import normalize_tax_number
 from contract_costs.services.companies.validators.company import CompanyValidator
 
 
@@ -50,13 +51,13 @@ class SimpleScoringPolicy:
         if seller_nip:
             reward("seller_tax_number_present", 7)
 
-            if CompanyValidator.validate_nip(seller_nip):
+            if CompanyValidator.is_trusted_tax_number(normalize_tax_number(seller_nip)):
                 reward("seller_nip_valid", 5)
             else:
                 penalize("seller_nip_invalid", 10)
 
         if buyer_nip:
-            if CompanyValidator.validate_nip(buyer_nip):
+            if CompanyValidator.is_trusted_tax_number(normalize_tax_number(buyer_nip)):
                 reward("buyer_nip_valid", 3)
             else:
                 penalize("buyer_nip_invalid", 5)

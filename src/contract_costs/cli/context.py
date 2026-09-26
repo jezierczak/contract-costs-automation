@@ -1030,7 +1030,6 @@ class Services:
             scoring_policy=SimpleScoringPolicy(),
             decision_service=DocumentDecisionService(
                 matching_service=FindMatchingRecordService(
-                    company_evaluator=self.company_evaluate_orchestrator,
                     document_parse_normalizer=DocumentParseNormalizer(),
                 ),
             ),
@@ -1086,7 +1085,6 @@ class Services:
     @property
     def apply_document_service(self):
         return ApplyDocumentService(
-        company_evaluator=self.company_evaluate_orchestrator,
         create_record_service=self.create_record_service,
         file_organizer=DocumentFileOrganizer(),
         file_service= self.record_file_workflow_service
@@ -1223,9 +1221,7 @@ class Services:
     def get_document_service(self):
         if self._get_document_service is None:
             self._get_document_service = GetDocumentQueryService(
-                company_evaluate=self.company_evaluate_orchestrator,
                 matching_service=FindMatchingRecordService(
-                    company_evaluator=self.company_evaluate_orchestrator,
                     document_parse_normalizer=DocumentParseNormalizer(),
                 )
             )

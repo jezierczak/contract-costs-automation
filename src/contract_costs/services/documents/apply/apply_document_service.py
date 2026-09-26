@@ -6,19 +6,28 @@ from uuid import UUID
 from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.common.ids import new_uuid
 from contract_costs.common.time import utc_now
-from contract_costs.model.company import CompanyType
-from contract_costs.model.document import Document, DocumentType, DocumentStatus
+from contract_costs.model.document import Document, DocumentSource, DocumentType, DocumentStatus
+from contract_costs.model.financial_record import FinancialRecord
 from contract_costs.repository.document_repository import DocumentRepository
 from contract_costs.services.catalogues.document_file_organizer import DocumentFileOrganizer
 from contract_costs.services.catalogues.record_file_workworkflow_service import RecordFileWorkflowService
-from contract_costs.services.companies.company_evaluate_orchestrator import CompanyEvaluateOrchestrator, EvaluateMode
 from contract_costs.services.documents.apply.dto.apply_document_command import ApplyDocumentCommand, DocumentApplyAction
 from contract_costs.services.financial_records.assigment.invoice_sources.document.create_record_from_document_service import \
     CreateRecordFromDocumentService
 import contract_costs.config as cfg
+from contract_costs.services.common.resolve_utils import is_placeholder_identifier, normalize_tax_number
 from contract_costs.services.financial_records.assigment.invoice_sources.document.dto.create_record_from_document_command import \
     CreateRecordFromDocumentCommand
 from contract_costs.unit_of_work import UnitOfWork
+
+
+class SellerMismatchError(RuntimeError):
+    """Sprzedawca dokumentu inny niż na rekordzie – wymaga potwierdzenia użytkownika."""
+
+    def __init__(self, *, document_seller_nip: str, record_seller_id: UUID) -> None:
+        super().__init__(f"Seller mismatch: document NIP {document_seller_nip} is not the record seller")
+        self.document_seller_nip = document_seller_nip
+        self.record_seller_id = record_seller_id
 
 
 class ApplyDocumentService(ActionHandler[ApplyDocumentCommand,UUID | None]):
@@ -27,7 +36,6 @@ class ApplyDocumentService(ActionHandler[ApplyDocumentCommand,UUID | None]):
         self,
         # document_repo: DocumentRepository,
         # record_repo: FinancialRecordRepository,
-        company_evaluator: CompanyEvaluateOrchestrator,
         create_record_service: CreateRecordFromDocumentService,
         file_organizer: DocumentFileOrganizer,
         file_service: RecordFileWorkflowService,
@@ -36,7 +44,6 @@ class ApplyDocumentService(ActionHandler[ApplyDocumentCommand,UUID | None]):
     ) -> None:
         # self._documents = document_repo
         # self._records = record_repo
-        self._company_eval = company_evaluator
         self._create_record_service = create_record_service
         self._files = file_organizer
         self._clock = clock
@@ -173,18 +180,7 @@ class ApplyDocumentService(ActionHandler[ApplyDocumentCommand,UUID | None]):
             raise RuntimeError("Target record not found")
 
         # 🔹 Seller validation
-        if document.seller_nip:
-            seller = self._company_eval.evaluate_from_tax(
-                organization_id=cmd.organization_id,
-                actor_user_id=cmd.actor_user_id,
-                input_tax_number=document.seller_nip,
-                role=CompanyType.SELLER,
-                mode=EvaluateMode.NO_CREATE,
-                uow=uow,
-            )
-
-            if record.seller_id != seller.id:
-                raise RuntimeError("Seller mismatch")
+        record = self._check_seller(uow=uow, cmd=cmd, document=document, record=record)
 
         # ============================================================
         # 1️⃣ MOVE TO RAW (technical)
@@ -234,6 +230,42 @@ class ApplyDocumentService(ActionHandler[ApplyDocumentCommand,UUID | None]):
 
         return record.id
 
+
+    def _check_seller(
+            self,
+            *,
+            uow: UnitOfWork,
+            cmd: ApplyDocumentCommand,
+            document: Document,
+            record: FinancialRecord,
+    ) -> FinancialRecord:
+        if not document.seller_nip:
+            return record
+
+        value = document.seller_nip.strip()
+        key = value if is_placeholder_identifier(value) else normalize_tax_number(value)
+        seller = uow.companies.get_by_tax_number(key, cmd.organization_id) if key else None
+        if seller is not None and seller.id == record.seller_id:
+            return record
+
+        if cmd.relink_record_seller:
+            if document.document_source != DocumentSource.KSEF:
+                raise RuntimeError("Only a KSeF document can re-link the record seller")
+            if seller is None:
+                raise RuntimeError(f"No company with tax number {document.seller_nip}")
+            relinked = replace(
+                record,
+                seller_id=seller.id,
+                updated_at=self._clock(),
+                updated_by_user_id=cmd.actor_user_id,
+            )
+            uow.financial_records.update(relinked)
+            return relinked
+
+        if not cmd.confirm_seller_mismatch:
+            raise SellerMismatchError(document_seller_nip=document.seller_nip, record_seller_id=record.seller_id)
+
+        return record
 
     def _skip(self,doc_repo:DocumentRepository, document: Document) -> None:
         org_root = cfg.WORK_DIR / str(document.organization_id)

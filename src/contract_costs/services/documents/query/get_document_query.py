@@ -1,16 +1,12 @@
 import logging
-from datetime import datetime
 from uuid import UUID
 
 from contract_costs.action_bus.action_handler import ActionHandler
-from contract_costs.model.company import CompanyType
 from contract_costs.model.document import Document
-from contract_costs.model.financial_record import FinancialRecordStatus, FinancialRecord
-from contract_costs.services.companies.company_evaluate_orchestrator import EvaluateMode, CompanyEvaluateOrchestrator
 from contract_costs.services.documents.prepare.dto.candidate_record_dto import CandidateRecordDto
 from contract_costs.services.documents.prepare.dto.prepare_document_dto import PreparedDocumentDto
 from contract_costs.services.documents.query.dto.get_document_query import GetDocumentQuery
-from contract_costs.services.documents.scoring.find_matching_record_service import FindMatchingRecordService, MatchMode
+from contract_costs.services.documents.scoring.find_matching_record_service import FindMatchingRecordService
 from contract_costs.unit_of_work import UnitOfWork
 
 
@@ -21,10 +17,8 @@ class GetDocumentQueryService(
 ):
     def __init__(
         self,
-        company_evaluate: CompanyEvaluateOrchestrator,
         matching_service: FindMatchingRecordService,
     ) -> None:
-        self._company_evaluate = company_evaluate
         self._matching_service = matching_service
 
     def execute(self, *, action, uow):
@@ -73,37 +67,15 @@ class GetDocumentQueryService(
             uow: UnitOfWork,
     ) -> list[CandidateRecordDto]:
 
-        matches = self._matching_service.find(
-            document=document,
-            actor_user_id=actor_user_id,
-            uow=uow,
-            mode=MatchMode.CANDIDATE
-        )
+        result = self._matching_service.find(document=document, uow=uow)
 
-        if not matches:
-            return []
-
-        records: list[FinancialRecord] = []
-
-        for record_id in matches:
-            record = uow.financial_records.get(
-                organization_id=organization_id,
-                record_id=record_id
-            )
-
-            if record and record.status not in (
-                    FinancialRecordStatus.DELETED,
-            ):
-                records.append(record)
-
-        candidates = [
+        return [
             CandidateRecordDto(
-                record_id=r.id,
-                reference=r.reference,
-                status=str(r.status.value),
-                invoice_date=r.invoice_date,
+                record_id=m.record.id,
+                reference=m.record.reference,
+                status=str(m.record.status.value),
+                invoice_date=m.record.invoice_date,
+                reasons=tuple(sorted(r.value for r in m.reasons)),
             )
-            for r in records
+            for m in result.matches
         ]
-
-        return candidates
