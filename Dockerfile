@@ -9,6 +9,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     pkg-config \
     libcairo2-dev \
+    libpango-1.0-0 \
+    libpangoft2-1.0-0 \
+    fonts-liberation \
+    fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --no-cache-dir uv

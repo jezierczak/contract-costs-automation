@@ -27,7 +27,7 @@ dependencies = [
     "tzdata>=2025.3",
     "uvicorn[standard]>=0.41.0",
     "watchdog>=6.0.0",
-    "xhtml2pdf>=0.2.17",
+    "weasyprint>=66",
 ]
 
 [build-system]
