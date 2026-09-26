@@ -1099,6 +1099,17 @@ class Services:
 
         return self._document_action_excel_loader_service
     @property
+    def repair_record_companies(self):
+        from contract_costs.ksef.parser.ksef_document_parser import KsefDocumentParser
+        from contract_costs.services.financial_records.migration.repair_record_companies_service import (
+            RepairRecordCompaniesService,
+        )
+        return RepairRecordCompaniesService(
+            ksef_parser=KsefDocumentParser(),
+            file_workflow=self.record_file_workflow_service,
+        )
+
+    @property
     def repair_document_paths(self):
         from contract_costs.services.documents.migration.repair_document_paths_service import (
             RepairDocumentPathsService,

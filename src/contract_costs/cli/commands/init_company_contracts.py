@@ -11,6 +11,10 @@ from contract_costs.services.documents.migration.repair_document_paths_command i
 from contract_costs.services.financial_records.migration.backfill_import_payments_command import (
     BackfillImportPaymentsCommand,
 )
+from contract_costs.services.financial_records.migration.repair_record_companies_command import (
+    RepairRecordCompaniesCommand,
+)
+from contract_costs.services.financial_records.migration.repair_record_companies_service import RepairKind
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +63,18 @@ def build_system_commands(subparsers):
         help="Move files and update paths (default: only list what would change)",
     )
     p4.set_defaults(handler=handle_repair_document_paths)
+
+    p5 = subparsers.add_parser(
+        "repair-record-companies",
+        help="Re-parse KSeF XML of attached documents and re-link records whose seller/buyer "
+             "has a different NIP; run inside the container; dry-run unless --apply",
+    )
+    p5.add_argument(
+        "--apply",
+        action="store_true",
+        help="Re-link unambiguous records (default: only list what would change)",
+    )
+    p5.set_defaults(handler=handle_repair_record_companies)
 
 
 REGISTRY.register_group("system", build_system_commands)
@@ -203,3 +219,45 @@ def handle_repair_document_paths(args):
     else:
         print("Tryb podglądu – nic nie zapisano. Uruchom z --apply, żeby naprawić.")
 
+
+
+def _company_label(company) -> str:
+    if company is None:
+        return "—"
+    return f"{company.name} ({company.tax_number})"
+
+
+def handle_repair_record_companies(args):
+    services = get_services()
+
+    try:
+        organization_id = require_organization_id(services.context)
+        actor_user_id = require_user_id(services.context)
+    except ContextError:
+        return
+
+    fixes = services.action_bus.execute(
+        action=RepairRecordCompaniesCommand(
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
+            apply=args.apply,
+        ),
+        handler=services.repair_record_companies,
+    )
+
+    for fix in sorted(fixes, key=lambda f: (f.kind.value, f.reference)):
+        side = fix.side.value if fix.side else "—"
+        print(f"{fix.kind.value:<16} {fix.reference[:30]:<30} {side:<6} NIP z XML: {', '.join(fix.xml_tax_numbers) or '—'}")
+        print(f"{'':<16} jest:   {_company_label(fix.current_company)}")
+        if fix.target_company:
+            print(f"{'':<16} będzie: {_company_label(fix.target_company)}")
+        if fix.detail:
+            print(f"{'':<16} {fix.detail}")
+
+    counts = {kind: sum(1 for f in fixes if f.kind == kind) for kind in {f.kind for f in fixes}}
+    summary = ", ".join(f"{kind.value}: {count}" for kind, count in sorted(counts.items(), key=lambda i: i[0].value))
+    print(f"----- Pozycji: {len(fixes)} ({summary or 'brak'}) -----")
+    if args.apply:
+        print(f"Przepięto pozycje {RepairKind.FIX.value}; pozostałe do ręcznego sprawdzenia.")
+    else:
+        print("Tryb podglądu – nic nie zapisano. Uruchom z --apply, żeby przepiąć pozycje fix.")
