@@ -3,6 +3,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from contract_costs.action_bus.action_handler import ActionHandler
+from contract_costs.model.contract import ContractStatus, ContractType
 from contract_costs.model.document import DocumentStatus
 from contract_costs.model.financial_record import PaymentStatus
 from contract_costs.model.record_workspace_view import RecordWorkspaceView
@@ -11,8 +12,15 @@ from contract_costs.services.company_dashboard.financials.company_financials_cal
     EMPTY,
     period_range,
 )
+from contract_costs.services.contracts.financials.contract_financials import ContractIndicators, IndicatorLevel
+from contract_costs.services.contracts.query.list_contracts.list_contracts_query_command import ListContractsQuery
+from contract_costs.services.contracts.query.list_contracts.list_contracts_query_service import (
+    ListContractsQueryService,
+)
 from contract_costs.services.dashboard.dto.dashboard_data import (
     DashboardCompanyCard,
+    DashboardContracts,
+    FlaggedContract,
     DashboardData,
     DashboardPeriods,
     UnpaidSummary,
@@ -100,6 +108,55 @@ class DashboardQueryService(ActionHandler[DashboardQuery, DashboardData]):
                     view=RecordWorkspaceView.ASSIGN,
                 ),
             ),
+            contracts=self._contracts(uow=uow, action=action, today=today),
+        )
+
+    @staticmethod
+    def contract_level(indicators: ContractIndicators) -> IndicatorLevel:
+        """Najgorszy ze wskaźników; brak danych nie jest problemem, nieaktualny postęp – do obserwacji."""
+        levels = {indicators.cost, indicators.schedule, indicators.billing}
+        if IndicatorLevel.RED in levels:
+            return IndicatorLevel.RED
+        if IndicatorLevel.YELLOW in levels or indicators.progress_stale:
+            return IndicatorLevel.YELLOW
+        return IndicatorLevel.GREEN
+
+    @classmethod
+    def _contracts(cls, *, uow: UnitOfWork, action: DashboardQuery, today: date) -> DashboardContracts:
+        # ten sam serwis co lista kontraktów – wskaźniki identyczne jak w /contracts
+        contracts = ListContractsQueryService(today=lambda: today).execute(
+            action=ListContractsQuery(
+                organization_id=action.organization_id,
+                actor_user_id=action.actor_user_id,
+                contract_type=ContractType.PROJECT,
+                status=ContractStatus.ACTIVE,
+            ),
+            uow=uow,
+        )
+        contracts = [c for c in contracts if c.is_active]
+
+        flagged = []
+        counts = {level: 0 for level in IndicatorLevel}
+        for contract in contracts:
+            indicators = contract.financials.indicators
+            level = cls.contract_level(indicators)
+            counts[level] += 1
+            if level != IndicatorLevel.GREEN:
+                flagged.append(FlaggedContract(
+                    contract_id=contract.contract_id,
+                    code=contract.code,
+                    name=contract.name,
+                    level=level,
+                    indicators=indicators,
+                ))
+
+        flagged.sort(key=lambda c: (c.level != IndicatorLevel.RED, c.code))
+        return DashboardContracts(
+            active=len(contracts),
+            ok=counts[IndicatorLevel.GREEN],
+            watch=counts[IndicatorLevel.YELLOW],
+            at_risk=counts[IndicatorLevel.RED],
+            flagged=flagged,
         )
 
     @staticmethod

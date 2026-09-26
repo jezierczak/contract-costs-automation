@@ -67,6 +67,11 @@ def handle_show_dashboard(args) -> None:
                 f"dokumenty: {data.documents_to_assign} (/documents?status=READY), "
                 f"rekordy: {data.records_to_assign} (/records/assign)"
             ],
+            "Contracts": [
+                f"aktywne: {data.contracts.active}, OK: {data.contracts.ok}, "
+                f"do obserwacji: {data.contracts.watch}, zagrożone: {data.contracts.at_risk}"
+                + "".join(f" | {c.level.value.upper()} {c.code}" for c in data.contracts.flagged)
+            ],
             "Unapproved": [
                 ", ".join(f"{c.name}: {c.unapproved_record_count}" for c in data.companies) or "-"
             ],

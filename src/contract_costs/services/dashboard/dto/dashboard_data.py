@@ -3,6 +3,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from contract_costs.services.company_dashboard.financials.company_financials import CompanyPeriodFinancials
+from contract_costs.services.contracts.financials.contract_financials import ContractIndicators, IndicatorLevel
 
 
 @dataclass(frozen=True)
@@ -28,6 +29,25 @@ class UnpaidSummary:
 
 
 @dataclass(frozen=True)
+class FlaggedContract:
+    """Aktywny kontrakt z problemem – poziom = najgorszy wskaźnik (nieaktualny postęp = co najmniej YELLOW)."""
+    contract_id: UUID
+    code: str
+    name: str
+    level: IndicatorLevel
+    indicators: ContractIndicators
+
+
+@dataclass(frozen=True)
+class DashboardContracts:
+    active: int
+    ok: int
+    watch: int      # YELLOW
+    at_risk: int    # RED
+    flagged: list[FlaggedContract]   # tylko WATCH i AT_RISK, najpierw zagrożone
+
+
+@dataclass(frozen=True)
 class DashboardData:
     year: int
     last_month_year: int
@@ -41,3 +61,4 @@ class DashboardData:
     # do przypisania: dokumenty READY (czekają na ekran dopasowania) i rekordy z widoku „Do przypisania”
     documents_to_assign: int
     records_to_assign: int
+    contracts: DashboardContracts

@@ -10,6 +10,8 @@ from contract_costs.model.value_direction import ValueDirection
 from contract_costs.repository.inmemory.company_dashboard.company_dashboard_repository import (
     InMemoryCompanyDashboardRepository,
 )
+from contract_costs.services.contracts.financials.contract_financials import ContractIndicators, IndicatorLevel
+from contract_costs.services.dashboard import dashboard_query_service
 from contract_costs.services.dashboard.dashboard_query_service import DashboardQueryService
 from contract_costs.services.dashboard.dto.dashboard_query import DashboardQuery
 from tests.unit.services.company.test_company_financials_calculator import CLIENT, SUPPLIER, YEAR, _line
@@ -63,6 +65,8 @@ def _uow(lines=(), owners=None, unpaid=None, record_lines=(), payments=(), docum
         financial_records=_Records(unpaid or {}),
         financial_record_lines=_Lines(list(record_lines)),
         financial_record_payments=_Payments(list(payments)),
+        contracts=SimpleNamespace(list_contracts=lambda **kwargs: []),
+        value_types=SimpleNamespace(list_all=lambda **kwargs: []),
         documents=SimpleNamespace(
             list_filtered=lambda *, organization_id, document_status: [
                 d for d in documents if d.status == document_status
@@ -186,3 +190,46 @@ def test_counts_documents_and_records_to_assign():
 
     assert data.documents_to_assign == 2
     assert data.records_to_assign == 7
+
+
+def _indicators(cost=None, schedule=None, billing=None, stale=None):
+    return ContractIndicators(
+        cost=cost, schedule=schedule, billing=billing,
+        time_progress=None, last_progress_date=None, progress_stale=stale,
+    )
+
+
+G, Y, R = IndicatorLevel.GREEN, IndicatorLevel.YELLOW, IndicatorLevel.RED
+
+
+def test_contract_level_is_worst_indicator():
+    level = DashboardQueryService.contract_level
+    assert level(_indicators(G, G, G)) == G
+    assert level(_indicators(None, None, None)) == G
+    assert level(_indicators(G, Y, G)) == Y
+    assert level(_indicators(G, G, G, stale=True)) == Y
+    assert level(_indicators(Y, R, G)) == R
+
+
+def test_contracts_counts_all_and_lists_only_problems(monkeypatch):
+    def contract(code, indicators, is_active=True):
+        return SimpleNamespace(
+            contract_id=new_uuid(), code=code, name=code, is_active=is_active,
+            financials=SimpleNamespace(indicators=indicators),
+        )
+
+    contracts = [
+        contract("K3", _indicators(G, Y, G)),
+        contract("K1", _indicators(G, G, G)),
+        contract("K2", _indicators(R, G, G)),
+        contract("K4", _indicators(R, R, R), is_active=False),
+    ]
+    monkeypatch.setattr(
+        dashboard_query_service.ListContractsQueryService, "execute",
+        lambda self, *, action, uow: contracts,
+    )
+
+    result = _run(_uow()).contracts
+
+    assert (result.active, result.ok, result.watch, result.at_risk) == (3, 1, 1, 1)
+    assert [c.code for c in result.flagged] == ["K2", "K3"]

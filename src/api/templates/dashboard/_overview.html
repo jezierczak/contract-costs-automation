@@ -1,0 +1,181 @@
+{% from "contracts/_indicators.html" import indicator, stale_badge %}
+{% set d = dashboard %}
+
+{% macro nav_tile(url, label, count, amount=None, tone="gray") -%}
+<button
+    hx-get="{{ url }}"
+    hx-target="#content-area"
+    hx-swap="innerHTML"
+    hx-push-url="true"
+    hx-indicator="#global-indicator"
+    class="bg-white rounded-xl shadow p-4 hover:bg-gray-50 text-left w-full border-l-4
+        {% if count and tone == 'amber' %}border-amber-400{% elif count and tone == 'red' %}border-red-400{% elif count and tone == 'green' %}border-green-400{% else %}border-gray-200{% endif %}"
+>
+    <div class="text-sm text-gray-600">{{ label }}</div>
+    <div class="mt-1 flex items-baseline justify-between gap-3">
+        <span class="text-2xl font-bold">{{ count }}</span>
+        {% if amount is not none %}
+        <span class="text-sm font-semibold whitespace-nowrap">{{ amount|money }} <span class="text-gray-400 font-normal">brutto</span></span>
+        {% endif %}
+    </div>
+</button>
+{%- endmacro %}
+
+{% macro money_cell(cashflow, net, signed=False, highlight=False) -%}
+<td class="px-3 py-2 text-right whitespace-nowrap {% if highlight %}bg-amber-50/60{% endif %}">
+    <div class="font-semibold {% if signed %}{% if cashflow < 0 %}text-red-700{% else %}text-green-700{% endif %}{% endif %}">
+        {{ cashflow|money }}
+    </div>
+    <div class="text-xs {% if signed and net < 0 %}text-red-500{% else %}text-gray-500{% endif %}">
+        księg. {{ net|money }}
+    </div>
+</td>
+{%- endmacro %}
+
+{% macro periods_table(periods) -%}
+<table class="w-full text-sm">
+    <thead>
+        <tr class="text-xs text-gray-500 border-b">
+            <th class="px-3 py-2 text-left font-medium">Okres</th>
+            <th class="px-3 py-2 text-right font-medium">Przychody</th>
+            <th class="px-3 py-2 text-right font-medium">Koszty</th>
+            <th class="px-3 py-2 text-right font-medium bg-amber-50/60">w tym stałe</th>
+            <th class="px-3 py-2 text-right font-medium">Wynik</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for label, p in [(d.year ~ "", periods.year), (last_month_label, periods.last_month)] %}
+        <tr class="{% if not loop.last %}border-b{% endif %}">
+            <td class="px-3 py-2 text-gray-700 whitespace-nowrap">{{ label }}</td>
+            {{ money_cell(p.revenue.cashflow, p.revenue.net) }}
+            {{ money_cell(p.cost.cashflow, p.cost.net) }}
+            {{ money_cell(p.fixed.cashflow, p.fixed.net, highlight=True) }}
+            {{ money_cell(p.result_cashflow, p.result_net, signed=True) }}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{%- endmacro %}
+
+<div class="mt-6 space-y-6">
+
+    <!-- DO ZROBIENIA -->
+    <section>
+        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Do przypisania</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {{ nav_tile("/documents?status=READY", "📄 Dokumenty do przypisania", d.documents_to_assign, tone="amber") }}
+            {{ nav_tile("/records/assign", "📥 Rekordy do przypisania", d.records_to_assign, tone="amber") }}
+        </div>
+    </section>
+
+    <!-- NIEZAPŁACONE -->
+    <section>
+        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Niezapłacone faktury</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {{ nav_tile("/records/unpaid_costs", "💸 Koszty do zapłaty", d.unpaid_costs.count, d.unpaid_costs.amount, tone="red") }}
+            {{ nav_tile("/records/unpaid_revenue", "💰 Przychody do ściągnięcia", d.unpaid_revenue.count, d.unpaid_revenue.amount, tone="green") }}
+            {{ nav_tile("/records/unpaid_internal", "🔁 Wewnętrzne niezapłacone", d.unpaid_internal.count, d.unpaid_internal.amount) }}
+        </div>
+    </section>
+
+    <!-- KONTRAKTY -->
+    <section class="bg-white rounded-xl shadow p-4">
+        <div class="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 class="text-lg font-bold">📊 Aktywne kontrakty</h2>
+            <a
+                hx-get="/contracts"
+                hx-target="#content-area"
+                hx-swap="innerHTML"
+                hx-push-url="true"
+                hx-indicator="#global-indicator"
+                class="text-sm text-blue-700 hover:underline cursor-pointer"
+            >Wszystkie kontrakty →</a>
+        </div>
+
+        {% set k = d.contracts %}
+        {% if not k.active %}
+        <p class="mt-2 text-sm text-gray-500">Brak aktywnych kontraktów.</p>
+        {% else %}
+        <div class="mt-2 flex flex-wrap gap-2 text-sm">
+            <span class="px-2 py-1 rounded bg-gray-100">Aktywne: <b>{{ k.active }}</b></span>
+            <span class="px-2 py-1 rounded bg-green-100 text-green-800">✓ OK: <b>{{ k.ok }}</b></span>
+            <span class="px-2 py-1 rounded bg-amber-100 text-amber-800">! Do obserwacji: <b>{{ k.watch }}</b></span>
+            <span class="px-2 py-1 rounded bg-red-100 text-red-800">✕ Zagrożone: <b>{{ k.at_risk }}</b></span>
+        </div>
+
+        {% if k.flagged %}
+        <ul class="mt-3 divide-y border rounded">
+            {% for c in k.flagged %}
+            {% set ind = c.indicators %}
+            <li
+                class="px-3 py-2 flex flex-wrap items-center justify-between gap-2 cursor-pointer hover:bg-gray-50
+                    border-l-4 {% if c.level.value == 'red' %}border-red-400{% else %}border-amber-400{% endif %}"
+                hx-get="/contracts/{{ c.contract_id }}"
+                hx-target="#content-area"
+                hx-swap="innerHTML"
+                hx-push-url="true"
+                hx-indicator="#global-indicator"
+            >
+                <span><b>{{ c.code }}</b> <span class="text-gray-600">{{ c.name }}</span></span>
+                <span class="flex flex-wrap gap-1">
+                    {{ indicator(ind.cost, "Koszty", "Koszty cashflow vs wartość wykonana (budżet × postęp)") }}
+                    {{ indicator(ind.schedule, "Harmonogram", "Postęp prac vs upływ czasu kontraktu") }}
+                    {{ indicator(ind.billing, "Fakturowanie", "Zafakturowane vs wykonane") }}
+                    {{ stale_badge(ind) }}
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% endif %}
+    </section>
+
+    <!-- GRUPA -->
+    <section class="bg-white rounded-xl shadow border-2 border-indigo-200">
+        <div class="px-4 pt-4 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 class="text-lg font-bold">🏢 Grupa – wszystkie firmy razem</h2>
+            <span class="text-xs text-gray-500">
+                Faktury wewnętrzne (INTERNAL) między Twoimi firmami się znoszą.
+            </span>
+        </div>
+        <div class="p-2 overflow-x-auto">
+            {{ periods_table(d.group) }}
+        </div>
+    </section>
+
+    <!-- FIRMY OWN -->
+    <section>
+        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Firmy</h2>
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {% for c in d.companies %}
+            <div class="bg-white rounded-xl shadow">
+                <div class="px-4 pt-4 flex items-baseline justify-between gap-2">
+                    <h3 class="font-bold">{{ c.name }}</h3>
+                    <a
+                        hx-get="/own-company-finances?company_id={{ c.company_id }}"
+                        hx-target="#content-area"
+                        hx-swap="innerHTML"
+                        hx-push-url="true"
+                        hx-indicator="#global-indicator"
+                        class="text-sm text-blue-700 hover:underline cursor-pointer whitespace-nowrap"
+                    >Finanse firmy →</a>
+                </div>
+                <div class="p-2 overflow-x-auto">
+                    {{ periods_table(c.periods) }}
+                </div>
+                {% if c.unapproved_record_count %}
+                <div class="mx-4 mb-4 px-3 py-2 rounded border border-amber-300 bg-amber-50 text-xs text-amber-900">
+                    Niezatwierdzone rekordy z {{ d.year }}: <b>{{ c.unapproved_record_count }}</b> – nie są wliczone w sumy.
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <p class="text-xs text-gray-500">
+        Kwoty netto: duża liczba to <b>cashflow</b>, mała – <b>księgowo</b>. Liczone są tylko rekordy zatwierdzone.
+        Niezapłacone: brutto, które zostało do zapłaty (po odjęciu wpłat).
+    </p>
+
+</div>

@@ -1,5 +1,8 @@
 from fastapi import APIRouter, Request
 
+from contract_costs.services.company_dashboard.financials.company_financials_calculator import MONTH_NAMES
+from contract_costs.services.dashboard.dto.dashboard_query import DashboardQuery
+
 router = APIRouter()
 
 
@@ -29,9 +32,21 @@ def _render_dashboard(request: Request, *, template: str):
 
     services = request.app.state.services
 
+    ctx = request.state.ctx
+
     with services.uow as uow:
         has_owner = uow.companies.exists_owner(
-            request.state.ctx.organization_id
+            ctx.organization_id
+        )
+
+    dashboard = None
+    if has_owner:
+        dashboard = services.action_bus.execute(
+            action=DashboardQuery(
+                organization_id=ctx.organization_id,
+                actor_user_id=ctx.user_id,
+            ),
+            handler=services.dashboard_query_service,
         )
 
     return request.app.state.templates.TemplateResponse(
@@ -39,6 +54,10 @@ def _render_dashboard(request: Request, *, template: str):
         {
             "request": request,
             "has_owner": has_owner,
+            "dashboard": dashboard,
+            "last_month_label": (
+                f"{MONTH_NAMES[dashboard.last_month]} {dashboard.last_month_year}" if dashboard else ""
+            ),
             "title": "🚀 Pierwszy krok",
             "subtitle": "Dodaj swoją firmę",
             "action_url": "/companies/create-own",
