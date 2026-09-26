@@ -9,6 +9,7 @@ from contract_costs.services.companies.migration.delete_unused_companies_command
 from contract_costs.services.contracts.migration.backfill_system_contracts_command import BackfillSystemContractsCommand
 from contract_costs.services.documents.scoring.simple_scoring_policy import SimpleScoringPolicy
 from contract_costs.services.documents.migration.repair_document_paths_command import RepairDocumentPathsCommand
+from contract_costs.services.documents.migration.repair_orphan_documents_command import RepairOrphanDocumentsCommand
 from contract_costs.services.financial_records.migration.backfill_import_payments_command import (
     BackfillImportPaymentsCommand,
 )
@@ -88,6 +89,18 @@ def build_system_commands(subparsers):
         help="Delete the listed companies (default: only list them)",
     )
     p6.set_defaults(handler=handle_delete_unused_companies)
+
+    p7 = subparsers.add_parser(
+        "repair-orphan-documents",
+        help="Return APPLIED documents whose record no longer exists to READY (file back to raw); "
+             "run inside the container; dry-run unless --apply",
+    )
+    p7.add_argument(
+        "--apply",
+        action="store_true",
+        help="Move files and set READY (default: only list them)",
+    )
+    p7.set_defaults(handler=handle_repair_orphan_documents)
 
 
 REGISTRY.register_group("system", build_system_commands)
@@ -303,3 +316,35 @@ def handle_delete_unused_companies(args):
         print("Usunięto.")
     else:
         print("Tryb podglądu – nic nie usunięto. Uruchom z --apply, żeby usunąć.")
+
+
+def handle_repair_orphan_documents(args):
+    services = get_services()
+
+    try:
+        organization_id = require_organization_id(services.context)
+        actor_user_id = require_user_id(services.context)
+    except ContextError:
+        return
+
+    fixes = services.action_bus.execute(
+        action=RepairOrphanDocumentsCommand(
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
+            apply=args.apply,
+        ),
+        handler=services.repair_orphan_documents,
+    )
+
+    for fix in fixes:
+        print(f"{fix.document_number or '—':<30} {fix.old_path}")
+        if fix.file_missing:
+            print(f"{'':<30} BRAK PLIKU – zmieniony tylko status")
+        elif fix.new_path:
+            print(f"{'':<30} -> {fix.new_path}")
+
+    print(f"----- Dokumentów APPLIED bez rekordu: {len(fixes)} -----")
+    if args.apply:
+        print("Przywrócono do READY – można je znów przypisać.")
+    else:
+        print("Tryb podglądu – nic nie zapisano. Uruchom z --apply, żeby naprawić.")

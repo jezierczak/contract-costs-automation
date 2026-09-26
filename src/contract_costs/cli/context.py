@@ -1115,6 +1115,13 @@ class Services:
         )
 
     @property
+    def repair_orphan_documents(self):
+        from contract_costs.services.documents.migration.repair_orphan_documents_service import (
+            RepairOrphanDocumentsService,
+        )
+        return RepairOrphanDocumentsService()
+
+    @property
     def repair_document_paths(self):
         from contract_costs.services.documents.migration.repair_document_paths_service import (
             RepairDocumentPathsService,
