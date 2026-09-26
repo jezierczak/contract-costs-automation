@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.services.company_dashboard.dto.company_dashboard_data import (
@@ -7,6 +7,9 @@ from contract_costs.services.company_dashboard.dto.company_dashboard_data import
 )
 from contract_costs.services.company_dashboard.dto.company_dashboard_query import (
     CompanyDashboardQuery,
+)
+from contract_costs.services.company_dashboard.financials.company_financials_calculator import (
+    CompanyFinancialsCalculator,
 )
 from contract_costs.unit_of_work import UnitOfWork
 
@@ -40,6 +43,18 @@ class CompanyDashboardQueryService(
             organization_id=action.organization_id,
             company_id=company.id,
             year=year,
+        )
+
+        lines = dashboard_repo.fetch_company_lines(
+            organization_id=action.organization_id,
+            company_id=company.id,
+            start=date(year, 1, 1),
+            end=date(year + 1, 1, 1),
+        )
+        financials = CompanyFinancialsCalculator.calculate(
+            year=year,
+            company_id=company.id,
+            lines=lines,
         )
 
         # ===============================
@@ -111,6 +126,8 @@ class CompanyDashboardQueryService(
 
             current_month=current_month,
             previous_months=previous_months,
+
+            financials=financials,
         )
 
     @staticmethod

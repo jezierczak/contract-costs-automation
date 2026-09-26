@@ -4,6 +4,7 @@ from uuid import UUID
 
 from contract_costs.model.company import Company
 from contract_costs.services.company_dashboard.dto.company_dashboard_month import CompanyDashboardMonth
+from contract_costs.services.company_dashboard.financials.company_financials import CompanyFinancials
 
 
 @dataclass(slots=True)
@@ -29,3 +30,6 @@ class CompanyDashboardData:
 
     # PREVIOUS MONTHS
     previous_months: list[CompanyDashboardMonth] = field(default_factory=list)
+
+    # NOWE: trzy filary z Amount (zastąpią pola powyżej po przepięciu widoków)
+    financials: CompanyFinancials | None = None

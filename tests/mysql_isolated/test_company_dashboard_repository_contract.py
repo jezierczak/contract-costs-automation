@@ -138,3 +138,16 @@ def test_counterparty_lines_exclude_deleted_records(seeded):
     )
 
     assert [str(line.record_id) for line in lines] == [str(seeded["active_record_id"])]
+
+
+def test_company_lines_exclude_deleted_records(seeded):
+    lines = seeded["dashboard"].fetch_company_lines(
+        organization_id=seeded["org_id"],
+        company_id=seeded["company_id"],
+        start=date(YEAR, 1, 1),
+        end=date(YEAR + 1, 1, 1),
+    )
+
+    assert [str(line.record_id) for line in lines] == [str(seeded["active_record_id"])]
+    assert lines[0].amount_value == Decimal("100.00")
+    assert lines[0].direction == "COST"

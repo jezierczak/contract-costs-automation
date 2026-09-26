@@ -1,5 +1,6 @@
 from contract_costs.cli.commands.show.companies import build_show_companies
 from contract_costs.cli.commands.show.contracts import build_show_contracts
+from contract_costs.cli.commands.show.company_finances import build_show_company_finances
 from contract_costs.cli.commands.show.financial_records import build_show_financial_records
 from contract_costs.cli.commands.show.financial_record import build_show_financial_record
 from contract_costs.cli.commands.show.value_types import build_show_value_types

@@ -9,6 +9,7 @@ from contract_costs.repository.company_dashboard.dto.company_dashboard_raw_data 
     CompanyDashboardRawData,
 )
 from contract_costs.repository.company_dashboard.dto.company_fixed_cost_raw import CompanyFixedCostRaw
+from contract_costs.repository.company_dashboard.dto.company_ledger_line_raw import CompanyLedgerLineRaw
 from contract_costs.repository.company_dashboard.dto.company_month_breakdown_raw import CompanyMonthBreakdownRaw
 from contract_costs.repository.company_dashboard.dto.counterparty_ledger_line_raw import CounterpartyLedgerLineRaw
 
@@ -135,6 +136,16 @@ class InMemoryCompanyDashboardRepository(CompanyDashboardRepository):
     #  wymaga osobnej pracy, poza zakresem partial payments;
     #  na razie tylko odblokowują instancjonowanie InMemoryUnitOfWork)
     # =====================================================
+
+    def fetch_company_lines(
+            self,
+            *,
+            organization_id: UUID,
+            company_id: UUID,
+            start: date,
+            end: date,
+    ) -> list[CompanyLedgerLineRaw]:
+        return []
 
     def fetch_month_breakdown(
             self,

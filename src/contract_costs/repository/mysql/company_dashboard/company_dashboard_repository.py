@@ -12,6 +12,7 @@ from contract_costs.repository.company_dashboard.company_dashboard_repository im
     CompanyDashboardRepository,
 )
 from contract_costs.repository.company_dashboard.dto.company_fixed_cost_raw import CompanyFixedCostRaw
+from contract_costs.repository.company_dashboard.dto.company_ledger_line_raw import CompanyLedgerLineRaw
 from contract_costs.repository.company_dashboard.dto.company_month_breakdown_raw import CompanyMonthBreakdownRaw
 from contract_costs.repository.company_dashboard.dto.counterparty_ledger_line_raw import CounterpartyLedgerLineRaw
 from contract_costs.repository.company_dashboard.dto.counterparty_summary_raw import CounterpartySummaryRaw
@@ -62,6 +63,83 @@ class MySQLCompanyDashboardRepository(CompanyDashboardRepository):
     def _maybe_close(self, conn) -> None:
         if self._connection is None:
             conn.close()
+
+    def fetch_company_lines(
+            self,
+            *,
+            organization_id: UUID,
+            company_id: UUID,
+            start: date,
+            end: date,
+    ) -> list[CompanyLedgerLineRaw]:
+
+        sql = """
+              SELECT fl.record_id,
+                     fl.record_date,
+                     fl.buyer_id,
+                     fl.seller_id,
+                     fl.direction,
+                     fl.contract_type,
+                     fl.contract_owner_id,
+                     fl.value_type_id,
+                     fl.value_type_code,
+                     fl.value_type_name,
+                     fl.item_name,
+                     fl.description,
+                     fl.amount_value,
+                     fl.amount_input_type,
+                     fl.vat_rate,
+                     fl.tax_treatment
+
+              FROM financial_ledger fl
+
+              WHERE fl.organization_id = %(org)s
+                AND fl.record_date >= %(start)s
+                AND fl.record_date < %(end)s
+                AND (
+                    fl.buyer_id = %(company)s
+                    OR fl.seller_id = %(company)s
+                    OR (fl.contract_type = 'system'    -- LEGACY: koszty stałe na kontrakcie systemowym
+                        AND fl.contract_owner_id = %(company)s)
+                )
+              """
+
+        conn = self._get_connection()
+
+        try:
+            with conn.cursor(dictionary=True) as cur:
+                cur.execute(sql, {
+                    "org": str(organization_id),
+                    "company": str(company_id),
+                    "start": start,
+                    "end": end,
+                })
+                rows = cur.fetchall()
+
+        finally:
+            self._maybe_close(conn)
+
+        return [
+            CompanyLedgerLineRaw(
+                record_id=r["record_id"],
+                record_date=r["record_date"],
+                buyer_id=r["buyer_id"],
+                seller_id=r["seller_id"],
+                direction=r["direction"],
+                contract_type=r["contract_type"],
+                contract_owner_id=r["contract_owner_id"],
+                value_type_id=r["value_type_id"],
+                value_type_code=r["value_type_code"],
+                value_type_name=r["value_type_name"],
+                item_name=r["item_name"],
+                description=r["description"],
+                amount_value=r["amount_value"],
+                amount_input_type=r["amount_input_type"],
+                vat_rate=r["vat_rate"],
+                tax_treatment=r["tax_treatment"],
+            )
+            for r in rows
+        ]
 
     def fetch_dashboard_data(
             self,
