@@ -153,6 +153,25 @@ class CompanyFinancialsCalculator:
         # typ kosztu niezgodny ze stroną faktury — rekord nie przeszedłby walidacji
         return None
 
+    @classmethod
+    def classify_against(
+        cls,
+        *,
+        line: CompanyLedgerLineRaw,
+        counterparty_id: UUID,
+    ) -> CompanyPeriodFinancials | None:
+        """Linia z perspektywy naszej strony faktury (tej, która nie jest kontrahentem)."""
+        counterparty = str(counterparty_id)
+
+        if str(line.buyer_id) == counterparty:
+            our_side = line.seller_id
+        elif str(line.seller_id) == counterparty:
+            our_side = line.buyer_id
+        else:
+            return None
+
+        return cls.classify(line=line, company_id=our_side)
+
     @staticmethod
     def _is_legacy_system_cost(*, line: CompanyLedgerLineRaw, company: str) -> bool:
         # LEGACY: koszty stałe księgowane na kontrakcie systemowym firmy

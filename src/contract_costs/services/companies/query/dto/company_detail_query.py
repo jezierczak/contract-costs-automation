@@ -9,4 +9,4 @@ from contract_costs.action_bus.query import Query
 @action_type(ActionType.VIEW)
 class CompanyDetailQuery(Query):
     company_id: UUID
-    owner_company_id: UUID
+    owner_company_id: UUID | None = None

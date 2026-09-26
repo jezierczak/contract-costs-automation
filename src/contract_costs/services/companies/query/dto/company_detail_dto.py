@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from datetime import date
-from decimal import Decimal
 from uuid import UUID
 
 from contract_costs.services.companies.query.dto.company_year_dto import CounterpartyYearDTO
+from contract_costs.services.company_dashboard.financials.company_financials import CompanyPeriodFinancials
 
 
 @dataclass
@@ -17,11 +17,13 @@ class CompanyDetailDTO:
 
     invoice_count: int
 
-    revenue: Decimal
-    costs: Decimal
-    balance: Decimal
+    # tylko rekordy zatwierdzone — trzy filary z Amount
+    financials: CompanyPeriodFinancials
 
     unpaid_invoices: int
     last_invoice_date: date | None
 
-    years: list["CounterpartyYearDTO"]
+    # rekordy jeszcze niezatwierdzone — nie wchodzą do kwot
+    unapproved_record_count: int
+
+    years: list[CounterpartyYearDTO]

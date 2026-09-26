@@ -1,11 +1,11 @@
 from dataclasses import dataclass
-from decimal import Decimal
+
+from contract_costs.services.company_dashboard.financials.company_financials import CompanyPeriodFinancials
 
 
 @dataclass
 class CounterpartyYearDTO:
     year: int
     invoice_count: int
-    revenue: Decimal
-    costs: Decimal
-    balance: Decimal
+    # z naszej perspektywy: przychód = sprzedaż do kontrahenta, koszt = zakup od niego
+    financials: CompanyPeriodFinancials

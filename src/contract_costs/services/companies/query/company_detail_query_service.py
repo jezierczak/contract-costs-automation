@@ -1,18 +1,28 @@
-from decimal import Decimal
 from collections import defaultdict
 
 from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.services.companies.query.dto.company_detail_dto import CompanyDetailDTO
 from contract_costs.services.companies.query.dto.company_detail_query import CompanyDetailQuery
 from contract_costs.services.companies.query.dto.company_year_dto import CounterpartyYearDTO
+from contract_costs.services.company_dashboard.financials.company_financials import CompanyPeriodFinancials
+from contract_costs.services.company_dashboard.financials.company_financials_calculator import (
+    CompanyFinancialsCalculator,
+)
 from contract_costs.unit_of_work import UnitOfWork
 
-from contract_costs.model.amount import Amount, AmountInputType, VatRate, TaxTreatment
+YEARS_SHOWN = 5
 
 
 class CompanyDetailQueryService(
     ActionHandler[CompanyDetailQuery, CompanyDetailDTO]
 ):
+    """
+    Współpraca z kontrahentem z perspektywy firm own.
+
+    Kwoty liczy CompanyFinancialsCalculator (te same reguły co finanse firmy),
+    tylko z rekordów zatwierdzonych. Liczniki faktur i nieopłaconych obejmują
+    wszystkie rekordy — tak jak lista faktur pod spodem.
+    """
 
     def execute(
         self,
@@ -21,45 +31,35 @@ class CompanyDetailQueryService(
         uow: UnitOfWork,
     ) -> CompanyDetailDTO:
 
-        company_repo = uow.companies
-        dashboard_repo = uow.company_dashboard
-
-        company = company_repo.get(
+        company = uow.companies.get(
             organization_id=action.organization_id,
             company_id=action.company_id,
         )
 
-
         if not company:
             raise ValueError("Company not found")
 
-        lines = dashboard_repo.fetch_counterparty_lines(
+        lines = uow.company_dashboard.fetch_counterparty_lines(
             organization_id=action.organization_id,
             counterparty_id=action.company_id,
-            owner_company_id = action.owner_company_id
+            owner_company_id=action.owner_company_id,
         )
 
-        revenue = Decimal("0")
-        costs = Decimal("0")
-
-        invoice_ids = set()
-        unpaid_invoice_ids = set()
+        total = CompanyPeriodFinancials()
+        invoice_ids: set[str] = set()
+        unpaid_invoice_ids: set[str] = set()
+        unapproved_ids: set[str] = set()
         last_invoice_date = None
 
-        years = defaultdict(lambda: {
-            "revenue": Decimal("0"),
-            "costs": Decimal("0"),
-            "invoice_ids": set(),
-        })
-
-        company_id = str(action.company_id)
+        years: dict[int, CompanyPeriodFinancials] = defaultdict(CompanyPeriodFinancials)
+        year_invoice_ids: dict[int, set[str]] = defaultdict(set)
 
         for line in lines:
-
-            invoice_ids.add(line.record_id)
+            record_id = str(line.record_id)
+            invoice_ids.add(record_id)
 
             if line.payment_status != "paid":
-                unpaid_invoice_ids.add(line.record_id)
+                unpaid_invoice_ids.add(record_id)
 
             if line.record_date is None:
                 continue
@@ -68,37 +68,29 @@ class CompanyDetailQueryService(
                 last_invoice_date = line.record_date
 
             year = line.record_date.year
+            year_invoice_ids[year].add(record_id)
 
-            amount = Amount.from_input(
-                value=line.amount_value,
-                input_type=AmountInputType(line.amount_input_type),
-                vat_rate=VatRate(Decimal(line.vat_rate)),
-                tax_treatment=TaxTreatment(line.tax_treatment),
+            if not CompanyFinancialsCalculator.is_approved(line):
+                unapproved_ids.add(record_id)
+                continue
+
+            period = CompanyFinancialsCalculator.classify_against(
+                line=line,
+                counterparty_id=action.company_id,
             )
+            if period is None:
+                continue
 
-            value = amount.cashflow
-
-            if line.buyer_id == company_id:
-                revenue += value
-                years[year]["revenue"] += value
-
-            if line.seller_id == company_id:
-                costs += value
-                years[year]["costs"] += value
-
-            years[year]["invoice_ids"].add(line.record_id)
-
-        balance = revenue - costs
+            total += period
+            years[year] += period
 
         years_dto = [
             CounterpartyYearDTO(
                 year=year,
-                invoice_count=len(data["invoice_ids"]),
-                revenue=data["revenue"],
-                costs=data["costs"],
-                balance=data["revenue"] - data["costs"],
+                invoice_count=len(year_invoice_ids[year]),
+                financials=years.get(year, CompanyPeriodFinancials()),
             )
-            for year, data in sorted(years.items(), reverse=True)[:5]
+            for year in sorted(year_invoice_ids, reverse=True)[:YEARS_SHOWN]
         ]
 
         return CompanyDetailDTO(
@@ -110,12 +102,11 @@ class CompanyDetailQueryService(
 
             invoice_count=len(invoice_ids),
 
-            revenue=revenue,
-            costs=costs,
-            balance=balance,
+            financials=total,
 
             unpaid_invoices=len(unpaid_invoice_ids),
             last_invoice_date=last_invoice_date,
+            unapproved_record_count=len(unapproved_ids),
 
             years=years_dto,
         )

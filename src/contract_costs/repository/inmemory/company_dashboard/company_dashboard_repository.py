@@ -5,7 +5,6 @@ from contract_costs.repository.company_dashboard.company_dashboard_repository im
     CompanyDashboardRepository,
 )
 from contract_costs.repository.company_dashboard.dto.company_ledger_line_raw import CompanyLedgerLineRaw
-from contract_costs.repository.company_dashboard.dto.counterparty_ledger_line_raw import CounterpartyLedgerLineRaw
 
 
 class InMemoryCompanyDashboardRepository(CompanyDashboardRepository):
@@ -46,5 +45,14 @@ class InMemoryCompanyDashboardRepository(CompanyDashboardRepository):
             organization_id: UUID,
             counterparty_id: UUID,
             owner_company_id: UUID | None,
-    ) -> list[CounterpartyLedgerLineRaw]:
-        return []
+    ) -> list[CompanyLedgerLineRaw]:
+        counterparty = str(counterparty_id)
+        owner = str(owner_company_id) if owner_company_id else None
+        return [
+            line
+            for org_id, line in self._company_lines
+            if org_id == organization_id
+            and line.status != "deleted"
+            and counterparty in (str(line.buyer_id), str(line.seller_id))
+            and (owner is None or owner in (str(line.buyer_id), str(line.seller_id)))
+        ]

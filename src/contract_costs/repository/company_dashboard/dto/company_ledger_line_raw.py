@@ -30,3 +30,4 @@ class CompanyLedgerLineRaw:
     tax_treatment: str
 
     status: str
+    payment_status: str | None = None

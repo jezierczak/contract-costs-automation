@@ -3,7 +3,6 @@ from datetime import date
 from uuid import UUID
 
 from contract_costs.repository.company_dashboard.dto.company_ledger_line_raw import CompanyLedgerLineRaw
-from contract_costs.repository.company_dashboard.dto.counterparty_ledger_line_raw import CounterpartyLedgerLineRaw
 
 
 class CompanyDashboardRepository(ABC):
@@ -27,5 +26,5 @@ class CompanyDashboardRepository(ABC):
             organization_id: UUID,
             counterparty_id: UUID,
             owner_company_id: UUID | None,
-    ) -> list[CounterpartyLedgerLineRaw]:
+    ) -> list[CompanyLedgerLineRaw]:
         pass
