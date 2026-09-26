@@ -1,8 +1,15 @@
 import logging
 from dataclasses import replace
+from datetime import datetime
+from decimal import Decimal
+from typing import Callable
 from uuid import UUID
 
 from contract_costs.action_bus.action_handler import ActionHandler
+from contract_costs.common.ids import new_uuid
+from contract_costs.common.time import local_today, utc_now
+from contract_costs.model.financial_record import PaymentStatus
+from contract_costs.model.financial_record_payment import FinancialRecordPayment
 
 from contract_costs.services.catalogues.record_file_workworkflow_service import RecordFileWorkflowService
 from contract_costs.services.financial_records.assigment.ingest.completion_validator.invoice_completion_reason import \
@@ -31,12 +38,14 @@ class FinancialRecordIngestOrchestrator(ActionHandler[BaseFinancialRecordIngestC
             record_line_service: FinancialRecordLineUpdateService,
             file_workflow: RecordFileWorkflowService,
             record_completion_validator: RecordCompletionValidator,
+            clock: Callable[[], datetime] = utc_now,
     ) -> None:
         self._document_ingest = record_ingest_service_document
         self._excel_ingest = record_ingest_service_excel
         self._record_line_service = record_line_service
         self._file_workflow = file_workflow
         self._completion_validator = record_completion_validator
+        self._clock = clock
 
     def execute(
             self,
@@ -105,7 +114,62 @@ class FinancialRecordIngestOrchestrator(ActionHandler[BaseFinancialRecordIngestC
         if len(record_ids) != 1:
             raise RuntimeError("Document ingest expected exactly one record")
 
+        self._record_import_payment(
+            uow=uow,
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
+            record_id=record_ids[0],
+        )
+
         return record_ids[0]
+
+    def _record_import_payment(
+            self,
+            *,
+            uow: UnitOfWork,
+            organization_id: UUID,
+            actor_user_id: UUID,
+            record_id: UUID,
+    ) -> None:
+        """
+        Dokument przyszedł jako zapłacony (gotówka/karta/BLIK, KSeF Zaplacono=1) –
+        zapisujemy wpłatę na całą kwotę do zapłaty, bo payment_status jest pochodną
+        listy wpłat i bez niej przy pierwszym przeliczeniu spadłby na UNPAID.
+        """
+        record = uow.financial_records.get(
+            organization_id=organization_id,
+            record_id=record_id,
+        )
+        if record is None or record.payment_status != PaymentStatus.PAID:
+            return
+
+        payments = uow.financial_record_payments.list_by_financial_record(
+            organization_id=organization_id, financial_record_id=record_id,
+        )
+        if payments:
+            return
+
+        lines = uow.financial_record_lines.list_by_financial_record(
+            organization_id=organization_id, financial_record_id=record_id,
+        )
+        total = sum((line.amount.payable for line in lines), Decimal("0"))
+        if total <= 0:
+            return  # nic do zapłaty (non_cash_cost) – PAID bez wpłaty
+
+        uow.financial_record_payments.add(
+            organization_id=organization_id,
+            payment=FinancialRecordPayment(
+                id=new_uuid(),
+                organization_id=organization_id,
+                created_at=self._clock(),
+                created_by_user_id=actor_user_id,
+                updated_at=None,
+                updated_by_user_id=None,
+                financial_record_id=record_id,
+                amount=total,
+                paid_date=record.paid_date or record.invoice_date or local_today(),
+            ),
+        )
 
     def _ingest_from_ui(
             self,

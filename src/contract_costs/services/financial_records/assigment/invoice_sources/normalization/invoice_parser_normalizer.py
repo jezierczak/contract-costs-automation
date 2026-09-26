@@ -17,6 +17,7 @@ from contract_costs.model.financial_record import (
     PaymentMethod,
     PaymentStatus,
     FinancialRecordStatus,
+    SETTLED_AT_SALE_PAYMENT_METHODS,
 )
 
 def _safe_decimal(value, default: Decimal) -> Decimal:
@@ -158,6 +159,18 @@ class DocumentParseNormalizer:
         if not reference:
             reference = f"AI-{uuid4().hex[:12]}"
 
+        invoice_date = _safe_date(data.get("invoice_date"))
+        payment_method = self._payment_method(data.get("payment_method"))
+        payment_status = self._payment_status(data.get("payment_status"))
+        paid_date = _safe_date(data.get("paid_date"))
+
+        # gotówka / karta / BLIK / bon / przedpłata = zapłacone przy sprzedaży,
+        # niezależnie od tego, co podał parser (KSeF bez Zaplacono, LLM z null)
+        if payment_method in SETTLED_AT_SALE_PAYMENT_METHODS:
+            payment_status = PaymentStatus.PAID
+        if payment_status == PaymentStatus.PAID and paid_date is None:
+            paid_date = invoice_date
+
         return FinancialRecordUpdate(
             command=InvoiceCommand.APPLY,
 
@@ -165,20 +178,20 @@ class DocumentParseNormalizer:
             record_id=None,
             old_reference=data.get("old_reference"),
 
-            invoice_date=_safe_date(data.get("invoice_date")),
+            invoice_date=invoice_date,
             selling_date=_safe_date(data.get("selling_date")),
 
             buyer_tax_number=data.get("buyer_tax_number"),
             seller_tax_number=data.get("seller_tax_number"),
 
-            payment_method=self._payment_method(data.get("payment_method")),
+            payment_method=payment_method,
             due_date=_safe_date(data.get("due_date")),
-            paid_date=_safe_date(data.get("paid_date")),
+            paid_date=paid_date,
 
             # scan_filename=data.get("scan_filename"),
             tags=None,
 
-            payment_status=self._payment_status(data.get("payment_status")),
+            payment_status=payment_status,
             status=FinancialRecordStatus.NEW_COST,
         )
 
@@ -256,6 +269,7 @@ class DocumentParseNormalizer:
     @staticmethod
     def _payment_method(value) -> PaymentMethod:
         return {
+            "pre_paid": PaymentMethod.PRE_PAID,
             "bank_transfer": PaymentMethod.BANK_TRANSFER,
             "cash": PaymentMethod.CASH,
             "card": PaymentMethod.CARD,

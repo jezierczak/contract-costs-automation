@@ -27,6 +27,16 @@ class PaymentStatus(Enum):
     UNKNOWN = "unknown"
 
 
+# formy płatności, przy których dokument jest z definicji zapłacony w chwili sprzedaży
+SETTLED_AT_SALE_PAYMENT_METHODS: frozenset[PaymentMethod] = frozenset({
+    PaymentMethod.CASH,
+    PaymentMethod.CARD,
+    PaymentMethod.BLIK,
+    PaymentMethod.BON,
+    PaymentMethod.PRE_PAID,
+})
+
+
 # wszystko, co nie jest w pełni zapłacone — "niezapłacone" w widokach i filtrach
 UNSETTLED_PAYMENT_STATUSES: tuple[PaymentStatus, ...] = (
     PaymentStatus.UNPAID,
