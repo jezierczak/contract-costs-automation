@@ -11,7 +11,7 @@ import shutil
 from api.dependencies import get_services
 from contract_costs.model.business_event import BusinessEventLevel
 from contract_costs.model.company import CompanyType
-from contract_costs.ksef.render.invoice_visualisation import PRINT_CSS, render_invoice_html
+from contract_costs.ksef.render.invoice_visualisation import PRINT_CSS, ksef_verification_url, render_invoice_html
 from contract_costs.model.document import DocumentType, DocumentStatus
 from contract_costs.services.business_event.business_event_helper import BusinessEventHelper
 from contract_costs.services.companies.query.dto.company_query import CompanyQuery
@@ -53,6 +53,14 @@ def _with_print_toolbar(html: str) -> str:
         return _PRINT_TOOLBAR + html
     body_end = html.find(">", body_start) + 1
     return html[:body_end] + _PRINT_TOOLBAR + html[body_end:]
+
+
+def _qr_code_for(path: Path) -> str:
+    try:
+        return ksef_verification_url(path) or ""
+    except Exception:
+        logger.exception("Cannot build KSeF QR link for %s", path)
+        return ""
 
 
 def _render_documents_table(
@@ -189,7 +197,12 @@ def document_file(
         return request.app.state.templates.TemplateResponse(
             request,
             "documents/invoice_preview.html",
-            {"file_name": path.name, "pdf_name": path.stem + ".pdf"},
+            {
+                "file_name": path.name,
+                "pdf_name": path.stem + ".pdf",
+                "ksef_number": dto.ksef_number or "",
+                "qr_code": _qr_code_for(path) if dto.ksef_number else "",
+            },
         )
 
     if path.suffix.lower() == ".xml" and not raw:

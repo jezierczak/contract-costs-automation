@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS documents (
     created_by_user_id CHAR(36) NULL,
     updated_at DATETIME NULL,
     updated_by_user_id CHAR(36) NULL,
+    ksef_number VARCHAR(64) NULL,
     PRIMARY KEY (id),
     KEY idx_documents_org (organization_id),
     KEY idx_documents_org_record (organization_id, financial_record_id),

@@ -41,8 +41,11 @@
         const xml = new File([await response.blob()], {{ file_name | tojson }}, { type: "application/xml" });
 
         const converter = window["ksef-fe-invoice-converter"];
-        // wizualizacja MF (ta sama co w aplikacji KSeF); numer KSeF i QR – gdy będziemy je przechowywać
-        const pdf = await converter.generateInvoice(xml, { nrKSeF: "" }, "blob");
+        // wizualizacja MF (ta sama co w aplikacji KSeF); numer KSeF + kod QR (KOD I) dla faktur z KSeF
+        const additionalData = { nrKSeF: {{ ksef_number | tojson }} };
+        const qrCode = {{ qr_code | tojson }};
+        if (qrCode) additionalData.qrCode = qrCode;
+        const pdf = await converter.generateInvoice(xml, additionalData, "blob");
 
         const url = URL.createObjectURL(pdf);
         frame.src = url;

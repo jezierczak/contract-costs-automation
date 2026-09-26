@@ -55,4 +55,5 @@ def map_row_to_document(row: dict) -> Document:
         updated_at=row["updated_at"],
         updated_by_user_id=UUID(row["updated_by_user_id"]) if row["updated_by_user_id"] else None,
         scoring=scoring,
+        ksef_number=row.get("ksef_number"),
     )

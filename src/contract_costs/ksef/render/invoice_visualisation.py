@@ -5,10 +5,16 @@ Arkusze i słowniki MF leżą w resources/crd.gov.pl/ bez zmian, w ścieżkach
 odwzorowujących adresy http://crd.gov.pl/... – resolver podsuwa lokalne kopie
 zamiast pobierać je z sieci. Aktualizacja = podmiana plików.
 """
+import base64
+import hashlib
+from datetime import date
 from functools import lru_cache
 from pathlib import Path
 
 from lxml import etree
+
+# KOD I – link weryfikacyjny faktury (https://github.com/CIRFMF/ksef-api/blob/main/kody-qr.md)
+KSEF_QR_BASE_URL = "https://qr.ksef.mf.gov.pl/invoice"
 
 CRD_URL_PREFIXES = ("http://crd.gov.pl/", "https://crd.gov.pl/")
 CRD_ROOT = Path(__file__).resolve().parents[2] / "resources" / "crd.gov.pl"
@@ -111,3 +117,24 @@ def _drop_empty_columns(root) -> None:
         for row in rows:
             for index in reversed(empty):
                 row.remove(row[index])
+
+
+def ksef_verification_url(xml_path: Path) -> str | None:
+    """
+    KOD I: {base}/{NIP sprzedawcy}/{data wystawienia DD-MM-RRRR}/{SHA-256 pliku w Base64URL}.
+    Skrót liczony z bajtów pliku dokładnie w postaci pobranej z KSeF.
+    """
+    content = xml_path.read_bytes()
+    root = etree.fromstring(content, etree.XMLParser(no_network=True, resolve_entities=False))
+    ns = etree.QName(root).namespace
+    nip = root.findtext(f"{{{ns}}}Podmiot1/{{{ns}}}DaneIdentyfikacyjne/{{{ns}}}NIP")
+    issue_date = root.findtext(f"{{{ns}}}Fa/{{{ns}}}P_1")
+    if not nip or not issue_date:
+        return None
+    try:
+        issued = date.fromisoformat(issue_date.strip()[:10])
+    except ValueError:
+        return None
+    digest = base64.urlsafe_b64encode(hashlib.sha256(content).digest()).rstrip(b"=").decode()
+    return f"{KSEF_QR_BASE_URL}/{nip.strip()}/{issued:%d-%m-%Y}/{digest}"
+

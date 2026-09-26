@@ -87,7 +87,8 @@ class UploadDocumentService(ActionHandler[UploadDocumentCommand, UUID | None]):
             created_by_user_id=action.actor_user_id,
             updated_at=None,
             updated_by_user_id=None,
-            scoring=None
+            scoring=None,
+            ksef_number=action.ksef_number,
         )
 
         documents.add(document)

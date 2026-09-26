@@ -61,6 +61,9 @@ class Document(BaseEntity):
 
     scoring: ScoringResult | None
 
+    # numer nadany przez KSeF (np. 5265877635-20250826-0100001AF629-AF) – tylko dla faktur z KSeF
+    ksef_number: str | None = None
+
 
 
     def with_document_type(self, document_type: DocumentType) -> "Document":

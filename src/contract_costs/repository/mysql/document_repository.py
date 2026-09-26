@@ -32,9 +32,9 @@ class MySQLDocumentRepository(DocumentRepository):
                 id, organization_id, financial_record_id, document_source,
                 document_type, document_number, seller_nip, parsed_payload,
                 file_hash, file_path, filename, mime_type, size, score, scoring_breakdown, document_status, 
-                created_at, created_by_user_id, updated_at, updated_by_user_id
+                created_at, created_by_user_id, updated_at, updated_by_user_id, ksef_number
             )
-            VALUES (%s, %s, %s,%s , %s, %s, %s, %s, %s, %s, %s,%s,%s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s,%s , %s, %s, %s, %s, %s, %s, %s,%s,%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
 
         conn = self._get_connection()
@@ -63,6 +63,7 @@ class MySQLDocumentRepository(DocumentRepository):
                         str(document.created_by_user_id) if document.created_by_user_id else None,
                         document.updated_at,
                         str(document.updated_by_user_id) if document.updated_by_user_id else None,
+                        document.ksef_number,
                     ),
                 )
             self._maybe_commit(conn)
@@ -90,7 +91,8 @@ class MySQLDocumentRepository(DocumentRepository):
                   score               = %s,
                   scoring_breakdown   = %s,
                   updated_at          = %s,
-                  updated_by_user_id  = %s
+                  updated_by_user_id  = %s,
+                  ksef_number         = %s
               WHERE id = %s
                 AND organization_id = %s \
               """
@@ -117,6 +119,7 @@ class MySQLDocumentRepository(DocumentRepository):
                         json.dumps(document.scoring.breakdown) if document.scoring else None,
                         document.updated_at,
                         str(document.updated_by_user_id) if document.updated_by_user_id else None,
+                        document.ksef_number,
                         str(document.id),
                         str(document.organization_id),
                     ),

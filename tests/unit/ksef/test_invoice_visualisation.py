@@ -99,3 +99,18 @@ def test_empty_line_item_columns_are_dropped(tmp_path, no_network):
     assert "Nazwa (rodzaj) towaru lub usługi" in html
     # kolumna „Indeks” jest pusta we wszystkich pozycjach
     assert ">Indeks<" not in html
+
+
+def test_ksef_verification_url_is_kod_i(tmp_path):
+    import base64
+    import hashlib
+
+    from contract_costs.ksef.render.invoice_visualisation import ksef_verification_url
+
+    path = _write(tmp_path, FA3_INVOICE)
+    digest = base64.urlsafe_b64encode(hashlib.sha256(path.read_bytes()).digest()).rstrip(b"=").decode()
+
+    assert ksef_verification_url(path) == (
+        f"https://qr.ksef.mf.gov.pl/invoice/2222222222/15-09-2026/{digest}"
+    )
+    assert "=" not in digest and "+" not in digest and "/" not in digest

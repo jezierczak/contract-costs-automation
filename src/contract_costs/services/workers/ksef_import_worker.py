@@ -95,14 +95,23 @@ class KsefImportWorker:
                             organization_id=item.organization_id,
                             actor_user_id=item.actor_user_id,
                             file_path=target,
+                            ksef_number=invoice.external_id,
                         ),
                         handler=services.upload_document_service,
                     )
                     imported += 1
-                except DuplicateDocument:
+                except DuplicateDocument as duplicate:
                     duplicates += 1
                     if target.exists():
                         target.unlink(missing_ok=True)
+                    # dokumenty sprzed zapisywania numeru KSeF – ponowny import go uzupełnia
+                    with services.uow as uow:
+                        self._remember_ksef_number(
+                            uow=uow,
+                            organization_id=item.organization_id,
+                            document_id=duplicate.document_id,
+                            ksef_number=invoice.external_id,
+                        )
 
             self._update_settings_success(
                 services=services,
@@ -126,6 +135,15 @@ class KsefImportWorker:
                 error_message=str(exc),
             )
             raise
+
+    @staticmethod
+    def _remember_ksef_number(*, uow, organization_id, document_id, ksef_number: str | None) -> None:
+        if not ksef_number:
+            return
+        document = uow.documents.get(organization_id=organization_id, document_id=document_id)
+        if document is None or document.ksef_number:
+            return
+        uow.documents.update(replace(document, ksef_number=ksef_number))
 
     @staticmethod
     def _safe_filename(filename: str) -> str:

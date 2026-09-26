@@ -13,4 +13,5 @@ from contract_costs.action_bus.action_type import action_type, ActionType
 @dataclass(frozen=True,slots=True)
 class UploadDocumentCommand(Command):
     file_path: Path
+    ksef_number: str | None = None
 

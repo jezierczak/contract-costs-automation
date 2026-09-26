@@ -22,5 +22,6 @@ class GetDocumentFileQueryService(
         org_root = cfg.WORK_DIR / str(action.organization_id)
 
         return DocumentFileDto(
-            file_path=str(org_root / document.file_path)
+            file_path=str(org_root / document.file_path),
+            ksef_number=document.ksef_number,
         )
