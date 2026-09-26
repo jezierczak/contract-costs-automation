@@ -5,6 +5,14 @@
 {% endblock %}
 
 {% block workspace_content %}
+{# wartości pól: edytowany rekord albo kopia („Dodaj podobną”); tryb edycji decyduje wyłącznie `record` #}
+{% set form = record or prefill %}
+
+{% if prefill %}
+<div class="mb-4 px-4 py-2 rounded border border-blue-200 bg-blue-50 text-sm text-blue-900">
+    Nowy rekord na wzór <b>{{ prefill_source_reference }}</b> — sprawdź numer, daty i kwoty przed zapisem.
+</div>
+{% endif %}
 <form
     id="record-edit-form"
     hx-post="/records/save"
@@ -131,7 +139,7 @@
             <input
                 type="date"
                 name="invoice_date"
-                value="{{ record.invoice_date or default_invoice_date or '' }}"
+                value="{{ form.invoice_date or default_invoice_date or '' }}"
                 class="w-full border rounded p-2"
             >
         </div>
@@ -151,7 +159,7 @@
             <input
                 type="date"
                 name="selling_date"
-                value="{{ record.selling_date or default_selling_date or '' }}"
+                value="{{ form.selling_date or default_selling_date or '' }}"
                 class="w-full border rounded p-2"
             >
         </div>
@@ -161,7 +169,7 @@
             <label class="text-xs text-gray-500">Tags</label>
             <input
                 name="tags"
-                value="{{ record.tags if record and record.tags else '' }}"
+                value="{{ form.tags if form and form.tags else '' }}"
                 class="w-full border rounded p-2"
             >
         </div>
@@ -176,7 +184,7 @@
                 {% for v in payment_methods %}
                 <option
                     value="{{ v.value }}"
-                    {% if record and record.payment_method == v.value %}
+                    {% if form and form.payment_method == v.value %}
                         selected
                     {% endif %}
                 >
@@ -202,7 +210,7 @@
                         class="w-full border rounded p-2">
 
                     {% for v in payment_statuses %}
-                    <option value="{{ v.value }}">
+                    <option value="{{ v.value }}" {% if form and form.payment_status == v.value %}selected{% endif %}>
                         {{ v.value }}
                     </option>
                     {% endfor %}
@@ -226,14 +234,15 @@
             <input
                 type="date"
                 name="due_date"
-                value="{{ record.due_date or '' }}"
+                value="{{ form.due_date or '' }}"
                 class="w-full border rounded p-2"
             >
         </div>
 
         {% if not record %}
         <!-- INITIAL PAYMENT (tylko przy tworzeniu nowej faktury) -->
-        <div id="initial-payment-date-field" class="hidden">
+        {% set initial_status = form.payment_status if form else "unpaid" %}
+        <div id="initial-payment-date-field" class="{% if initial_status not in ['paid', 'partially_paid'] %}hidden{% endif %}">
             <div class="mb-1 flex items-center justify-between">
                 <label class="text-xs text-gray-500">Paid date</label>
                 <button
@@ -247,16 +256,18 @@
             <input
                 type="date"
                 name="initial_paid_date"
+                value="{{ form.paid_date or '' if form else '' }}"
                 class="w-full border rounded p-2"
             >
         </div>
 
-        <div id="initial-payment-amount-field" class="hidden">
+        <div id="initial-payment-amount-field" class="{% if initial_status != 'partially_paid' %}hidden{% endif %}">
             <label class="text-xs text-gray-500">Zapłacona kwota</label>
             <input
                 type="number"
                 step="0.01"
                 name="initial_paid_amount"
+                value="{{ form.paid_amount if form and initial_status == 'partially_paid' else '' }}"
                 class="w-full border rounded p-2"
             >
         </div>
@@ -287,10 +298,10 @@
 {% with %}
     {% set target = "buyer" %}
 
-    {% if record and record.buyer_name %}
+    {% if form and form.buyer_name %}
         {% set company = {
-            "name": record.buyer_name,
-            "tax_number": record.buyer_tax_number
+            "name": form.buyer_name,
+            "tax_number": form.buyer_tax_number
         } %}
     {% elif prefill_company_buyer %}
         {% set company = {
@@ -307,10 +318,10 @@
 {% with %}
     {% set target = "seller" %}
 
-    {% if record and record.seller_name %}
+    {% if form and form.seller_name %}
         {% set company = {
-            "name": record.seller_name,
-            "tax_number": record.seller_tax_number
+            "name": form.seller_name,
+            "tax_number": form.seller_tax_number
         } %}
     {% elif prefill_company_seller %}
         {% set company = {

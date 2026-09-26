@@ -30,3 +30,7 @@ class RecordEditWorkspaceView:
     contracts: list
     agreements: list
     value_types: list
+
+    # „Dodaj podobną”: wartości do wypełnienia formularza nowego rekordu (record = None)
+    prefill: FinancialRecordEditView | None = None
+    prefill_source_reference: str | None = None

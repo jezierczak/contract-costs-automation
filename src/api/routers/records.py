@@ -356,6 +356,7 @@ def record_edit_workspace(
 
     buyer_tax_number = request.query_params.get("buyer_tax_number")
     seller_tax_number = request.query_params.get("seller_tax_number")
+    copy_from = request.query_params.get("copy_from") if not record_id else None
 
     prefill_company_buyer = None
     prefill_company_seller = None
@@ -418,6 +419,7 @@ def record_edit_workspace(
             organization_id=ctx.organization_id,
             actor_user_id=ctx.user_id,
             record_id=UUID(record_id) if record_id else None,
+            copy_from_record_id=UUID(copy_from) if copy_from else None,
         ),
         handler=services.record_edit_workspace_query_service,
     )
@@ -431,6 +433,8 @@ def record_edit_workspace(
         {
             "request": request,
             "record": workspace.record,
+            "prefill": workspace.prefill,
+            "prefill_source_reference": workspace.prefill_source_reference,
 
             "units": workspace.units,
             "vat_rates": workspace.vat_rates,

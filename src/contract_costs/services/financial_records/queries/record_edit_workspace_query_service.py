@@ -1,4 +1,7 @@
+from dataclasses import replace
+from datetime import date
 from decimal import Decimal
+from typing import Callable
 from uuid import UUID
 
 
@@ -40,10 +43,12 @@ class RecordEditWorkspaceQueryService(
         contract_query_service: ListContractsQueryService,
         contract_tree_query_service: ContractTreeQueryService,
         value_type_query_service: ValueTypeQueryService,
+        today: Callable[[], date] = date.today,
     ) -> None:
         self._contract_query_service = contract_query_service
         self._contract_tree_query_service = contract_tree_query_service
         self._value_type_query_service = value_type_query_service
+        self._today = today
 
     # ============================================================
     # MAIN
@@ -57,50 +62,19 @@ class RecordEditWorkspaceQueryService(
     ) -> RecordEditWorkspaceView:
 
         record_view: FinancialRecordEditView | None = None
+        prefill: FinancialRecordEditView | None = None
+        prefill_source_reference: str | None = None
 
         # ===========================
         # RECORD (optional)
         # ===========================
         if action.record_id:
+            record_view = self._load_record_view(action=action, record_id=action.record_id, uow=uow)
 
-            record = uow.financial_records.get(
-                organization_id=action.organization_id,
-                record_id=action.record_id,
-            )
-
-            if not record:
-                raise RuntimeError("Financial record not found")
-
-            lines = uow.financial_record_lines.list_by_financial_record(
-                organization_id=action.organization_id,
-                financial_record_id=record.id,
-            )
-
-            buyer = uow.companies.get(
-                organization_id=action.organization_id,
-                company_id=record.buyer_id,
-            )
-
-            seller = uow.companies.get(
-                organization_id=action.organization_id,
-                company_id=record.seller_id,
-            )
-
-            payments = uow.financial_record_payments.list_by_financial_record(
-                organization_id=action.organization_id,
-                financial_record_id=record.id,
-            )
-
-            record_view = self._map_record_to_edit_view(
-                record=record,
-                lines=lines,
-                payments=payments,
-                buyer=buyer,
-                seller=seller,
-                organization_id=action.organization_id,
-                actor_user_id=action.actor_user_id,
-                uow=uow,
-            )
+        elif action.copy_from_record_id:
+            source = self._load_record_view(action=action, record_id=action.copy_from_record_id, uow=uow)
+            prefill = self._as_copy(source)
+            prefill_source_reference = source.reference
 
         # ===========================
         # ENUMS
@@ -193,6 +167,91 @@ class RecordEditWorkspaceQueryService(
             contracts=contracts,
             agreements=agreements,
             value_types=value_types,
+            prefill=prefill,
+            prefill_source_reference=prefill_source_reference,
+        )
+
+    # ============================================================
+    # RECORD LOADING
+    # ============================================================
+
+    def _load_record_view(
+        self,
+        *,
+        action: RecordEditWorkspaceQuery,
+        record_id: UUID,
+        uow: UnitOfWork,
+    ) -> FinancialRecordEditView:
+
+        record = uow.financial_records.get(
+            organization_id=action.organization_id,
+            record_id=record_id,
+        )
+
+        if not record:
+            raise RuntimeError("Financial record not found")
+
+        lines = uow.financial_record_lines.list_by_financial_record(
+            organization_id=action.organization_id,
+            financial_record_id=record.id,
+        )
+
+        buyer = uow.companies.get(
+            organization_id=action.organization_id,
+            company_id=record.buyer_id,
+        )
+
+        seller = uow.companies.get(
+            organization_id=action.organization_id,
+            company_id=record.seller_id,
+        )
+
+        payments = uow.financial_record_payments.list_by_financial_record(
+            organization_id=action.organization_id,
+            financial_record_id=record.id,
+        )
+
+        return self._map_record_to_edit_view(
+            record=record,
+            lines=lines,
+            payments=payments,
+            buyer=buyer,
+            seller=seller,
+            organization_id=action.organization_id,
+            actor_user_id=action.actor_user_id,
+            uow=uow,
+        )
+
+    def _as_copy(self, source: FinancialRecordEditView) -> FinancialRecordEditView:
+        """
+        „Dodaj podobną”: te same strony, metoda i status płatności oraz linie
+        (kwoty 1:1), ale bez numeru i dokumentów; daty z dziś, termin z tym
+        samym odstępem co w oryginale. Status płatności wchodzi jako płatność
+        początkowa nowego rekordu: data wpłaty dziś, przy częściowej ta sama kwota.
+        """
+        today = self._today()
+        is_paid = source.payment_status in ("paid", "partially_paid")
+
+        due_date = None
+        if source.due_date and source.invoice_date:
+            due_date = today + (source.due_date - source.invoice_date)
+
+        return replace(
+            source,
+            id="",
+            reference="",
+            invoice_date=today,
+            selling_date=today,
+            due_date=due_date,
+            payment_status=source.payment_status,
+            paid_date=today if is_paid else None,
+            payments=[],
+            paid_amount=source.paid_amount if source.payment_status == "partially_paid" else Decimal("0"),
+            is_overpaid=False,
+            documents=[],
+            source_confidence=None,
+            source_breakdown=None,
+            lines=[replace(line, record_line_id="") for line in source.lines],
         )
 
     # ============================================================

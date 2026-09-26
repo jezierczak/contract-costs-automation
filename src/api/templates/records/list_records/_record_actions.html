@@ -37,6 +37,25 @@
 {% endif %}
 
 
+{% if record.status != "deleted" %}
+<button
+    type="button"
+    hx-get="/records/edit?copy_from={{ record.id }}"
+    hx-trigger="click consume"
+    hx-target="#content-area"
+    hx-swap="innerHTML"
+    hx-push-url="true"
+    hx-indicator="#global-indicator"
+    hx-on:click="sessionStorage.setItem('records.return_to', window.location.pathname + window.location.search); document.getElementById('modal-area').innerHTML=''"
+    title="Nowy rekord wypełniony jak ten — bez numeru, z dzisiejszymi datami"
+    class="inline-flex items-center px-2 py-1 text-xs font-medium
+    text-sky-700 bg-sky-50 hover:bg-sky-100 rounded-md transition"
+>
+    ⧉ Dodaj podobną
+</button>
+{% endif %}
+
+
 {% if record.status == "processed" %}
 <button
     hx-post="/records/{{ record.id }}/sent-to-accountant"
