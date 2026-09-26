@@ -24,6 +24,9 @@ class BaseUpdateCompanyCommand(Command):
     set_reference_numbering_mode: bool = False
     reference_numbering_mode: ReferenceNumberingMode | None = None
 
+    # zapis formularza w aplikacji = użytkownik sprawdził dane firmy
+    mark_verified: bool = False
+
 
 @action_type(ActionType.OWNER_COMPANY_MANAGEMENT)
 @dataclass(frozen=True)

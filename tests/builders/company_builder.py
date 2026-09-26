@@ -2,7 +2,7 @@ import uuid
 
 from contract_costs.common.ids import new_uuid
 from contract_costs.common.time import utc_now
-from contract_costs.model.company import Company, CompanyType, Address, Contact, BankAccount
+from contract_costs.model.company import Company, CompanyType, Address, Contact, BankAccount, CompanyVerificationStatus
 
 
 class CompanyBuilder:
@@ -19,6 +19,7 @@ class CompanyBuilder:
         self._name = "Test Company"
         self._description = None
         self._tax_number = "1234567890"
+        self._verification_status = CompanyVerificationStatus.VERIFIED
         self._address = None
         self._contact = None
         self._bank_account = None
@@ -45,6 +46,7 @@ class CompanyBuilder:
             role=self._role,
             is_active=self._is_active,
             tags=self._tags,
+            verification_status=self._verification_status,
         )
 
     # ---------- base ----------
@@ -59,6 +61,10 @@ class CompanyBuilder:
 
     def with_organization_id(self, org_id: uuid.UUID) -> "CompanyBuilder":
         self._organization_id = org_id
+        return self
+
+    def with_verification_status(self, status: CompanyVerificationStatus) -> "CompanyBuilder":
+        self._verification_status = status
         return self
 
     def with_tax_number(self, tax_number: str) -> "CompanyBuilder":

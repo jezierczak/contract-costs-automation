@@ -2,6 +2,7 @@ import logging
 from dataclasses import replace
 from uuid import UUID
 
+from contract_costs.model.company import CompanyVerificationStatus
 from contract_costs.model.financial_record import FinancialRecord, FinancialRecordStatus
 from contract_costs.services.financial_records.assigment.ingest.dto.invoice_ref_result import (
     FinancialRecordRefResult,
@@ -102,6 +103,10 @@ class PdfFinancialRecordIngestService(FinancialRecordIngestService):
                 old_record_reference=update.old_record_reference,
                 buyer_role=update.buyer.role,
                 seller_role=update.seller.role,
+                companies_verified=(
+                    update.buyer.verification_status == CompanyVerificationStatus.VERIFIED
+                    and update.seller.verification_status == CompanyVerificationStatus.VERIFIED
+                ),
             )
 
         return results

@@ -23,3 +23,4 @@ class FinancialRecordRefResult:
     buyer_role: CompanyType
     seller_role: CompanyType
     old_record_reference: str | None = None
+    companies_verified: bool = True

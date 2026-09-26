@@ -2,6 +2,7 @@ from dataclasses import replace
 from datetime import datetime
 from typing import Callable
 
+from contract_costs.model.company import CompanyVerificationStatus
 from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.common.time import utc_now
 from contract_costs.repository.company_repository import CompanyRepository
@@ -59,6 +60,11 @@ class UpdateCompanyService(ActionHandler[BaseUpdateCompanyCommand, None]):
                 action.reference_numbering_mode
                 if action.set_reference_numbering_mode
                 else company.reference_numbering_mode
+            ),
+            verification_status=(
+                CompanyVerificationStatus.VERIFIED
+                if action.mark_verified
+                else company.verification_status
             ),
             updated_at=self._clock(),
             updated_by_user_id=action.actor_user_id,

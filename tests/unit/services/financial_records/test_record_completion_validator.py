@@ -83,3 +83,27 @@ def test_status_raises_when_value_type_direction_missing():
 
     with pytest.raises(RuntimeError, match="Missing value_type_direction"):
         RecordCompletionValidator().status(facts)
+
+
+def test_status_blocks_record_with_company_to_verify():
+    value_type_id = uuid4()
+    line = (
+        FinancialRecordLineBuilder()
+        .with_contract_id(uuid4())
+        .with_contract_node_id(uuid4())
+        .with_value_type_id(value_type_id)
+        .build()
+    )
+    facts = FinancialRecordAssignmentFacts(
+        record_id=uuid4(),
+        invoice_lines=[line],
+        buyer_role=CompanyType.OWN,
+        seller_role=CompanyType.SUPPLIER,
+        value_type_directions_map={value_type_id: ValueDirection.COST},
+        companies_verified=False,
+    )
+
+    validator = RecordCompletionValidator()
+
+    assert validator.status(facts) == [FinancialRecordCompletionReason.COMPANY_TO_VERIFY]
+    assert validator.validate(facts) is False

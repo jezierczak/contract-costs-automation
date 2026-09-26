@@ -7,6 +7,7 @@ from contract_costs.model.company import (
     BankAccount,
     Company,
     CompanyType,
+    CompanyVerificationStatus,
     Contact,
     ReferenceNumberingMode,
 )
@@ -73,6 +74,9 @@ class MySQLCompanyRepository(CompanyRepository):
                 if row.get("reference_numbering_mode")
                 else None
             ),
+            verification_status=CompanyVerificationStatus(
+                row.get("verification_status") or CompanyVerificationStatus.VERIFIED.value
+            ),
             created_at=row["created_at"],
             created_by_user_id=(UUID(row["created_by_user_id"]) if row["created_by_user_id"] else None),
             updated_at=row["updated_at"],
@@ -89,9 +93,10 @@ class MySQLCompanyRepository(CompanyRepository):
                         id, organization_id, name, description, tax_number,
                         street, city, zip_code, country, phone_number, email,
                         bank_account_number, bank_account_country_code,
-                        role, is_active, reference_numbering_mode, created_at, created_by_user_id
+                        role, is_active, reference_numbering_mode, verification_status,
+                        created_at, created_by_user_id
                     )
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     """,
                     (
                         str(company.id),
@@ -110,6 +115,7 @@ class MySQLCompanyRepository(CompanyRepository):
                         company.role.value,
                         company.is_active,
                         _numbering_value(company),
+                        company.verification_status.value,
                         company.created_at,
                         str(company.created_by_user_id) if company.created_by_user_id else None,
                     ),
@@ -131,7 +137,7 @@ class MySQLCompanyRepository(CompanyRepository):
                     SET name=%s, description=%s, tax_number=%s, street=%s, city=%s,
                         zip_code=%s, country=%s, phone_number=%s, email=%s,
                         bank_account_number=%s, bank_account_country_code=%s,
-                        role=%s, is_active=%s, reference_numbering_mode=%s,
+                        role=%s, is_active=%s, reference_numbering_mode=%s, verification_status=%s,
                         updated_at=%s, updated_by_user_id=%s
                     WHERE id = %s AND organization_id = %s
                     """,
@@ -150,6 +156,7 @@ class MySQLCompanyRepository(CompanyRepository):
                         company.role.value,
                         company.is_active,
                         _numbering_value(company),
+                        company.verification_status.value,
                         company.updated_at,
                         str(company.updated_by_user_id) if company.updated_by_user_id else None,
                         str(company.id),

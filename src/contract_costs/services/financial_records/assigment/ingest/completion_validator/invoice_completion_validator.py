@@ -35,6 +35,9 @@ class RecordCompletionValidator:
             issues.append(FinancialRecordCompletionReason.NO_INVOICE_DIRECTION)
 
 
+        if not facts.companies_verified:
+            issues.append(FinancialRecordCompletionReason.COMPANY_TO_VERIFY)
+
         if not facts.invoice_lines:
             issues.append(FinancialRecordCompletionReason.NO_LINES)
 

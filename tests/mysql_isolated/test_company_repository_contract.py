@@ -171,3 +171,24 @@ def test_company_reference_numbering_mode_roundtrip(company_repo_contract):
 
     company_repo_contract.update(replace(loaded, reference_numbering_mode=None))
     assert company_repo_contract.get(company.id, org_id).reference_numbering_mode is None
+
+
+def test_company_verification_status_roundtrip(company_repo_contract):
+    from dataclasses import replace
+
+    from contract_costs.model.company import CompanyVerificationStatus
+
+    org_id = new_uuid()
+    company = (
+        CompanyBuilder()
+        .with_organization_id(org_id)
+        .with_verification_status(CompanyVerificationStatus.TO_VERIFY)
+        .build()
+    )
+    company_repo_contract.add(company)
+
+    loaded = company_repo_contract.get(company.id, org_id)
+    assert loaded.verification_status == CompanyVerificationStatus.TO_VERIFY
+
+    company_repo_contract.update(replace(loaded, verification_status=CompanyVerificationStatus.VERIFIED))
+    assert company_repo_contract.get(company.id, org_id).verification_status == CompanyVerificationStatus.VERIFIED

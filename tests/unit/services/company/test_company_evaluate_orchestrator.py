@@ -2,7 +2,7 @@ import pytest
 
 
 from contract_costs.common.ids import new_uuid
-from contract_costs.model.company import CompanyType
+from contract_costs.model.company import CompanyType, CompanyVerificationStatus
 from contract_costs.services.companies.company_evaluate_orchestrator import CompanyEvaluateOrchestrator, EvaluateMode
 from contract_costs.services.companies.providers.candidate_provider import CompanyCandidateProvider
 
@@ -208,3 +208,24 @@ def test_no_change_does_not_update_timestamp(company_repo, uow):
     )
 
     assert updated.updated_at is None
+
+
+@pytest.mark.parametrize(
+    ("name", "tax", "expected"),
+    [
+        ("ACME", "5261009959", CompanyVerificationStatus.VERIFIED),       # poprawna suma kontrolna
+        ("ACME", "IE3463004VH", CompanyVerificationStatus.VERIFIED),      # VAT UE z prefiksem
+        ("ACME", "1234567890", CompanyVerificationStatus.TO_VERIFY),      # zła suma kontrolna
+        ("ACME", None, CompanyVerificationStatus.TO_VERIFY),              # brak NIP → TMP-
+        (None, "5261009959", CompanyVerificationStatus.TO_VERIFY),        # brak nazwy
+    ],
+)
+def test_created_company_verification_status(uow, name, tax, expected):
+    result = build_orchestrator().evaluate(
+        uow=uow,
+        organization_id=new_uuid(),
+        actor_user_id=new_uuid(),
+        input_=build_input(name=name, tax=tax),
+    )
+
+    assert result.verification_status == expected

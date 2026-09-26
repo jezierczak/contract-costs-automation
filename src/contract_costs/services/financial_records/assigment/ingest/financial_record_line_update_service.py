@@ -226,7 +226,8 @@ class FinancialRecordLineUpdateService:
                 invoice_lines=record_lines_updated[ref.record_id],
                 buyer_role=ref.buyer_role,
                 seller_role=ref.seller_role,
-                value_type_directions_map=value_type_directions_map
+                value_type_directions_map=value_type_directions_map,
+                companies_verified=ref.companies_verified,
             )
 
         return record_assignment_facts

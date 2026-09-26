@@ -761,6 +761,7 @@ def company_update(
         role=final_role,
         tags=set(),
         set_reference_numbering_mode=reference_numbering_mode is not None,
+        mark_verified=True,
         reference_numbering_mode=(
             ReferenceNumberingMode(reference_numbering_mode) if reference_numbering_mode else None
         ),

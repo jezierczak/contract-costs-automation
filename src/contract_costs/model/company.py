@@ -16,6 +16,12 @@ class ReferenceNumberingMode(Enum):
     GLOBAL = "global"
 
 
+class CompanyVerificationStatus(Enum):
+    """TO_VERIFY = firma założona z niepewnych danych (np. OCR bez poprawnego NIP-u) – do uzupełnienia przez użytkownika."""
+    VERIFIED = "verified"
+    TO_VERIFY = "to_verify"
+
+
 class CompanyType(Enum):
     OWN = "Own"
     COOPERATIVE = "Cooperative"
@@ -101,5 +107,6 @@ class Company(BaseEntity):
     tags: set[str] = field(default_factory=set)
     # None = numer wpisywany ręcznie
     reference_numbering_mode: ReferenceNumberingMode | None = None
+    verification_status: CompanyVerificationStatus = CompanyVerificationStatus.VERIFIED
 
 

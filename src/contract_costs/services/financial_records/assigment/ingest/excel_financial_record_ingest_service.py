@@ -5,6 +5,7 @@ from typing import Callable
 from uuid import UUID
 
 from contract_costs.common.time import utc_now
+from contract_costs.model.company import CompanyVerificationStatus
 from contract_costs.model.financial_record import FinancialRecord, FinancialRecordStatus
 from contract_costs.services.catalogues.document_file_organizer import DocumentFileOrganizer
 from contract_costs.services.financial_records.assigment.apply.commands.invoice_command import InvoiceCommand
@@ -194,7 +195,11 @@ class ExcelFinancialRecordIngestService(FinancialRecordIngestService):
                     record_reference=update.reference,
                     old_record_reference=update.old_record_reference,
                     buyer_role=buyer.role,
-                    seller_role=seller.role
+                    seller_role=seller.role,
+                    companies_verified=(
+                        buyer.verification_status == CompanyVerificationStatus.VERIFIED
+                        and seller.verification_status == CompanyVerificationStatus.VERIFIED
+                    )
                 )
                 continue
 
@@ -241,7 +246,11 @@ class ExcelFinancialRecordIngestService(FinancialRecordIngestService):
                 record_reference=record.reference,
                 old_record_reference=old_reference_number,#update.old_record_reference,
                 buyer_role=buyer.role,
-                seller_role=seller.role
+                seller_role=seller.role,
+                companies_verified=(
+                    buyer.verification_status == CompanyVerificationStatus.VERIFIED
+                    and seller.verification_status == CompanyVerificationStatus.VERIFIED
+                )
             )
 
         return results

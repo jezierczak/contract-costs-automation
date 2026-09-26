@@ -10,3 +10,4 @@ class FinancialRecordCompletionReason(str, Enum):
     MIXED_LINE_DIRECTIONS = "mixed_line_directions"
     DIRECTION_MISMATCH = "direction_mismatch"
     UNKNOWN_LINE_DIRECTION = "unknown_line_direction"
+    COMPANY_TO_VERIFY = "company_to_verify"

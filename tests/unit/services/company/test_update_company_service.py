@@ -205,3 +205,24 @@ def test_update_company_sets_reference_numbering_mode_only_when_requested(compan
         uow=uow,
     )
     assert company_repo.get(company.id, org_id).reference_numbering_mode is None
+
+
+def test_update_company_marks_verified_only_from_form(company_repo, uow):
+    from contract_costs.model.company import CompanyVerificationStatus
+
+    service = UpdateCompanyService()
+    org_id = uuid4()
+    company = (
+        CompanyBuilder()
+        .with_organization_id(org_id)
+        .with_verification_status(CompanyVerificationStatus.TO_VERIFY)
+        .build()
+    )
+    company_repo.add(company)
+
+    # import z Excela / CLI nie weryfikuje firmy
+    service.execute(action=_numbering_cmd(company, org_id), uow=uow)
+    assert company_repo.get(company.id, org_id).verification_status == CompanyVerificationStatus.TO_VERIFY
+
+    service.execute(action=_numbering_cmd(company, org_id, mark_verified=True), uow=uow)
+    assert company_repo.get(company.id, org_id).verification_status == CompanyVerificationStatus.VERIFIED

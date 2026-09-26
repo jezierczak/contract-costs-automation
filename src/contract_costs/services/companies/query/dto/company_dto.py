@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import date
 from uuid import UUID
 
-from contract_costs.model.company import CompanyType, ReferenceNumberingMode
+from contract_costs.model.company import CompanyType, CompanyVerificationStatus, ReferenceNumberingMode
 
 
 @dataclass(frozen=True)
@@ -55,3 +55,5 @@ class CompanyDTO:
 
     # automatyczna numeracja dokumentów sprzedawcy (None = ręcznie)
     reference_numbering_mode: ReferenceNumberingMode | None = None
+
+    verification_status: CompanyVerificationStatus = CompanyVerificationStatus.VERIFIED

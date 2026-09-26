@@ -8,7 +8,8 @@ from uuid import uuid4, UUID
 from contract_costs.common.ids import new_uuid
 from contract_costs.common.time import utc_now
 from contract_costs.infrastructure.openai_invoice_client import OpenAIInvoiceClient
-from contract_costs.model.company import Company, CompanyType, BankAccount, Contact, Address
+from contract_costs.model.company import Company, CompanyType, BankAccount, Contact, Address, \
+    CompanyVerificationStatus
 
 from contract_costs.services.companies.confidence.fields import CompanyField
 from contract_costs.services.companies.confidence.quality_default import DefaultCompanyQuality
@@ -16,6 +17,7 @@ from contract_costs.services.companies.normalize.normalize_service import Compan
 
 from contract_costs.services.companies.providers.candidate_provider import CompanyCandidateProvider
 from contract_costs.services.companies.providers.excact_nip import ExactNipCandidateProvider
+from contract_costs.services.companies.validators.company import CompanyValidator
 from contract_costs.services.financial_records.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
 from contract_costs.unit_of_work import UnitOfWork
 
@@ -171,6 +173,14 @@ class CompanyEvaluateOrchestrator:
             role=CompanyType(input_.role),
             tags=set(),
             is_active=True,
+            # pewny NIP + nazwa z dokumentu = firma gotowa; inaczej użytkownik ją uzupełnia
+            verification_status=(
+                CompanyVerificationStatus.VERIFIED
+                if normalized_tax is not None
+                and CompanyValidator.is_trusted_tax_number(normalized_tax)
+                and (input_.name or "").strip()
+                else CompanyVerificationStatus.TO_VERIFY
+            ),
 
             created_at=self._clock(),
             created_by_user_id=actor_user_id,

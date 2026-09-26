@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS companies (
     role VARCHAR(32) NOT NULL,
     is_active TINYINT(1) NOT NULL,
     reference_numbering_mode VARCHAR(16) NULL,
+    verification_status VARCHAR(16) NOT NULL DEFAULT 'verified',
     created_at DATETIME NULL,
     created_by_user_id CHAR(36) NULL,
     updated_at DATETIME NULL,

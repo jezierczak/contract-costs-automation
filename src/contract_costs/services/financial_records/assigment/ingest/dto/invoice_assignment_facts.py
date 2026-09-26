@@ -13,3 +13,5 @@ class FinancialRecordAssignmentFacts:
     buyer_role: CompanyType
     seller_role: CompanyType
     value_type_directions_map: dict[UUID, ValueDirection]
+    # sprzedawca i nabywca zweryfikowani (żaden nie jest TO_VERIFY)
+    companies_verified: bool = True
