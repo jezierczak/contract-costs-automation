@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 
@@ -19,3 +19,7 @@ class DocumentListItemDto:
     file_path: str
     confidence_score: int | None
     confidence_breakdown:dict | None
+    seller_name: str | None = None
+    buyer_name: str | None = None
+    buyer_nip: str | None = None
+    invoice_date: date | None = None

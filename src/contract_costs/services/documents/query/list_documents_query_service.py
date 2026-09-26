@@ -1,4 +1,5 @@
 import logging
+from datetime import date
 
 from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.services.documents.query.document_list_item_dto import DocumentListItemDto
@@ -33,7 +34,8 @@ class ListDocumentsQueryService(ActionHandler[ListDocumentsQueryCommand, list[Do
 
         documents = sorted(
             documents,
-            key=lambda d: d.created_at,
+            # created_at ma sekundowa precyzje - paczka z KSeF laduje w tej samej sekundzie
+            key=lambda d: (d.created_at, d.document_number or "", d.filename or ""),
             reverse=True,
         )
 
@@ -41,6 +43,10 @@ class ListDocumentsQueryService(ActionHandler[ListDocumentsQueryCommand, list[Do
 
         for d in documents:
             file_name = self._extract_file_name(d.file_path)
+            payload = d.parsed_payload if isinstance(d.parsed_payload, dict) else {}
+            seller = self._as_dict(payload.get("seller"))
+            buyer = self._as_dict(payload.get("buyer"))
+            record = self._as_dict(payload.get("record"))
 
             result.append(
                 DocumentListItemDto(
@@ -58,7 +64,10 @@ class ListDocumentsQueryService(ActionHandler[ListDocumentsQueryCommand, list[Do
                     confidence_breakdown=d.scoring.breakdown if d.scoring else None,
                     created_at=d.created_at,
                     file_path=d.file_path,
-
+                    seller_name=seller.get("name") or None,
+                    buyer_name=buyer.get("name") or None,
+                    buyer_nip=buyer.get("tax_number") or None,
+                    invoice_date=self._parse_date(record.get("invoice_date")),
                 )
             )
 
@@ -76,3 +85,16 @@ class ListDocumentsQueryService(ActionHandler[ListDocumentsQueryCommand, list[Do
             return "unknown"
 
         return file_path.split("/")[-1].split("\\")[-1]
+
+    @staticmethod
+    def _as_dict(value) -> dict:
+        return value if isinstance(value, dict) else {}
+
+    @staticmethod
+    def _parse_date(value) -> date | None:
+        if not value:
+            return None
+        try:
+            return date.fromisoformat(str(value)[:10])
+        except ValueError:
+            return None
