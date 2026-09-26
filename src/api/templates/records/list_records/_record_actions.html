@@ -1,4 +1,4 @@
-{% if record.payment_status == "unpaid" %}
+{% if record.payment_status in ["unpaid", "partially_paid", "unknown"] %}
 <button
     hx-post="/records/{{ record.id }}/set-paid"
     hx-trigger="click consume"

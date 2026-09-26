@@ -8,3 +8,4 @@ class RecordMainboardStatsView:
     sent_history: int
     unpaid_costs: int
     unpaid_revenue: int
+    unpaid_internal: int

@@ -12,7 +12,12 @@ from contract_costs.model.business_event import BusinessEventLevel
 from contract_costs.model.company import CompanyType
 from contract_costs.model.contract import ContractType, ContractStatus
 
-from contract_costs.model.financial_record import PaymentMethod, PaymentStatus, FinancialRecordStatus
+from contract_costs.model.financial_record import (
+    UNSETTLED_PAYMENT_STATUSES,
+    FinancialRecordStatus,
+    PaymentMethod,
+    PaymentStatus,
+)
 from contract_costs.model.record_workspace_view import RecordWorkspaceView
 from contract_costs.model.unit_of_measure import UnitOfMeasure
 from contract_costs.model.value_direction import ValueDirection
@@ -295,9 +300,7 @@ def _fetch_company_records(
     if direction:
         direction_enum = ValueDirection(direction)
 
-    payment_status = None
-    if unpaid:
-        payment_status = PaymentStatus.UNPAID
+    payment_statuses = list(UNSETTLED_PAYMENT_STATUSES) if unpaid else None
     # ===============================
     # BUILD QUERY
     # ===============================
@@ -313,7 +316,7 @@ def _fetch_company_records(
 
         contract_codes=[contract_code] if contract_code else None,
         direction=direction_enum,
-        payment_statuses=[payment_status] if payment_status else None,
+        payment_statuses=payment_statuses,
     )
 
     # ===============================
@@ -1311,6 +1314,7 @@ def records_list(
         RecordWorkspaceView.SENT_HISTORY: "Wysłane do księgowej",
         RecordWorkspaceView.UNPAID_COSTS: "Niezapłacone koszty",
         RecordWorkspaceView.UNPAID_REVENUE: "Niezapłacone przychody",
+        RecordWorkspaceView.UNPAID_INTERNAL: "Niezapłacone dokumenty wewnętrzne",
     }
     request.state.ctx.workspace_subtitle = VIEW_LABELS.get(view)
     return request.app.state.templates.TemplateResponse(

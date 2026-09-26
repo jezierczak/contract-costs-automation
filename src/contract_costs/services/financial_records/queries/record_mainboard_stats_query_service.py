@@ -31,4 +31,5 @@ class RecordMainboardStatsQueryService(
             sent_history=count(RecordWorkspaceView.SENT_HISTORY),
             unpaid_costs=count(RecordWorkspaceView.UNPAID_COSTS),
             unpaid_revenue=count(RecordWorkspaceView.UNPAID_REVENUE),
+            unpaid_internal=count(RecordWorkspaceView.UNPAID_INTERNAL),
         )

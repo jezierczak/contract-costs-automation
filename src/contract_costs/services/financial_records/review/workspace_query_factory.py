@@ -1,8 +1,8 @@
 from uuid import UUID
 
 from contract_costs.model.financial_record import (
+    UNSETTLED_PAYMENT_STATUSES,
     FinancialRecordStatus,
-    PaymentStatus,
 )
 from contract_costs.model.record_workspace_view import RecordWorkspaceView
 from contract_costs.model.value_direction import ValueDirection
@@ -60,7 +60,7 @@ class RecordWorkspaceQueryFactory:
                 return FinancialRecordReviewQuery(
                     organization_id=organization_id,
                     actor_user_id=actor_user_id,
-                    payment_statuses=[PaymentStatus.UNPAID],
+                    payment_statuses=list(UNSETTLED_PAYMENT_STATUSES),
                     direction=[ValueDirection.COST, ValueDirection.FIXED]
 
                 )
@@ -69,6 +69,15 @@ class RecordWorkspaceQueryFactory:
                 return FinancialRecordReviewQuery(
                     organization_id=organization_id,
                     actor_user_id=actor_user_id,
-                    payment_statuses=[PaymentStatus.UNPAID],
+                    payment_statuses=list(UNSETTLED_PAYMENT_STATUSES),
                     direction=ValueDirection.REVENUE
+                )
+
+            case RecordWorkspaceView.UNPAID_INTERNAL:
+                # rozliczenia między firmami own — czy firmy zapłaciły sobie nawzajem
+                return FinancialRecordReviewQuery(
+                    organization_id=organization_id,
+                    actor_user_id=actor_user_id,
+                    payment_statuses=list(UNSETTLED_PAYMENT_STATUSES),
+                    direction=ValueDirection.INTERNAL
                 )

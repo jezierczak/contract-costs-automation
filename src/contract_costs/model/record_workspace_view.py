@@ -8,3 +8,4 @@ class RecordWorkspaceView(str, Enum):
     SENT_HISTORY = "sent_history"
     UNPAID_COSTS = "unpaid_costs"
     UNPAID_REVENUE = "unpaid_revenue"
+    UNPAID_INTERNAL = "unpaid_internal"

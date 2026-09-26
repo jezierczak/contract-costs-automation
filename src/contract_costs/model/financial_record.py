@@ -27,6 +27,14 @@ class PaymentStatus(Enum):
     UNKNOWN = "unknown"
 
 
+# wszystko, co nie jest w pełni zapłacone — "niezapłacone" w widokach i filtrach
+UNSETTLED_PAYMENT_STATUSES: tuple[PaymentStatus, ...] = (
+    PaymentStatus.UNPAID,
+    PaymentStatus.PARTIALLY_PAID,
+    PaymentStatus.UNKNOWN,
+)
+
+
 class FinancialRecordStatus(Enum):
     NEW_COST = "new_cost"
     NEW_REVENUE = "new_revenue"
