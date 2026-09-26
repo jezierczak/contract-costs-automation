@@ -14,6 +14,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 from uuid import UUID
 
 from fastapi import FastAPI, Request
+from fastapi.staticfiles import StaticFiles
 from starlette.responses import HTMLResponse
 from starlette.templating import Jinja2Templates
 
@@ -140,6 +141,7 @@ BASE_DIR = FilePath(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 template_filters.register(templates.env)
 app.state.templates = templates
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 app.include_router(auth.router)
 app.include_router(companies.router)

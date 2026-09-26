@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ file_name }}</title>
+    <style>
+        html, body { margin: 0; height: 100%; font-family: Arial, sans-serif; font-size: 13px; }
+        body { display: flex; flex-direction: column; background: #f3f4f6; }
+        .toolbar { display: flex; gap: 8px; align-items: center; padding: 8px 12px;
+                   background: #fff; border-bottom: 1px solid #d1d5db; }
+        .toolbar .name { flex: 1; color: #374151; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .toolbar a { padding: 4px 12px; border: 1px solid #9ca3af; border-radius: 4px;
+                     color: #111; text-decoration: none; background: #fff; white-space: nowrap; }
+        .toolbar a.primary { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+        .toolbar a[aria-disabled="true"] { opacity: .4; pointer-events: none; }
+        #status { padding: 24px; color: #374151; }
+        #status.error { color: #b91c1c; }
+        iframe { flex: 1; width: 100%; border: 0; display: none; }
+    </style>
+</head>
+<body>
+<div class="toolbar">
+    <span class="name" title="{{ file_name }}">{{ file_name }}</span>
+    <a id="download" class="primary" aria-disabled="true" href="#">Pobierz PDF</a>
+    <a href="?mf=1">Wizualizacja MF (HTML)</a>
+    <a href="?raw=1">Surowy XML</a>
+</div>
+<div id="status">Generowanie wizualizacji faktury…</div>
+<iframe id="pdf" title="Wizualizacja faktury"></iframe>
+
+<script src="{{ url_for('static', path='vendor/ksef-pdf-generator/ksef-fe-invoice-converter.umd.js') }}"></script>
+<script>
+(async () => {
+    const status = document.getElementById("status");
+    const frame = document.getElementById("pdf");
+    const download = document.getElementById("download");
+    try {
+        const response = await fetch("?raw=1", { credentials: "same-origin" });
+        if (!response.ok) throw new Error("Nie udało się pobrać pliku XML (" + response.status + ")");
+        const xml = new File([await response.blob()], {{ file_name | tojson }}, { type: "application/xml" });
+
+        const converter = window["ksef-fe-invoice-converter"];
+        // wizualizacja MF (ta sama co w aplikacji KSeF); numer KSeF i QR – gdy będziemy je przechowywać
+        const pdf = await converter.generateInvoice(xml, { nrKSeF: "" }, "blob");
+
+        const url = URL.createObjectURL(pdf);
+        frame.src = url;
+        frame.style.display = "block";
+        status.style.display = "none";
+        download.href = url;
+        download.download = {{ pdf_name | tojson }};
+        download.setAttribute("aria-disabled", "false");
+    } catch (error) {
+        console.error(error);
+        status.classList.add("error");
+        status.textContent = "Nie udało się wygenerować PDF: " + (error && error.message || error)
+            + ". Spróbuj wizualizacji MF (HTML) albo surowego XML.";
+    }
+})();
+</script>
+</body>
+</html>

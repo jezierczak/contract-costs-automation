@@ -59,15 +59,8 @@
         ⬇
     </a>
 
-    <!-- raw xml + pdf -->
+    <!-- raw xml -->
     {% if d.file_name.lower().endswith(".xml") %}
-    <a
-        href="/documents/{{ d.document_id }}/file?pdf=1"
-        class="text-gray-500 hover:text-gray-700 text-xs shrink-0"
-        title="Pobierz PDF"
-    >
-        PDF
-    </a>
     <a
         href="/documents/{{ d.document_id }}/file?raw=1"
         target="_blank"

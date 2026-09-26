@@ -212,6 +212,14 @@ def document_file(
     # XML PREVIEW
     # ==========================================
 
+    if path.suffix.lower() == ".xml" and not raw and not request.query_params.get("mf"):
+        # PDF generuje w przeglądarce oficjalna biblioteka MF (jak w aplikacji KSeF)
+        return request.app.state.templates.TemplateResponse(
+            request,
+            "documents/invoice_preview.html",
+            {"file_name": path.name, "pdf_name": path.stem + ".pdf"},
+        )
+
     if path.suffix.lower() == ".xml" and not raw:
         try:
             return HTMLResponse(_with_print_toolbar(render_invoice_html(path)))
