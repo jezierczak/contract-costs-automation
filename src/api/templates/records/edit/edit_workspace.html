@@ -485,7 +485,7 @@ function updateInitialPaymentFields() {
 
 document.addEventListener("DOMContentLoaded", updateInitialPaymentFields);
 
-async function refreshReferenceField() {
+async function refreshReferenceField(currentReference = "") {
     const modeSelect = document.getElementById("reference-numbering-mode");
     const target = document.getElementById("reference-field-slot");
     if (!modeSelect || !target) return;
@@ -497,6 +497,7 @@ async function refreshReferenceField() {
         numbering_mode: modeSelect.value,
         seller_tax_number: sellerInput?.value || "",
         invoice_date: invoiceDateInput?.value || "",
+        current_reference: currentReference,
     });
 
     const response = await fetch(`/records/reference/field?${params.toString()}`, {
@@ -504,6 +505,29 @@ async function refreshReferenceField() {
     });
 
     target.innerHTML = await response.text();
+}
+
+// tryb numeracji zapisany przy sprzedawcy; bez ustawienia — numer ręczny, pusty
+async function applySellerNumbering() {
+    const modeSelect = document.getElementById("reference-numbering-mode");
+    if (!modeSelect) return;  // edycja istniejącego rekordu — numer już jest
+
+    const sellerInput = document.querySelector('[name="seller_tax_number"]');
+    const params = new URLSearchParams({ seller_tax_number: sellerInput?.value || "" });
+
+    const response = await fetch(`/records/reference/seller-mode?${params.toString()}`);
+    const data = await response.json();
+
+    modeSelect.value = data.numbering_mode;
+    await refreshReferenceField();
+}
+
+// korekta wygenerowanego numeru: przejście na tryb ręczny z podglądem do edycji
+async function correctReferenceManually(preview) {
+    const modeSelect = document.getElementById("reference-numbering-mode");
+    if (!modeSelect) return;
+    modeSelect.value = "manual";
+    await refreshReferenceField(preview || "");
 }
 
 async function refreshContractNodeSlot(lineIdx, contractId, selectedNodeId) {
@@ -643,7 +667,7 @@ document.body.addEventListener("change", function(e) {
 
 document.body.addEventListener("htmx:afterSwap", function(e) {
     if (e.target && e.target.id === "company-slot-seller") {
-        refreshReferenceField();
+        applySellerNumbering();
     }
 
     if (e.target && e.target.id === "record-lines") {
@@ -755,5 +779,9 @@ document.body.addEventListener("click", function(e) {
 });
 
 updateInvoiceSummaryFromLines();
+
+if (document.querySelector('[name="seller_tax_number"]')?.value) {
+    applySellerNumbering();
+}
 </script>
 {% endblock %}

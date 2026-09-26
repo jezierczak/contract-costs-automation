@@ -2,7 +2,7 @@ import json
 import logging
 
 from fastapi import APIRouter, Depends, Form, Request
-from starlette.responses import RedirectResponse, Response, HTMLResponse
+from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from decimal import Decimal
 from uuid import UUID
 from datetime import datetime, time, timedelta
@@ -455,6 +455,31 @@ def record_edit_workspace(
             "prefill_company_seller": prefill_company_seller,
         },
     )
+
+
+@router.get("/records/reference/seller-mode")
+def record_reference_seller_mode(
+    request: Request,
+    seller_tax_number: str | None = None,
+    services=Depends(get_services),
+):
+    """Tryb numeracji zapisany przy sprzedawcy — formularz ustawia go po wyborze sprzedawcy."""
+    ctx = request.state.ctx
+    mode = None
+
+    if seller_tax_number:
+        companies = services.action_bus.execute(
+            action=CompanyQuery(
+                organization_id=ctx.organization_id,
+                actor_user_id=ctx.user_id,
+                tax_number=seller_tax_number,
+            ),
+            handler=services.company_query_service,
+        )
+        if companies and companies[0].reference_numbering_mode:
+            mode = companies[0].reference_numbering_mode
+
+    return JSONResponse({"numbering_mode": f"seller_{mode.value}" if mode else "manual"})
 
 
 @router.get("/records/reference/field")

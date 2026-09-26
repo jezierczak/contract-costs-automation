@@ -158,3 +158,50 @@ def test_update_company_keeps_tax_number_if_none(company_repo, uow):
     updated = company_repo.get(company.id, org_id)
 
     assert updated.tax_number == "1234567890"
+
+
+def _numbering_cmd(company, org_id, **kwargs):
+    return UpdateCounterpartyCompanyCommand(
+        organization_id=org_id,
+        company_id=company.id,
+        actor_user_id=uuid4(),
+        name=company.name,
+        description=None,
+        tax_number=None,
+        address=None,
+        contact=None,
+        bank_account=None,
+        role=CompanyType.SUPPLIER,
+        tags=None,
+        **kwargs,
+    )
+
+
+def test_update_company_sets_reference_numbering_mode_only_when_requested(company_repo, uow):
+    from contract_costs.model.company import ReferenceNumberingMode
+
+    service = UpdateCompanyService()
+    org_id = uuid4()
+    company = CompanyBuilder().with_organization_id(org_id).with_tax_number("1234567890").build()
+    company_repo.add(company)
+
+    service.execute(
+        action=_numbering_cmd(
+            company, org_id,
+            set_reference_numbering_mode=True,
+            reference_numbering_mode=ReferenceNumberingMode.YEARLY,
+        ),
+        uow=uow,
+    )
+    assert company_repo.get(company.id, org_id).reference_numbering_mode == ReferenceNumberingMode.YEARLY
+
+    # aktualizacja bez flagi (import z Excela, CLI) nie kasuje ustawienia
+    service.execute(action=_numbering_cmd(company, org_id), uow=uow)
+    assert company_repo.get(company.id, org_id).reference_numbering_mode == ReferenceNumberingMode.YEARLY
+
+    # jawne wyczyszczenie z formularza → numer ręczny
+    service.execute(
+        action=_numbering_cmd(company, org_id, set_reference_numbering_mode=True, reference_numbering_mode=None),
+        uow=uow,
+    )
+    assert company_repo.get(company.id, org_id).reference_numbering_mode is None

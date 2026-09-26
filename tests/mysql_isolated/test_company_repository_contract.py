@@ -152,3 +152,22 @@ def test_company_exists_owner_and_finders(company_repo_contract):
     assert [c.id for c in company_repo_contract.find_by_name_like(org_id, "Owner")] == [owner.id]
     assert [c.id for c in company_repo_contract.find_by_street_tokens(org_id, ["krak"])] == [owner.id]
     assert company_repo_contract.find_by_street_tokens(org_id, []) == []
+
+
+def test_company_reference_numbering_mode_roundtrip(company_repo_contract):
+    from dataclasses import replace
+
+    from contract_costs.model.company import ReferenceNumberingMode
+
+    org_id = new_uuid()
+    company = CompanyBuilder().with_organization_id(org_id).build()
+    company_repo_contract.add(company)
+
+    loaded = company_repo_contract.get(company.id, org_id)
+    assert loaded.reference_numbering_mode is None
+
+    company_repo_contract.update(replace(loaded, reference_numbering_mode=ReferenceNumberingMode.MONTHLY))
+    assert company_repo_contract.get(company.id, org_id).reference_numbering_mode == ReferenceNumberingMode.MONTHLY
+
+    company_repo_contract.update(replace(loaded, reference_numbering_mode=None))
+    assert company_repo_contract.get(company.id, org_id).reference_numbering_mode is None

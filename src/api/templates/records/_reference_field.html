@@ -17,4 +17,13 @@
     class="w-full border rounded p-2 bg-gray-100 text-gray-700"
     readonly
 >
+{% if reference_preview %}
+<button
+    type="button"
+    onclick="correctReferenceManually({{ reference_preview|tojson|forceescape }})"
+    class="mt-1 text-xs font-medium text-blue-600 hover:underline"
+>
+    popraw ręcznie
+</button>
+{% endif %}
 {% endif %}

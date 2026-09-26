@@ -225,6 +225,39 @@ Kod kraju konta
 </div>
 
 <!-- ======================================== -->
+<!-- NUMERACJA DOKUMENTÓW -->
+<!-- ======================================== -->
+
+{% if numbering_options %}
+
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-1">
+Numeracja generowanych dokumentów
+</label>
+
+<select
+    name="reference_numbering_mode"
+    class="w-full border rounded px-3 py-2"
+>
+{% for option in numbering_options %}
+<option
+    value="{{ option.value }}"
+    {% if company and (company.reference_numbering_mode.value if company.reference_numbering_mode else "") == option.value %}selected{% endif %}
+>
+    {{ option.label }}
+</option>
+{% endfor %}
+</select>
+
+<p class="mt-1 text-xs text-gray-500">
+Dla dokumentów bez własnego numeru (ZUS, US, bank…). Przy nowym rekordzie od tego
+sprzedawcy numer <code>&lt;nr&gt;/&lt;NIP&gt;/&lt;rok&gt;[/&lt;mies&gt;]</code> wygeneruje się sam — z możliwością korekty.
+</p>
+</div>
+
+{% endif %}
+
+<!-- ======================================== -->
 <!-- ROLE -->
 <!-- ======================================== -->
 

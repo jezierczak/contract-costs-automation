@@ -9,7 +9,7 @@ from starlette.responses import HTMLResponse
 
 import contract_costs.config as cfg
 from api.dependencies import get_services
-from contract_costs.model.company import CompanyType, Address, Contact, BankAccount
+from contract_costs.model.company import CompanyType, Address, Contact, BankAccount, ReferenceNumberingMode
 from contract_costs.model.company_ksef_settings import KsefEnvironment
 from contract_costs.services.companies.dto.create_company_command import CreateOwnerCompanyCommand, \
     CreateCounterpartyCompanyCommand
@@ -20,6 +20,13 @@ from contract_costs.services.companies.dto.update_company_command import UpdateO
 from contract_costs.services.companies.query.dto.company_detail_query import CompanyDetailQuery
 from contract_costs.services.companies.query.dto.company_query import CompanyQuery
 from contract_costs.services.companies.dto.save_company_ksef_settings_command import SaveCompanyKsefSettingsCommand
+
+COMPANY_NUMBERING_OPTIONS = [
+    {"value": "", "label": "Nie generuj — numer wpisywany ręcznie"},
+    {"value": ReferenceNumberingMode.MONTHLY.value, "label": "Automatyczna miesięczna"},
+    {"value": ReferenceNumberingMode.YEARLY.value, "label": "Automatyczna roczna"},
+    {"value": ReferenceNumberingMode.GLOBAL.value, "label": "Automatyczna globalna"},
+]
 
 router = APIRouter()
 
@@ -481,6 +488,7 @@ def company_edit_panel(
             "submit_label": "Zapisz",
             "show_role": True if company.role != CompanyType.OWN else False,
             "company_roles": [r.value for r in CompanyType if r.name != "OWN"],
+            "numbering_options": COMPANY_NUMBERING_OPTIONS,
             "picker_target": target,
             "return_to_picker": False,
         },
@@ -710,6 +718,8 @@ def company_update(
     account_number: str | None = Form(None),
     country_code: str | None = Form(None),
     picker_target: str | None = Form(None),
+    # brak pola = nie zmieniaj; "" = numer wpisywany ręcznie
+    reference_numbering_mode: str | None = Form(None),
 
     services=Depends(get_services),
 ):
@@ -750,6 +760,10 @@ def company_update(
         ),
         role=final_role,
         tags=set(),
+        set_reference_numbering_mode=reference_numbering_mode is not None,
+        reference_numbering_mode=(
+            ReferenceNumberingMode(reference_numbering_mode) if reference_numbering_mode else None
+        ),
     )
     if final_role == CompanyType.OWN:
         command = UpdateOwnerCompanyCommand(**base_kwargs)

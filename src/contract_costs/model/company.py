@@ -9,6 +9,13 @@ from contract_costs.model.base_entity import BaseEntity
 
 logger = logging.getLogger(__name__)
 
+class ReferenceNumberingMode(Enum):
+    """Automatyczna numeracja dokumentów wystawianych w imieniu sprzedawcy (np. ZUS, US, bank)."""
+    MONTHLY = "monthly"
+    YEARLY = "yearly"
+    GLOBAL = "global"
+
+
 class CompanyType(Enum):
     OWN = "Own"
     COOPERATIVE = "Cooperative"
@@ -92,5 +99,7 @@ class Company(BaseEntity):
     role: CompanyType
     is_active: bool
     tags: set[str] = field(default_factory=set)
+    # None = numer wpisywany ręcznie
+    reference_numbering_mode: ReferenceNumberingMode | None = None
 
 

@@ -2,10 +2,22 @@ import logging
 from uuid import UUID
 
 from contract_costs.infrastructure.db.mysql_connection import get_connection
-from contract_costs.model.company import Address, BankAccount, Company, CompanyType, Contact
+from contract_costs.model.company import (
+    Address,
+    BankAccount,
+    Company,
+    CompanyType,
+    Contact,
+    ReferenceNumberingMode,
+)
 from contract_costs.repository.company_repository import CompanyRepository
 
 logger = logging.getLogger(__name__)
+
+
+def _numbering_value(company: Company) -> str | None:
+    mode = company.reference_numbering_mode
+    return mode.value if mode else None
 
 
 class MySQLCompanyRepository(CompanyRepository):
@@ -56,6 +68,11 @@ class MySQLCompanyRepository(CompanyRepository):
             role=CompanyType(row["role"]),
             tags=set(),
             is_active=bool(row["is_active"]),
+            reference_numbering_mode=(
+                ReferenceNumberingMode(row["reference_numbering_mode"])
+                if row.get("reference_numbering_mode")
+                else None
+            ),
             created_at=row["created_at"],
             created_by_user_id=(UUID(row["created_by_user_id"]) if row["created_by_user_id"] else None),
             updated_at=row["updated_at"],
@@ -72,9 +89,9 @@ class MySQLCompanyRepository(CompanyRepository):
                         id, organization_id, name, description, tax_number,
                         street, city, zip_code, country, phone_number, email,
                         bank_account_number, bank_account_country_code,
-                        role, is_active, created_at, created_by_user_id
+                        role, is_active, reference_numbering_mode, created_at, created_by_user_id
                     )
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     """,
                     (
                         str(company.id),
@@ -92,6 +109,7 @@ class MySQLCompanyRepository(CompanyRepository):
                         company.bank_account.country_code if company.bank_account else None,
                         company.role.value,
                         company.is_active,
+                        _numbering_value(company),
                         company.created_at,
                         str(company.created_by_user_id) if company.created_by_user_id else None,
                     ),
@@ -113,7 +131,8 @@ class MySQLCompanyRepository(CompanyRepository):
                     SET name=%s, description=%s, tax_number=%s, street=%s, city=%s,
                         zip_code=%s, country=%s, phone_number=%s, email=%s,
                         bank_account_number=%s, bank_account_country_code=%s,
-                        role=%s, is_active=%s, updated_at=%s, updated_by_user_id=%s
+                        role=%s, is_active=%s, reference_numbering_mode=%s,
+                        updated_at=%s, updated_by_user_id=%s
                     WHERE id = %s AND organization_id = %s
                     """,
                     (
@@ -130,6 +149,7 @@ class MySQLCompanyRepository(CompanyRepository):
                         company.bank_account.country_code if company.bank_account else None,
                         company.role.value,
                         company.is_active,
+                        _numbering_value(company),
                         company.updated_at,
                         str(company.updated_by_user_id) if company.updated_by_user_id else None,
                         str(company.id),

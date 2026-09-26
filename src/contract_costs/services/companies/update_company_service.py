@@ -55,6 +55,11 @@ class UpdateCompanyService(ActionHandler[BaseUpdateCompanyCommand, None]):
             bank_account=action.bank_account,
             role=action.role,
             tags=action.tags or set(),
+            reference_numbering_mode=(
+                action.reference_numbering_mode
+                if action.set_reference_numbering_mode
+                else company.reference_numbering_mode
+            ),
             updated_at=self._clock(),
             updated_by_user_id=action.actor_user_id,
         )

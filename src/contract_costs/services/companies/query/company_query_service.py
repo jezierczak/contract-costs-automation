@@ -160,4 +160,5 @@ class CompanyQueryService(ActionHandler[CompanyQuery, list[CompanyDTO]]):
             quality_score=quality.get_overall_score(),
             invoice_count=company_stats.get("invoice_count", 0),
             last_invoice_date=company_stats.get("last_invoice_date"),
+            reference_numbering_mode=company.reference_numbering_mode,
         )

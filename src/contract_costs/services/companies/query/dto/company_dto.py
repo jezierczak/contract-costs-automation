@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import date
 from uuid import UUID
 
-from contract_costs.model.company import CompanyType
+from contract_costs.model.company import CompanyType, ReferenceNumberingMode
 
 
 @dataclass(frozen=True)
@@ -52,3 +52,6 @@ class CompanyDTO:
     quality_score: int | None = None
     invoice_count: int = 0
     last_invoice_date: date | None = None
+
+    # automatyczna numeracja dokumentów sprzedawcy (None = ręcznie)
+    reference_numbering_mode: ReferenceNumberingMode | None = None

@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS companies (
     bank_account_country_code VARCHAR(8) NULL,
     role VARCHAR(32) NOT NULL,
     is_active TINYINT(1) NOT NULL,
+    reference_numbering_mode VARCHAR(16) NULL,
     created_at DATETIME NULL,
     created_by_user_id CHAR(36) NULL,
     updated_at DATETIME NULL,
