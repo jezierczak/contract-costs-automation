@@ -1,7 +1,6 @@
 import json
 import logging
 from html import escape as html_escape
-from urllib.parse import quote
 from datetime import date, timedelta
 from uuid import UUID
 from pathlib import Path
@@ -12,12 +11,7 @@ import shutil
 from api.dependencies import get_services
 from contract_costs.model.business_event import BusinessEventLevel
 from contract_costs.model.company import CompanyType
-from contract_costs.ksef.render.invoice_visualisation import (
-    PRINT_CSS,
-    PdfRenderingUnavailable,
-    render_invoice_html,
-    render_invoice_pdf,
-)
+from contract_costs.ksef.render.invoice_visualisation import PRINT_CSS, render_invoice_html
 from contract_costs.model.document import DocumentType, DocumentStatus
 from contract_costs.services.business_event.business_event_helper import BusinessEventHelper
 from contract_costs.services.companies.query.dto.company_query import CompanyQuery
@@ -39,7 +33,7 @@ router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
-# pasek nad wizualizacją MF; do „Drukuj” te same style wydruku co w PDF z serwera
+# pasek nad zapasową wizualizacją XSL MF (?mf=1); „Drukuj” z arkuszem wydruku A4
 _PRINT_TOOLBAR = """
 <style>@media print { .cc-print-toolbar { display: none !important; } __PRINT_CSS__ }</style>
 <div class="cc-print-toolbar" style="position:sticky;top:0;z-index:10;display:flex;gap:8px;justify-content:flex-end;
@@ -48,9 +42,6 @@ _PRINT_TOOLBAR = """
             style="padding:4px 12px;border:1px solid #9ca3af;border-radius:4px;background:#fff;cursor:pointer">
         Drukuj
     </button>
-    <a href="?pdf=1" style="padding:4px 12px;border:1px solid #9ca3af;border-radius:4px;background:#fff;color:#111;text-decoration:none">
-        Pobierz PDF
-    </a>
     <a href="?raw=1" style="padding:4px 12px;color:#374151">Surowy XML</a>
 </div>
 """.replace("__PRINT_CSS__", PRINT_CSS)
@@ -179,31 +170,12 @@ def document_file(
     download = request.query_params.get("download")
     raw = request.query_params.get("raw")
 
-    if request.query_params.get("pdf") and path.suffix.lower() == ".xml":
-        try:
-            pdf = render_invoice_pdf(path)
-        except PdfRenderingUnavailable:
-            logger.exception("PDF rendering unavailable")
-            return HTMLResponse(
-                "<p>PDF niedostępny w tym środowisku (brak bibliotek Pango dla WeasyPrint). "
-                "Użyj podglądu i opcji Drukuj.</p>",
-                status_code=503,
-            )
-        return Response(
-            content=pdf,
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition": "attachment; filename*=utf-8''"
-                + quote(path.stem + ".pdf")
-            },
-        )
-
     # ==========================================
     # DOWNLOAD
     # ==========================================
 
     if download:
-        # XML też jako oryginał – PDF z wizualizacji robi się przez druk w podglądzie
+        # XML jako oryginał – PDF daje podgląd (generator MF w przeglądarce)
         # Starlette sam koduje nazwę (filename*=utf-8''…) – ręczny nagłówek
         # wywracał się na polskich znakach
         return FileResponse(path, filename=path.name)

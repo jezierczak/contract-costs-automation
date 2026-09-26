@@ -4,10 +4,8 @@ from pathlib import Path
 import pytest
 
 from contract_costs.ksef.render.invoice_visualisation import (
-    PdfRenderingUnavailable,
     UnsupportedInvoiceSchema,
     render_invoice_html,
-    render_invoice_pdf,
 )
 
 FA3_NS = "http://crd.gov.pl/wzor/2025/06/25/13775/"
@@ -101,21 +99,3 @@ def test_empty_line_item_columns_are_dropped(tmp_path, no_network):
     assert "Nazwa (rodzaj) towaru lub usługi" in html
     # kolumna „Indeks” jest pusta we wszystkich pozycjach
     assert ">Indeks<" not in html
-
-
-def _pdf_available() -> bool:
-    try:
-        import weasyprint  # noqa: F401
-    except OSError:
-        return False
-    return True
-
-
-def test_pdf_rendering(tmp_path, no_network):
-    path = _write(tmp_path, FA3_INVOICE)
-
-    if _pdf_available():
-        assert render_invoice_pdf(path).startswith(b"%PDF")
-    else:
-        with pytest.raises(PdfRenderingUnavailable):
-            render_invoice_pdf(path)

@@ -19,7 +19,7 @@ STYLESHEETS: dict[str, str] = {
 }
 
 
-# style MF są pisane pod ekran (5% marginesu, szare tła, 11pt) – do wydruku A4
+# style MF są pisane pod ekran (5% marginesu, szare tła, 11pt) – do „Drukuj” na A4
 PRINT_CSS = """
 @page { size: A4; margin: 12mm 10mm 14mm 10mm;
         @bottom-right { content: counter(page) " / " counter(pages); font-size: 7pt; color: #666; } }
@@ -44,10 +44,6 @@ br + br { display: none; }
 
 class UnsupportedInvoiceSchema(Exception):
     pass
-
-
-class PdfRenderingUnavailable(Exception):
-    """WeasyPrint nie działa w tym środowisku (np. Windows bez GTK/Pango)."""
 
 
 def _local_path(url: str) -> Path | None:
@@ -115,13 +111,3 @@ def _drop_empty_columns(root) -> None:
         for row in rows:
             for index in reversed(empty):
                 row.remove(row[index])
-
-
-def render_invoice_pdf(xml_path: Path) -> bytes:
-    html = render_invoice_html(xml_path)
-    try:
-        from weasyprint import CSS, HTML
-    except OSError as e:  # brak bibliotek systemowych Pango
-        raise PdfRenderingUnavailable(str(e)) from e
-    return HTML(string=html).write_pdf(stylesheets=[CSS(string=PRINT_CSS)])
-
