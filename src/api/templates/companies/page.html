@@ -104,6 +104,23 @@
             Pokaż nieaktywne
         </label>
 
+        <label class="flex items-center gap-2 whitespace-nowrap text-sm">
+            <input
+                type="checkbox"
+                name="to_verify"
+                value="1"
+
+                {% if request.query_params.get('to_verify') %}checked{% endif %}
+
+                hx-get="/companies/table"
+                hx-trigger="change"
+                hx-target="#companies-table"
+                hx-swap="innerHTML"
+                hx-include="#companies-filters"
+            >
+            Tylko do weryfikacji
+        </label>
+
     </div>
 
     <!-- TABLE -->

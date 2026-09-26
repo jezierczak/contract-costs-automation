@@ -87,3 +87,13 @@ def test_financial_record_details_query_service_resolve_record_requires_id_or_re
     with pytest.raises(RuntimeError, match="Either record_id or reference"):
         service._resolve_record(action=query, record_repo=SimpleNamespace())
 
+
+
+def test_company_view_marks_company_to_verify() -> None:
+    from contract_costs.model.company import CompanyVerificationStatus
+
+    to_verify = CompanyBuilder().with_verification_status(CompanyVerificationStatus.TO_VERIFY).build()
+    verified = CompanyBuilder().build()
+
+    assert FinancialRecordDetailsQueryService._map_company(to_verify).to_verify is True
+    assert FinancialRecordDetailsQueryService._map_company(verified).to_verify is False

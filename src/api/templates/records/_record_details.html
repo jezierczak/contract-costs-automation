@@ -74,6 +74,13 @@
     <button onclick="navigator.clipboard.writeText('{{ record.buyer.name }}')" class="text-xs">📋</button>
 </div>
 
+{% if record.buyer.to_verify %}
+<div class="mt-1 rounded bg-amber-50 px-2 py-1 text-xs text-amber-800">
+    Firma do weryfikacji – rekord nie przejdzie walidacji.
+    <a href="/companies/{{ record.buyer.tax_number }}" class="underline">Uzupełnij dane firmy</a>
+</div>
+{% endif %}
+
 <div class="text-xs text-gray-600 flex items-center gap-1">
     NIP: {{ record.buyer.tax_number }}
     <button onclick="navigator.clipboard.writeText('{{ record.buyer.tax_number }}')" class="text-xs">📋</button>
@@ -121,6 +128,13 @@
     {{ record.seller.name }}
     <button onclick="navigator.clipboard.writeText('{{ record.seller.name }}')" class="text-xs">📋</button>
 </div>
+
+{% if record.seller.to_verify %}
+<div class="mt-1 rounded bg-amber-50 px-2 py-1 text-xs text-amber-800">
+    Firma do weryfikacji – rekord nie przejdzie walidacji.
+    <a href="/companies/{{ record.seller.tax_number }}" class="underline">Uzupełnij dane firmy</a>
+</div>
+{% endif %}
 
 <div class="text-xs text-gray-600 flex items-center gap-1">
     NIP: {{ record.seller.tax_number }}

@@ -2,7 +2,7 @@ import logging
 from decimal import Decimal
 
 from contract_costs.action_bus.action_handler import ActionHandler
-from contract_costs.model.company import Company
+from contract_costs.model.company import Company, CompanyVerificationStatus
 from contract_costs.services.financial_records.assigment.ingest.completion_validator.invoice_completion_validator import \
     RecordCompletionValidator
 from contract_costs.services.financial_records.queries.dto.attached_document_view import AttachedDocumentView
@@ -201,6 +201,7 @@ class FinancialRecordDetailsQueryService(
             phone=company.contact.phone_number if company.contact else None,
             bank_account=company.bank_account.account_number if company.bank_account else None,
             iban=company.bank_account.iban if company.bank_account else None,
+            to_verify=company.verification_status == CompanyVerificationStatus.TO_VERIFY,
         )
 
     @staticmethod

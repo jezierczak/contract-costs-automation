@@ -33,6 +33,9 @@
 
 <td class="p-3 font-medium text-gray-900">
     {{ company.name }}
+    {% if company.verification_status.value == "to_verify" %}
+    <span class="ml-2 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800" title="Firma założona z niepewnych danych – uzupełnij i zapisz formularz">do weryfikacji</span>
+    {% endif %}
 </td>
 
 <td class="p-3">

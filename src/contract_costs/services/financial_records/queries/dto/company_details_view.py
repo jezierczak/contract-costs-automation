@@ -16,3 +16,6 @@ class CompanyDetailsView:
 
     bank_account: str | None
     iban: str | None
+
+    # firma do weryfikacji – rekord nie przejdzie walidacji
+    to_verify: bool = False
