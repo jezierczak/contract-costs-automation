@@ -4,11 +4,12 @@ from uuid import UUID
 
 from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.model.company import CompanyType
+from contract_costs.model.document import DocumentSource
 from contract_costs.model.financial_record import FinancialRecordStatus
 
 from contract_costs.services.catalogues.record_file_organizer import RecordFileOrganizer
 from contract_costs.services.catalogues.record_file_workworkflow_service import RecordFileWorkflowService
-from contract_costs.services.companies.company_evaluate_orchestrator import CompanyEvaluateOrchestrator
+from contract_costs.services.companies.company_evaluate_orchestrator import CompanyEvaluateOrchestrator, EvaluateMode
 from contract_costs.services.financial_records.assigment.invoice_sources.document.dto.create_record_from_document_command import \
     CreateRecordFromDocumentCommand
 
@@ -147,10 +148,17 @@ class CreateRecordFromDocumentService(ActionHandler[CreateRecordFromDocumentComm
             uow=uow
         )
 
+        # KSeF: sprzedawca sam wystawia fakturę, więc jego dane są pewne.
+        # Dane nabywcy wpisuje sprzedawca - tylko uzupełniają puste pola.
         seller = self._company_evaluate.evaluate(
             organization_id=action.organization_id,
             actor_user_id=action.actor_user_id,
             input_=parse_result.seller,
+            mode=(
+                EvaluateMode.AUTHORITATIVE
+                if document.document_source == DocumentSource.KSEF
+                else EvaluateMode.NORMAL
+            ),
             uow=uow
         )
 

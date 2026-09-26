@@ -15,12 +15,11 @@ from contract_costs.services.companies.confidence.quality_default import Default
 from contract_costs.services.companies.normalize.normalize_service import CompanyNormalizeService
 
 from contract_costs.services.companies.providers.candidate_provider import CompanyCandidateProvider
+from contract_costs.services.companies.providers.excact_nip import ExactNipCandidateProvider
 from contract_costs.services.financial_records.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
 from contract_costs.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
-
-FULL_UPDATE_THRESHOLD = 85
 
 class EvaluateMode(Enum):
     NO_CREATE = 0
@@ -31,15 +30,14 @@ class CompanyEvaluateOrchestrator:
 
     def __init__(
         self,
-        # company_repo: CompanyRepository,
-        candidate_provider: CompanyCandidateProvider,
+        suggestion_provider: CompanyCandidateProvider,
         llm_company_resolver: OpenAIInvoiceClient,
         clock: Callable[[], datetime] = utc_now,
 
     ) -> None:
         self._llm_company_resolver = llm_company_resolver
-        # self._company_repo = company_repo
-        self._candidate_provider = candidate_provider
+        self._exact_provider = ExactNipCandidateProvider()
+        self._suggestion_provider = suggestion_provider
         self._normalizator = CompanyNormalizeService()
         self._clock = clock
 
@@ -87,48 +85,50 @@ class CompanyEvaluateOrchestrator:
         Main entry point for company resolution.
 
         Rules:
-        1. If no candidates → CREATE
-        2. If candidates exist → NEVER create
-        3. Select best candidate by quality
-        4. Update best candidate with better incoming data
+        1. Match ONLY by exact tax number (or raw TMP-/AI- placeholder)
+        2. No match → CREATE (unless NO_CREATE)
+        3. Match → fill in data (see _maybe_update); tax number never changes
+
+        Fuzzy providers (name, bank, email, ...) never decide - see suggest().
         """
 
-        candidates = self._candidate_provider.find_candidates(uow=uow,organization_id=organization_id, input_=input_)
-        logger.info(f"Evaluating company {input_.name}")
-
-        for candidate in candidates:
-            logger.info(f"Candidate: {candidate.name}")
+        candidates = self._exact_provider.find_candidates(uow=uow, organization_id=organization_id, input_=input_)
+        logger.info("Evaluating company %s (tax=%s)", input_.name, input_.tax_number)
 
         if not candidates:
             if mode == EvaluateMode.NO_CREATE:
                 raise RuntimeError(f"({mode.value} mode) No candidates found for NIP: {input_.tax_number}")
-            logger.info("No candidates found → creating new company")
+            logger.info("No company with this tax number → creating new company")
             return self._create_company(
                 uow=uow,
                 organization_id=organization_id,
                 actor_user_id=actor_user_id,
                 input_=input_)
 
-        # 🔹 2️⃣ Preferuj OWN (jeśli są)
-        own_candidates = [
-            c for c in candidates
-            if c.role == CompanyType.OWN and c.is_active
-        ]
-
-        pool = own_candidates if own_candidates else candidates
-
-        best = max(
-            pool,
-            key=lambda c: DefaultCompanyQuality.from_company(c).get_overall_score()
-        )
-
         return self._maybe_update(
             uow=uow,
             organization_id= organization_id,
             actor_user_id= actor_user_id,
-            company=best,
+            company=candidates[0],
             input_=input_,
             mode=mode)
+
+    def suggest(
+            self,
+            *,
+            uow: UnitOfWork,
+            organization_id: UUID,
+            input_: CompanyInput,
+    ) -> list[Company]:
+        """
+        Fuzzy candidates (name, bank account, email, street, phone) as hints
+        for the user - never used to pick a company automatically.
+        """
+        return self._suggestion_provider.find_candidates(
+            uow=uow,
+            organization_id=organization_id,
+            input_=input_,
+        )
 
     # ---- hooks / extension points ----
 
@@ -214,8 +214,11 @@ class CompanyEvaluateOrchestrator:
                 return replace(company, name=value)
 
         if field == CompanyField.EMAIL:
+            n_value = self._normalizator.normalize_email(value)
+            if not n_value:
+                return company
             contact = company.contact or Contact(phone_number=None, email=None)
-            return replace(company, contact=replace(contact, email=self._normalizator.normalize_email(value)))
+            return replace(company, contact=replace(contact, email=n_value))
 
         if field == CompanyField.PHONE_NUMBER:
             n_value = self._normalizator.normalize_phone(value)
@@ -257,85 +260,52 @@ class CompanyEvaluateOrchestrator:
                             input_: CompanyInput,
                             mode: EvaluateMode) -> Company:
         """
-        Updates company data based on input quality.
+        Updates matched company with incoming data.
 
         Rules:
-        - FULL UPDATE if input_overall_score >= FULL_UPDATE_THRESHOLD
-        - SOFT UPDATE otherwise
-        - Field is updated ONLY if input_field_score > company_field_score
+        - tax number is NEVER changed (it is the match key)
+        - AUTHORITATIVE (e.g. seller from KSeF) overwrites every other field present in input
+        - otherwise only empty fields are filled in
         """
 
         input_quality = DefaultCompanyQuality.from_input(input_)
         company_quality = DefaultCompanyQuality.from_company(company)
-
-        input_overall = input_quality.get_overall_score()
-        company_overall = company_quality.get_overall_score()
-
-        full_update = input_overall >= FULL_UPDATE_THRESHOLD and input_overall>company_overall
-
-        logger.info(
-            "Company update decision: full_update=%s input_score=%s company_score=%s company=%s",
-            full_update,
-            input_overall,
-            company_overall,
-            company.name,
-        )
+        authoritative = mode == EvaluateMode.AUTHORITATIVE
 
         updated_company = company
-        changed = False
-
-        force_full_update = full_update or mode == EvaluateMode.AUTHORITATIVE
 
         for field in CompanyField:
-
+            if field == CompanyField.TAX_NUMBER:
+                continue
             if not input_quality.has_field(field):
                 continue
-
-            input_score = input_quality.get_field_score(field)
-            company_score = company_quality.get_field_score(field)
-
-            if not force_full_update:
-                # 🔴 SOFT UPDATE
-                if input_score <= company_score:
-                    continue
-            else:
-                # 🔥 FULL UPDATE
-                if input_score <= 0:
-                    continue
-            input_value = input_quality.get_value(field)
-            company_value = company_quality.get_value(field)
-
-            if input_value == company_value:
+            if company_quality.has_field(field) and not authoritative:
                 continue
 
-            # 🔥 aktualizacja
-            updated_company = self._update_company_field(
-                # organization_id=organization_id,
-                # actor_user_id=actor_user_id,
+            candidate = self._update_company_field(
                 company=updated_company,
                 field=field,
-                value=input_value
-
+                value=input_quality.get_value(field),
             )
-            changed = True
+            if candidate != updated_company:
+                logger.info(
+                    "Updated field %s for company %s (authoritative=%s)",
+                    field.value,
+                    company.name,
+                    authoritative,
+                )
+            updated_company = candidate
 
-            logger.info(
-                "Updated field %s for company %s (input_score=%s company_score=%s)",
-                field.value,
-                company.name,
-                input_score,
-                company_score,
-            )
+        if updated_company == company:
+            return company
 
-        if changed:
-            updated_company = replace(
-                updated_company,
-                updated_at=self._clock(),
-                updated_by_user_id=actor_user_id,
-            )
-            uow.companies.update(updated_company)
-            return updated_company
-        return company
+        updated_company = replace(
+            updated_company,
+            updated_at=self._clock(),
+            updated_by_user_id=actor_user_id,
+        )
+        uow.companies.update(updated_company)
+        return updated_company
 
 
     @staticmethod

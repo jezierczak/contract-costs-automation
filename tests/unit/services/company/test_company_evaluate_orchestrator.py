@@ -52,25 +52,21 @@ def build_input(
     )
 
 
+def build_orchestrator(suggestions=None) -> CompanyEvaluateOrchestrator:
+    provider = FakeCandidateProvider()
+    provider.set_candidates(suggestions or [])
+    return CompanyEvaluateOrchestrator(provider, llm_company_resolver=None)
+
+
 # ============================================================
 # TESTS
 # ============================================================
 
 
 def test_creates_company_when_no_candidates(uow):
-    provider = FakeCandidateProvider()
-    provider.set_candidates([])
-
-    orchestrator = CompanyEvaluateOrchestrator(
-        provider,
-        llm_company_resolver=None,
-    )
-
-    org_id = new_uuid()
-
-    result = orchestrator.evaluate(
+    result = build_orchestrator().evaluate(
         uow=uow,
-        organization_id=org_id,
+        organization_id=new_uuid(),
         actor_user_id=new_uuid(),
         input_=build_input(),
     )
@@ -81,16 +77,8 @@ def test_creates_company_when_no_candidates(uow):
 
 
 def test_no_create_mode_raises(uow):
-    provider = FakeCandidateProvider()
-    provider.set_candidates([])
-
-    orchestrator = CompanyEvaluateOrchestrator(
-        provider,
-        llm_company_resolver=None,
-    )
-
     with pytest.raises(RuntimeError):
-        orchestrator.evaluate(
+        build_orchestrator().evaluate(
             uow=uow,
             organization_id=new_uuid(),
             actor_user_id=new_uuid(),
@@ -99,136 +87,124 @@ def test_no_create_mode_raises(uow):
         )
 
 
-def test_prefers_active_own_candidate(company_repo, uow):
+def test_matches_only_by_exact_tax_number(company_repo, uow):
     org_id = new_uuid()
-
+    by_nip = CompanyBuilder().with_organization_id(org_id).with_tax_number("1234567890").build()
     own = (
         CompanyBuilder()
         .with_organization_id(org_id)
         .with_role(CompanyType.OWN)
+        .with_tax_number("5555555555")
         .build()
     )
-
-    supplier = (
-        CompanyBuilder()
-        .with_organization_id(org_id)
-        .with_role(CompanyType.SUPPLIER)
-        .build()
-    )
-
+    company_repo.add(by_nip)
     company_repo.add(own)
-    company_repo.add(supplier)
 
-    provider = FakeCandidateProvider()
-    provider.set_candidates([supplier, own])
-
-    orchestrator = CompanyEvaluateOrchestrator(
-        provider,
-        llm_company_resolver=None,
-    )
-
-    result = orchestrator.evaluate(
+    # fuzzy podpowiedź (nawet OWN) nie wygrywa z dokładnym NIP-em
+    result = build_orchestrator(suggestions=[own]).evaluate(
         uow=uow,
         organization_id=org_id,
         actor_user_id=new_uuid(),
         input_=build_input(),
     )
 
-    assert result.id == own.id
+    assert result.id == by_nip.id
 
 
-def test_soft_update_updates_missing_email(company_repo, uow):
+def test_fuzzy_candidates_do_not_block_creation(company_repo, uow):
     org_id = new_uuid()
+    similar = CompanyBuilder().with_organization_id(org_id).with_tax_number("5555555555").build()
+    company_repo.add(similar)
 
-    company = (
-        CompanyBuilder()
-        .with_organization_id(org_id)
-        .build()
-    )
-
-    company_repo.add(company)
-
-    provider = FakeCandidateProvider()
-    provider.set_candidates([company])
-
-    orchestrator = CompanyEvaluateOrchestrator(
-        provider,
-        llm_company_resolver=None,
-    )
-
-    input_ = build_input(email="new@email.com")
-
-    updated = orchestrator.evaluate(
+    result = build_orchestrator(suggestions=[similar]).evaluate(
         uow=uow,
         organization_id=org_id,
         actor_user_id=new_uuid(),
-        input_=input_,
+        input_=build_input(),
+    )
+
+    assert result.id != similar.id
+    assert result.tax_number == "1234567890"
+
+
+def test_suggest_returns_fuzzy_candidates(uow):
+    similar = CompanyBuilder().build()
+
+    assert build_orchestrator(suggestions=[similar]).suggest(
+        uow=uow,
+        organization_id=new_uuid(),
+        input_=build_input(),
+    ) == [similar]
+
+
+def test_normal_mode_fills_missing_email(company_repo, uow):
+    org_id = new_uuid()
+    company = CompanyBuilder().with_organization_id(org_id).build()
+    company_repo.add(company)
+
+    updated = build_orchestrator().evaluate(
+        uow=uow,
+        organization_id=org_id,
+        actor_user_id=new_uuid(),
+        input_=build_input(email="new@email.com"),
     )
 
     assert updated.contact.email == "new@email.com"
+    assert company_repo.get(company.id, org_id).contact.email == "new@email.com"
 
 
-def test_authoritative_mode_forces_update(company_repo, uow):
+def test_normal_mode_does_not_overwrite_existing_data(company_repo, uow):
     org_id = new_uuid()
-
     company = (
         CompanyBuilder()
         .with_organization_id(org_id)
         .with_name("OLD NAME")
+        .with_email("old@email.com")
         .build()
     )
-
     company_repo.add(company)
 
-    provider = FakeCandidateProvider()
-    provider.set_candidates([company])
-
-    orchestrator = CompanyEvaluateOrchestrator(
-        provider,
-        llm_company_resolver=None,
-    )
-
-    input_ = build_input(name="NEW NAME")
-
-    updated = orchestrator.evaluate(
+    updated = build_orchestrator().evaluate(
         uow=uow,
         organization_id=org_id,
         actor_user_id=new_uuid(),
-        input_=input_,
+        input_=build_input(name="NEW NAME", email="new@email.com"),
+    )
+
+    assert updated.name == "OLD NAME"
+    assert updated.contact.email == "old@email.com"
+    assert updated.updated_at is None
+
+
+def test_authoritative_mode_overwrites_data(company_repo, uow):
+    org_id = new_uuid()
+    company = CompanyBuilder().with_organization_id(org_id).with_name("OLD NAME").build()
+    company_repo.add(company)
+
+    updated = build_orchestrator().evaluate(
+        uow=uow,
+        organization_id=org_id,
+        actor_user_id=new_uuid(),
+        input_=build_input(name="NEW NAME"),
         mode=EvaluateMode.AUTHORITATIVE,
     )
 
     assert updated.name == "NEW NAME"
+    assert updated.tax_number == "1234567890"
     assert updated.updated_at is not None
 
 
 def test_no_change_does_not_update_timestamp(company_repo, uow):
     org_id = new_uuid()
-
-    company = (
-        CompanyBuilder()
-        .with_organization_id(org_id)
-        .with_name("ACME")
-        .build()
-    )
-
+    company = CompanyBuilder().with_organization_id(org_id).with_name("ACME").build()
     company_repo.add(company)
 
-    provider = FakeCandidateProvider()
-    provider.set_candidates([company])
-
-    orchestrator = CompanyEvaluateOrchestrator(
-        provider,
-        llm_company_resolver=None,
-    )
-
-    input_ = build_input(name="ACME")
-
-    updated = orchestrator.evaluate(
+    updated = build_orchestrator().evaluate(
         uow=uow,
         organization_id=org_id,
         actor_user_id=new_uuid(),
-        input_=input_,
+        input_=build_input(name="ACME"),
+        mode=EvaluateMode.AUTHORITATIVE,
     )
 
     assert updated.updated_at is None

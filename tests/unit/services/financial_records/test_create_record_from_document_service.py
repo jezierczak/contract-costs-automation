@@ -7,7 +7,8 @@ from uuid import uuid4
 import pytest
 
 from contract_costs.model.company import CompanyType
-from contract_costs.model.document import DocumentType
+from contract_costs.model.document import DocumentSource, DocumentType
+from contract_costs.services.companies.company_evaluate_orchestrator import EvaluateMode
 from contract_costs.model.financial_record import (
     FinancialRecordStatus,
     PaymentMethod,
@@ -228,6 +229,56 @@ def test_execute_creates_record_attaches_document_and_syncs():
         record=record,
         uow=uow,
     )
+
+
+@pytest.mark.parametrize(
+    ("source", "expected_seller_mode"),
+    [
+        (DocumentSource.KSEF, EvaluateMode.AUTHORITATIVE),
+        (DocumentSource.PDF, EvaluateMode.NORMAL),
+    ],
+)
+def test_execute_trusts_seller_data_only_from_ksef(source, expected_seller_mode):
+    organization_id = uuid4()
+    normalizer = MagicMock()
+    normalizer.normalize_payload.return_value = _make_parse_result()
+    company_evaluate = MagicMock()
+    company_evaluate.evaluate.side_effect = [
+        CompanyBuilder().with_role(CompanyType.OWN).with_is_active(True).build(),
+        CompanyBuilder().with_role(CompanyType.SUPPLIER).with_is_active(True).build(),
+    ]
+    document = (
+        DocumentBuilder()
+        .with_organization_id(organization_id)
+        .with_document_source(source)
+        .with_parsed_payload({"parsed": True})
+        .build()
+    )
+    uow = MagicMock()
+    uow.documents.get.return_value = document
+
+    CreateRecordFromDocumentService(
+        company_evaluate=company_evaluate,
+        normalizer=normalizer,
+        ingest_orchestrator=MagicMock(),
+        record_file_organizer=MagicMock(),
+        file_workflow=MagicMock(),
+    ).execute(
+        action=CreateRecordFromDocumentCommand(
+            organization_id=organization_id,
+            actor_user_id=uuid4(),
+            document=document,
+            override_reference=None,
+            override_seller_nip=None,
+            override_document_type=None,
+        ),
+        uow=uow,
+    )
+
+    buyer_call, seller_call = company_evaluate.evaluate.call_args_list
+    # dane nabywcy na fakturze wpisuje sprzedawca - nigdy nie są rozstrzygające
+    assert buyer_call.kwargs.get("mode", EvaluateMode.NORMAL) == EvaluateMode.NORMAL
+    assert seller_call.kwargs["mode"] == expected_seller_mode
 
 
 @pytest.mark.parametrize(
