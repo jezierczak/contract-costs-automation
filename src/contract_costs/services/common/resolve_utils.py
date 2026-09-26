@@ -20,7 +20,16 @@ def resolve_or_none(getter,organization_id: UUID, code: str | None, label: str) 
 
 
 
+# etykieta dopisana przez OCR/AI, np. "NIP: 123-456-78-90" (żaden kod kraju UE nie zaczyna się od N ani V)
+_TAX_NUMBER_LABEL = re.compile(r'^(NIP|VAT\s*(ID)?)\s*:?\s*', flags=re.IGNORECASE)
+
+
 def normalize_tax_number(nip: str | int | None) -> str | None:
+    """
+    Polski NIP → same cyfry ("PL 123-456-78-90" → "1234567890").
+    Numer zagraniczny zachowuje litery ("DE 123 456 789" → "DE123456789",
+    "NL123456789B01", "ATU12345678") — usuwamy tylko separatory.
+    """
     if nip is None:
         return None
 
@@ -30,15 +39,18 @@ def normalize_tax_number(nip: str | int | None) -> str | None:
     if not nip:
         return None
 
-    # usuń prefix PL (na początku)
-    nip = re.sub(r'^PL\s*', '', nip, flags=re.IGNORECASE)
+    nip = _TAX_NUMBER_LABEL.sub('', nip)
 
-    # usuń WSZYSTKO poza cyframi
-    nip = re.sub(r'\D', '', nip)
+    # zostają tylko litery i cyfry (spacje, myślniki, kropki, ukośniki znikają)
+    nip = re.sub(r'[^0-9A-Za-z]', '', nip).upper()
 
-    # opcjonalna walidacja długości
-    # if len(nip) != 10:
-    #     return None  # albo raise ValueError
+    # każdy numer podatkowy (NIP, VAT UE) ma cyfry — same litery to śmieć
+    if not any(ch.isdigit() for ch in nip):
+        return None
+
+    # prefiks PL zdejmujemy tylko z polskiego NIP-u (po nim same cyfry)
+    if nip.startswith('PL') and nip[2:].isdigit():
+        nip = nip[2:]
 
     return nip
 
