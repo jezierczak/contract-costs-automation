@@ -1,4 +1,5 @@
 import json
+import json
 import logging
 from html import escape as html_escape
 from datetime import date, timedelta
@@ -15,6 +16,7 @@ from contract_costs.ksef.render.invoice_visualisation import PRINT_CSS, ksef_ver
 from contract_costs.model.document import DocumentType, DocumentStatus
 from contract_costs.services.business_event.business_event_helper import BusinessEventHelper
 from contract_costs.services.companies.query.dto.company_query import CompanyQuery
+from contract_costs.services.documents.apply.apply_document_service import SellerMismatchError
 from contract_costs.services.documents.apply.dto.apply_document_command import ApplyDocumentCommand, DocumentApplyAction
 from contract_costs.services.documents.exeptions import DuplicateDocument
 from contract_costs.services.documents.process.delete.delete_document_command import DeleteDocumentCommand
@@ -236,6 +238,32 @@ def document_match_data(
         handler=services.get_document_service,
     )
     return JSONResponse(jsonable_encoder(document))
+
+
+@router.get("/documents/{document_id}/match", response_class=HTMLResponse)
+def document_match_screen(
+    request: Request,
+    document_id: str,
+    services=Depends(get_services),
+):
+    """Ekran dopasowania: podgląd dokumentu, kontrahenci, kandydaci z powodami, akcje."""
+    ctx = request.state.ctx
+    document = services.action_bus.execute(
+        action=GetDocumentQuery(
+            organization_id=ctx.organization_id,
+            actor_user_id=ctx.user_id,
+            document_id=UUID(document_id),
+        ),
+        handler=services.get_document_service,
+    )
+    return request.app.state.templates.TemplateResponse(
+        "documents/match.html",
+        {
+            "request": request,
+            "document": document,
+            "doc_types": [v.value for v in DocumentType],
+        },
+    )
 
 
 @router.get("/documents/{document_id}/apply-form")
@@ -523,10 +551,23 @@ def apply_document(
     confirm_seller_mismatch: int = Form(0),
     relink_record_seller: int = Form(0),
 
+    # ekran dopasowania: firmy wybrane w slotach i zwrotka jako komunikat / przejście do listy
+    seller_tax_number: str | None = Form(None),
+    buyer_tax_number: str | None = Form(None),
+    from_screen: int = Form(0),
+    document_source: str | None = Form(None),
+
     services=Depends(get_services),
 ):
     ctx = request.state.ctx
     apply_action = DocumentApplyAction(action)
+
+    if from_screen:
+        if apply_action == DocumentApplyAction.CREATE_NEW and not (seller_tax_number and buyer_tax_number):
+            return _match_feedback(request, error="Wybierz sprzedawcę i nabywcę przed utworzeniem rekordu.")
+        if apply_action == DocumentApplyAction.ADD_TO_EXISTING and not target_record_id:
+            return _match_feedback(request, error="Zaznacz rekord, do którego przypiąć dokument.")
+        override_seller_nip = override_seller_nip or seller_tax_number
 
     command = ApplyDocumentCommand(
         organization_id=ctx.organization_id,
@@ -537,14 +578,28 @@ def apply_document(
         override_document_type=override_document_type,
         override_document_number=override_document_number,
         override_seller_nip=override_seller_nip,
+        override_buyer_nip=buyer_tax_number if from_screen else None,
         confirm_seller_mismatch=bool(confirm_seller_mismatch),
         relink_record_seller=bool(relink_record_seller),
     )
 
-    assigned_record_id = services.action_bus.execute(
-        action=command,
-        handler=services.apply_document_service,
-    )
+    try:
+        assigned_record_id = services.action_bus.execute(
+            action=command,
+            handler=services.apply_document_service,
+        )
+    except SellerMismatchError:
+        if not from_screen:
+            raise
+        return _match_feedback(
+            request,
+            mismatch=True,
+            is_ksef=document_source == "ksef",
+        )
+    except (RuntimeError, ValueError) as e:
+        if not from_screen:
+            raise
+        return _match_feedback(request, error=str(e))
 
     match apply_action:
         case DocumentApplyAction.CREATE_NEW:
@@ -562,6 +617,11 @@ def apply_document(
         entity_type="record",
         entity_id=assigned_record_id if assigned_record_id else None,
     )
+    if from_screen:
+        response = Response(status_code=204)
+        response.headers["HX-Location"] = json.dumps({"path": "/documents", "target": "#content-area"})
+        return response
+
     response = _render_documents_table(
         request=request,
         services=services,
@@ -571,6 +631,18 @@ def apply_document(
     response.headers["HX-Trigger"] = "documentsUploaded"
 
     return response
+
+
+def _match_feedback(request: Request, *, error: str | None = None, mismatch: bool = False, is_ksef: bool = False):
+    return request.app.state.templates.TemplateResponse(
+        "documents/_match_feedback.html",
+        {
+            "request": request,
+            "error": error,
+            "mismatch": mismatch,
+            "is_ksef": is_ksef,
+        },
+    )
 
 @router.post("/documents/{document_id}/unattach")
 def unattach_document(

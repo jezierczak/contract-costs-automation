@@ -13,3 +13,4 @@ class CreateRecordFromDocumentCommand(Command):
     override_reference:str | None
     override_seller_nip:str | None
     override_document_type:DocumentType | None
+    override_buyer_nip: str | None = None

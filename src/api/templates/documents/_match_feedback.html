@@ -1,0 +1,36 @@
+{% if error %}
+<div class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+    {{ error }}
+</div>
+{% elif mismatch %}
+<div class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 space-y-2">
+    <div class="font-medium">Sprzedawca dokumentu jest inny niż sprzedawca zaznaczonego rekordu.</div>
+    <div>Sprawdź, czy to na pewno ten rekord. Możesz przypiąć dokument mimo to{% if is_ksef %} albo – bo dokument jest z KSeF – przepiąć rekord na sprzedawcę z dokumentu{% endif %}.</div>
+    <div class="flex gap-2">
+        <button
+            type="button"
+            hx-post="{{ request.url.path }}"
+            hx-include="#match-form"
+            hx-vals='{"action": "ADD_TO_EXISTING", "confirm_seller_mismatch": "1"}'
+            hx-target="#match-feedback"
+            hx-swap="innerHTML"
+            class="rounded bg-amber-600 px-3 py-1.5 text-white hover:bg-amber-700"
+        >
+            Przypnij mimo to
+        </button>
+        {% if is_ksef %}
+        <button
+            type="button"
+            hx-post="{{ request.url.path }}"
+            hx-include="#match-form"
+            hx-vals='{"action": "ADD_TO_EXISTING", "relink_record_seller": "1"}'
+            hx-target="#match-feedback"
+            hx-swap="innerHTML"
+            class="rounded border border-amber-600 px-3 py-1.5 text-amber-800 hover:bg-amber-100"
+        >
+            Przepnij rekord na sprzedawcę z KSeF
+        </button>
+        {% endif %}
+    </div>
+</div>
+{% endif %}

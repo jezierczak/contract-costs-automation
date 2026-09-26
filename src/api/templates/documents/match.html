@@ -1,0 +1,207 @@
+{% extends "workspace.html" %}
+
+{% block workspace_actions %}
+<div class="flex items-center justify-between gap-4">
+    <button
+        hx-get="/documents"
+        hx-target="#content-area"
+        hx-swap="innerHTML"
+        hx-push-url="true"
+        class="inline-flex items-center gap-2 px-2 py-1 rounded text-sm text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+    >
+        ← Dokumenty
+    </button>
+
+    <h2 class="text-lg font-semibold text-gray-800">
+        Dopasowanie dokumentu {{ document.document_number or "" }}
+    </h2>
+
+    <div class="flex items-center gap-2 text-sm">
+        <span class="rounded-full bg-gray-100 px-3 py-1 text-gray-700">{{ document.document_source or "?" }}</span>
+        {% if document.confidence_score is not none %}
+        <span class="rounded-full px-3 py-1
+            {% if document.confidence_score >= 80 %}bg-green-100 text-green-700
+            {% elif document.confidence_score >= 60 %}bg-yellow-100 text-yellow-700
+            {% else %}bg-red-100 text-red-700{% endif %}">
+            score {{ document.confidence_score }}
+        </span>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block workspace_content %}
+{% set reason_labels = {
+    "reference": "numer",
+    "total": "suma",
+    "lines": "pozycje",
+    "names": "nazwy",
+} %}
+
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-4 min-h-0">
+
+    <!-- PODGLĄD -->
+    <div class="h-[80vh] border rounded-lg overflow-hidden">
+        <iframe src="/documents/{{ document.document_id }}/file" class="w-full h-full"></iframe>
+    </div>
+
+    <!-- DOPASOWANIE -->
+    <form
+        id="match-form"
+        hx-post="/documents/{{ document.document_id }}/apply"
+        hx-target="#match-feedback"
+        hx-swap="innerHTML"
+        class="space-y-5"
+    >
+        <input type="hidden" name="from_screen" value="1">
+        <input type="hidden" name="document_source" value="{{ document.document_source or '' }}">
+
+        <!-- DOKUMENT -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            <div>
+                <label class="text-gray-600">Typ</label>
+                <select name="override_document_type" class="w-full border rounded px-2 py-1.5">
+                    {% for t in doc_types %}
+                    <option value="{{ t }}" {% if t == document.document_type %}selected{% endif %}>{{ t }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="text-gray-600">Numer</label>
+                <input name="override_document_number" value="{{ document.document_number or '' }}"
+                       class="w-full border rounded px-2 py-1.5">
+            </div>
+            <div>
+                <label class="text-gray-600">Data</label>
+                <div class="py-1.5">{{ document.invoice_date or "—" }}</div>
+            </div>
+            <div>
+                <label class="text-gray-600">Suma brutto</label>
+                <div class="py-1.5 font-medium">{{ document.total_gross if document.total_gross is not none else "—" }}</div>
+            </div>
+        </div>
+
+        <!-- KONTRAHENCI -->
+        {% for target, party in [("seller", document.seller), ("buyer", document.buyer)] %}
+        <div class="space-y-2">
+            {% with company = party.company %}
+                {% include "companies/_selected_company_slot.html" %}
+            {% endwith %}
+
+            <div class="text-xs text-gray-500 pl-1">
+                Z dokumentu: {{ party.name or "—" }} · NIP {{ party.tax_number or "brak" }}
+                {% if party.street or party.city %} · {{ party.street or "" }} {{ party.zip_code or "" }} {{ party.city or "" }}{% endif %}
+            </div>
+
+            {% if not party.company %}
+            <div class="rounded-lg border border-amber-200 bg-amber-50 p-2 text-sm text-amber-900 space-y-2">
+                <div>Nie ma firmy o tym NIP-ie – wybierz istniejącą albo utwórz z danych dokumentu.</div>
+                <div class="flex flex-wrap gap-2">
+                    {% for s in party.suggestions %}
+                    <button
+                        type="button"
+                        hx-get="/companies/select?tax_number={{ s.tax_number | urlencode }}&target={{ target }}"
+                        hx-target="#company-slot-{{ target }}"
+                        hx-swap="outerHTML"
+                        class="rounded border border-amber-300 bg-white px-2 py-1 text-xs hover:bg-amber-100"
+                        title="Podobna firma"
+                    >
+                        {{ s.name }} ({{ s.tax_number }})
+                    </button>
+                    {% endfor %}
+                    <button
+                        type="button"
+                        hx-get="/companies/new?target={{ target }}&name={{ (party.name or '') | urlencode }}&tax_number={{ (party.tax_number or '') | urlencode }}&street={{ (party.street or '') | urlencode }}&city={{ (party.city or '') | urlencode }}&zip_code={{ (party.zip_code or '') | urlencode }}&role={{ 'Supplier' if target == 'seller' else 'Client' }}"
+                        hx-target="#modal-area"
+                        hx-swap="innerHTML"
+                        class="rounded bg-amber-600 px-2 py-1 text-xs text-white hover:bg-amber-700"
+                    >
+                        + Utwórz firmę z danych dokumentu
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        <!-- KANDYDACI -->
+        <div>
+            <h3 class="text-sm font-semibold text-gray-700 mb-2">Pasujące rekordy</h3>
+            {% if document.candidates %}
+            <table class="w-full text-sm border rounded">
+                <thead class="bg-gray-50 text-gray-600">
+                    <tr>
+                        <th class="p-2"></th>
+                        <th class="p-2 text-left">Numer</th>
+                        <th class="p-2 text-left">Data</th>
+                        <th class="p-2 text-right">Suma</th>
+                        <th class="p-2 text-left">Sprzedawca / nabywca</th>
+                        <th class="p-2 text-left">Dlaczego</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in document.candidates %}
+                    <tr class="border-t align-top">
+                        <td class="p-2">
+                            <input type="radio" name="target_record_id" value="{{ c.record_id }}" {% if loop.first %}checked{% endif %}>
+                        </td>
+                        <td class="p-2">
+                            {{ c.reference or "—" }}
+                            <div class="text-xs text-gray-400">{{ c.status }}</div>
+                        </td>
+                        <td class="p-2">{{ c.invoice_date or "—" }}</td>
+                        <td class="p-2 text-right">
+                            {{ c.total_gross }}
+                            {% if c.total_difference is not none and c.total_difference != 0 %}
+                            <div class="text-xs text-red-600">różnica {{ c.total_difference }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="p-2">
+                            <div class="{% if not c.same_seller %}text-red-600{% endif %}">{{ c.seller_name or "—" }}</div>
+                            <div class="text-xs {% if not c.same_buyer %}text-red-600{% else %}text-gray-500{% endif %}">{{ c.buyer_name or "—" }}</div>
+                        </td>
+                        <td class="p-2">
+                            {% for r in c.reasons %}
+                            <span class="inline-block rounded bg-blue-50 px-1.5 py-0.5 text-xs text-blue-700">{{ reason_labels.get(r, r) }}</span>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="text-sm text-gray-500">Brak pasujących rekordów.</div>
+            {% endif %}
+        </div>
+
+        <div id="match-feedback"></div>
+
+        <!-- AKCJE -->
+        <div class="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+            <button name="action" value="CREATE_NEW"
+                    class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                ✔ Utwórz nowy rekord
+            </button>
+            <div class="flex gap-2">
+                {% if document.candidates %}
+                <button name="action" value="ADD_TO_EXISTING"
+                        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                    ➕ Przypnij do zaznaczonego
+                </button>
+                {% endif %}
+                <button name="action" value="SKIP"
+                        class="border px-4 py-2 rounded text-gray-700 hover:bg-gray-100">
+                    Pomiń
+                </button>
+            </div>
+        </div>
+
+        {% if document.confidence_breakdown %}
+        <details class="text-xs">
+            <summary class="cursor-pointer text-gray-500 hover:text-black">Szczegóły scoringu</summary>
+            <pre class="mt-2 bg-gray-50 p-3 rounded overflow-auto text-[11px]">{{ document.confidence_breakdown | tojson(indent=2) }}</pre>
+        </details>
+        {% endif %}
+    </form>
+</div>
+{% endblock %}

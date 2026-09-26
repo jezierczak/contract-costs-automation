@@ -131,6 +131,15 @@ class CreateRecordFromDocumentService(ActionHandler[CreateRecordFromDocumentComm
                 ),
             )
 
+        if action.override_buyer_nip:
+            parse_result = replace(
+                parse_result,
+                buyer=replace(
+                    parse_result.buyer,
+                    tax_number=action.override_buyer_nip,
+                ),
+            )
+
         if action.override_document_type:
             parse_result = replace(
                 parse_result,
@@ -150,13 +159,14 @@ class CreateRecordFromDocumentService(ActionHandler[CreateRecordFromDocumentComm
 
         # KSeF: sprzedawca sam wystawia fakturę, więc jego dane są pewne.
         # Dane nabywcy wpisuje sprzedawca - tylko uzupełniają puste pola.
+        # Gdy użytkownik wybrał innego sprzedawcę, dane z dokumentu go nie nadpisują.
         seller = self._company_evaluate.evaluate(
             organization_id=action.organization_id,
             actor_user_id=action.actor_user_id,
             input_=parse_result.seller,
             mode=(
                 EvaluateMode.AUTHORITATIVE
-                if document.document_source == DocumentSource.KSEF
+                if document.document_source == DocumentSource.KSEF and not action.override_seller_nip
                 else EvaluateMode.NORMAL
             ),
             uow=uow

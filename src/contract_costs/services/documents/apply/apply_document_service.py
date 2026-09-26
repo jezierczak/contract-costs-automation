@@ -141,6 +141,7 @@ class ApplyDocumentService(ActionHandler[ApplyDocumentCommand,UUID | None]):
             document=document,
             override_reference=cmd.override_document_number,
             override_seller_nip=cmd.override_seller_nip,
+            override_buyer_nip=cmd.override_buyer_nip,
             override_document_type=(
                 DocumentType(cmd.override_document_type)
                 if cmd.override_document_type

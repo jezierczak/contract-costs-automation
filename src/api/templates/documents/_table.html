@@ -169,9 +169,10 @@
 
         {% if d.document_status == "READY" %}
         <button
-            hx-get="/documents/{{ d.document_id }}/apply-form"
-            hx-target="#modal-area"
+            hx-get="/documents/{{ d.document_id }}/match"
+            hx-target="#content-area"
             hx-swap="innerHTML"
+            hx-push-url="true"
 
             class="text-blue-600 hover:underline"
         >

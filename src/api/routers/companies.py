@@ -1,4 +1,5 @@
 import json
+from types import SimpleNamespace
 import shutil
 from datetime import date
 from uuid import UUID
@@ -178,12 +179,39 @@ def company_gus_lookup(
 def company_new(
     request: Request,
     target: str | None = None,
+    # wstępne dane, np. kontrahent z dokumentu na ekranie dopasowania
+    name: str | None = None,
+    tax_number: str | None = None,
+    street: str | None = None,
+    city: str | None = None,
+    zip_code: str | None = None,
+    country: str | None = None,
+    role: str | None = None,
 ):
+    prefill = None
+    if any((name, tax_number, street, city, zip_code, country, role)):
+        prefill = SimpleNamespace(
+            id=None,
+            name=name,
+            tax_number=tax_number,
+            description=None,
+            address_street=street,
+            address_city=city,
+            address_zip_code=zip_code,
+            address_country=country,
+            phone_number=None,
+            email=None,
+            bank_account_number=None,
+            bank_account_country_code=None,
+            reference_numbering_mode=None,
+            role=CompanyType(role) if role else None,
+        )
+
     return request.app.state.templates.TemplateResponse(
         "companies/new.html",
         {
             "request": request,
-            "company": None,
+            "company": prefill,
             "title": "Nowa firma - kontrahent",
             "action_url": "/companies/create",
             "submit_label": "Dodaj",

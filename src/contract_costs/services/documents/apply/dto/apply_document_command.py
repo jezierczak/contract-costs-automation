@@ -38,6 +38,8 @@ class ApplyDocumentCommand(Command):
     override_document_type: str | None = None
     override_document_number: str | None = None
     override_seller_nip: str | None = None
+    # nabywca wybrany na ekranie dopasowania (NIP / identyfikator firmy)
+    override_buyer_nip: str | None = None
 
     # ADD_TO_EXISTING, gdy sprzedawca dokumentu ≠ sprzedawca rekordu:
     # przypnij mimo to (użytkownik potwierdził) albo – tylko KSeF – przepnij rekord

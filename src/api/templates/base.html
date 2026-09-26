@@ -290,7 +290,7 @@ document.body.addEventListener("documentsUploaded", () => {
 <script>
 document.body.addEventListener("duplicateDocument", (e) => {
     const id = e.detail.document_id
-    htmx.ajax("GET", `/documents/${id}/apply-form`, "#modal-area")
+    htmx.ajax("GET", `/documents/${id}/match`, "#content-area")
 })
 </script>
 

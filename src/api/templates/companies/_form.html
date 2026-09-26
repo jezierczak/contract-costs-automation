@@ -49,7 +49,7 @@ NIP
 {% include "companies/_tax_number_input.html" %}
 {% endwith %}
 
-{% if not company %}
+{% if not company or not company.id %}
 <button
     type="button"
     hx-get="/companies/next-identifier"

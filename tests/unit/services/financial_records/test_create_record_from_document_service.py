@@ -627,3 +627,47 @@ def test_execute_normalizes_invalid_line_values_to_safe_defaults_inmemory(uow, d
     assert first_line.unit == UnitOfMeasure.PIECE
     assert batch.financial_records[0].payment_method == PaymentMethod.UNKNOWN
     assert batch.financial_records[0].payment_status == PaymentStatus.UNKNOWN
+
+
+def test_execute_uses_chosen_parties_and_does_not_trust_ksef_for_replaced_seller():
+    organization_id = uuid4()
+    normalizer = MagicMock()
+    normalizer.normalize_payload.return_value = _make_parse_result()
+    company_evaluate = MagicMock()
+    company_evaluate.evaluate.side_effect = [
+        CompanyBuilder().with_role(CompanyType.OWN).with_is_active(True).build(),
+        CompanyBuilder().with_role(CompanyType.SUPPLIER).with_is_active(True).build(),
+    ]
+    document = (
+        DocumentBuilder()
+        .with_organization_id(organization_id)
+        .with_document_source(DocumentSource.KSEF)
+        .with_parsed_payload({"parsed": True})
+        .build()
+    )
+    uow = MagicMock()
+    uow.documents.get.return_value = document
+
+    CreateRecordFromDocumentService(
+        company_evaluate=company_evaluate,
+        normalizer=normalizer,
+        ingest_orchestrator=MagicMock(),
+        record_file_organizer=MagicMock(),
+        file_workflow=MagicMock(),
+    ).execute(
+        action=CreateRecordFromDocumentCommand(
+            organization_id=organization_id,
+            actor_user_id=uuid4(),
+            document=document,
+            override_reference=None,
+            override_seller_nip="5261009959",
+            override_document_type=None,
+            override_buyer_nip="OTH-000001",
+        ),
+        uow=uow,
+    )
+
+    buyer_call, seller_call = company_evaluate.evaluate.call_args_list
+    assert buyer_call.kwargs["input_"].tax_number == "OTH-000001"
+    assert seller_call.kwargs["input_"].tax_number == "5261009959"
+    assert seller_call.kwargs["mode"] == EvaluateMode.NORMAL
