@@ -3,7 +3,7 @@ from dataclasses import replace
 
 from contract_costs.cli.context import get_services
 from contract_costs.cli.registry import REGISTRY
-from contract_costs.cli.utils.context_helpers import require_organization_id
+from contract_costs.cli.utils.context_helpers import require_organization_id, require_user_id
 from contract_costs.common.context.exceptions import ContextError
 from contract_costs.services.contracts.migration.backfill_system_contracts_command import BackfillSystemContractsCommand
 from contract_costs.services.documents.scoring.simple_scoring_policy import SimpleScoringPolicy
@@ -56,7 +56,7 @@ def handle_system_backfill(args):
 
     try:
         organization_id = require_organization_id(services.context)
-        actor_user_id = services.context.user_id
+        actor_user_id = require_user_id(services.context)
     except ContextError:
         return
 
@@ -131,7 +131,7 @@ def handle_backfill_import_payments(args):
 
     try:
         organization_id = require_organization_id(services.context)
-        actor_user_id = services.context.user_id
+        actor_user_id = require_user_id(services.context)
     except ContextError:
         return
 
