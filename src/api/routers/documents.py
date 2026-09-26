@@ -1,18 +1,16 @@
 import json
-from io import BytesIO
+import logging
 from datetime import date, timedelta
 from uuid import UUID
-from lxml import etree
 from pathlib import Path
 from fastapi import APIRouter, Depends, Request, Form, UploadFile, File
 from starlette.responses import HTMLResponse, Response
 import shutil
 
-from xhtml2pdf import pisa
-
 from api.dependencies import get_services
 from contract_costs.model.business_event import BusinessEventLevel
 from contract_costs.model.company import CompanyType
+from contract_costs.ksef.render.invoice_visualisation import render_invoice_html
 from contract_costs.model.document import DocumentType, DocumentStatus
 from contract_costs.services.business_event.business_event_helper import BusinessEventHelper
 from contract_costs.services.companies.query.dto.company_query import CompanyQuery
@@ -32,39 +30,29 @@ from contract_costs.services.workers.dto.ksef_import_queue_item import KsefImpor
 import contract_costs.config as cfg
 router = APIRouter()
 
-BASE_DIR = Path(__file__).resolve().parents[3]
+logger = logging.getLogger(__name__)
 
-xslt_path = BASE_DIR / "src" / "contract_costs" / "resources" / "fa3_visualisation_v2.xslt"
+# pasek nad wizualizacją MF – PDF robi przeglądarka (Drukuj → Zapisz jako PDF)
+_PRINT_TOOLBAR = """
+<style>@media print { .cc-print-toolbar { display: none !important; } }</style>
+<div class="cc-print-toolbar" style="position:sticky;top:0;z-index:10;display:flex;gap:8px;justify-content:flex-end;
+     padding:8px 5%;background:#f3f4f6;border-bottom:1px solid #d1d5db;font-family:Arial,sans-serif;font-size:13px">
+    <button type="button" onclick="window.print()"
+            style="padding:4px 12px;border:1px solid #9ca3af;border-radius:4px;background:#fff;cursor:pointer">
+        Drukuj / zapisz PDF
+    </button>
+    <a href="?raw=1" style="padding:4px 12px;color:#374151">Surowy XML</a>
+</div>
+"""
 
-def render_xml_preview(xml_path):
-    xml = etree.parse(str(xml_path))
-    xslt = etree.parse(str(xslt_path))
-    transform = etree.XSLT(xslt)
-    result = transform(xml)
-    return str(result)
 
-def render_xml_to_pdf(xml_path: Path) -> bytes:
+def _with_print_toolbar(html: str) -> str:
+    body_start = html.find("<body")
+    if body_start < 0:
+        return _PRINT_TOOLBAR + html
+    body_end = html.find(">", body_start) + 1
+    return html[:body_end] + _PRINT_TOOLBAR + html[body_end:]
 
-    # XML
-    xml = etree.parse(str(xml_path))
-
-    # XSLT
-    xslt = etree.parse(str(xslt_path))
-    transform = etree.XSLT(xslt)
-
-    # HTML z transformacji
-    html_tree = transform(xml)
-    html_string = etree.tostring(html_tree, encoding="unicode")
-
-    # PDF
-    pdf_buffer = BytesIO()
-
-    pisa.CreatePDF(
-        html_string.encode("utf-8"),  # 👈 ważne
-        dest=pdf_buffer,
-    )
-
-    return pdf_buffer.getvalue()
 
 def _render_documents_table(
     *,
@@ -179,22 +167,7 @@ def document_file(
     # ==========================================
 
     if download:
-
-        # XML → generuj PDF
-        if path.suffix.lower() == ".xml":
-            pdf = render_xml_to_pdf(path)
-
-            filename = path.stem + ".pdf"
-
-            return Response(
-                content=pdf,
-                media_type="application/pdf",
-                headers={
-                    "Content-Disposition": f'attachment; filename="{filename}"'
-                },
-            )
-
-        # inne pliki
+        # XML też jako oryginał – PDF z wizualizacji robi się przez druk w podglądzie
         return FileResponse(
             path,
             filename=path.name,
@@ -209,9 +182,9 @@ def document_file(
 
     if path.suffix.lower() == ".xml" and not raw:
         try:
-            html = render_xml_preview(path)
-            return HTMLResponse(html)
+            return HTMLResponse(_with_print_toolbar(render_invoice_html(path)))
         except Exception:
+            logger.exception("XML visualisation failed for document %s", document_id)
             return FileResponse(path)
 
     # ==========================================
