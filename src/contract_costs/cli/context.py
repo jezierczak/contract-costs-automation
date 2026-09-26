@@ -1099,6 +1099,15 @@ class Services:
 
         return self._document_action_excel_loader_service
     @property
+    def backfill_import_payments(self):
+        from contract_costs.services.financial_records.migration.backfill_import_payments_service import (
+            BackfillImportPaymentsService,
+        )
+        return BackfillImportPaymentsService(
+            action_service=self.financial_record_action_service,
+        )
+
+    @property
     def backfill_system_contracts(self):
         return BackfillSystemContractsService(
             create_system_contract=self.create_system_contract,

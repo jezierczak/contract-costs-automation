@@ -113,6 +113,7 @@ uv run python -m contract_costs.cli.main <command>
 ### `system`
 
 - `system backfill` - Ensure required system contracts exist.
+- `system backfill-import-payments [--apply]` - Add missing payments for records paid at sale (cash/card/BLIK/bon/pre-paid) or PAID without payments; dry-run without `--apply`.
 
 ### `report`
 
