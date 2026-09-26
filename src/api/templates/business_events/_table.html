@@ -20,9 +20,11 @@
 
             {% if e.entity_type == "document" %}
                 <a
-                    hx-get="/documents/{{ e.entity_id }}/apply-form"
-                    hx-target="#modal-area"
+                    hx-get="/documents/{{ e.entity_id }}/match"
+                    hx-target="#content-area"
                     hx-swap="innerHTML"
+                    hx-push-url="true"
+                    hx-on::after-request="document.getElementById('modal-area').innerHTML = ''"
                     class="text-blue-700 hover:underline font-medium"
                 >
                     {{ e.message }}

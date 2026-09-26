@@ -266,32 +266,6 @@ def document_match_screen(
     )
 
 
-@router.get("/documents/{document_id}/apply-form")
-def document_apply_form(
-    request: Request,
-    document_id: str,
-    services=Depends(get_services),
-):
-    ctx = request.state.ctx
-
-    document = services.action_bus.execute(
-        action=GetDocumentQuery(
-            organization_id=ctx.organization_id,
-            actor_user_id=ctx.user_id,
-            document_id=UUID(document_id),
-        ),
-        handler=services.get_document_service,
-    )
-
-    return request.app.state.templates.TemplateResponse(
-        "documents/_apply_modal.html",
-        {
-            "request": request,
-            "document": document,
-            "doc_types": [v.value for v in DocumentType]
-        },
-    )
-
 @router.get("/documents/upload-form")
 def document_upload_form(
     request: Request,
