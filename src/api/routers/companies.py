@@ -9,6 +9,7 @@ from fastapi.responses import RedirectResponse
 from starlette.responses import HTMLResponse
 
 import contract_costs.config as cfg
+from contract_costs.infrastructure.mf_whitelist_client import lookup_company_by_nip
 from api.dependencies import get_services
 from contract_costs.model.company import CompanyType, Address, Contact, BankAccount, ReferenceNumberingMode
 from contract_costs.model.company_ksef_settings import KsefEnvironment
@@ -53,20 +54,6 @@ def _render_ksef_settings_modal(
         },
     )
 
-
-def gus_lookup(nip: str):
-
-    # tu możesz użyć:
-    # GUS API
-    # VIES
-    # REGON API
-
-    return {
-        "name": "Budremex Sp. z o.o.",
-        "street": "ul. Krakowska 10",
-        "city": "Kraków",
-        "zip_code": "30-001",
-    }
 
 @router.post("/companies/create-own")
 def create_owner_company(
@@ -160,11 +147,11 @@ def company_gus_lookup(
     if not tax_number:
         return HTMLResponse("")
 
-    company = gus_lookup(tax_number)
+    company = lookup_company_by_nip(tax_number)
 
     if not company:
         return HTMLResponse(
-            "<div class='text-sm text-red-600 mt-2'>Nie znaleziono firmy w GUS</div>"
+            "<div class='text-sm text-red-600 mt-2'>Nie znaleziono firmy o tym NIP-ie</div>"
         )
 
     return request.app.state.templates.TemplateResponse(

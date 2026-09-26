@@ -1,34 +1,17 @@
+{% set fields = [
+    ("company-name", "name", company.name, "np. Budremex Sp. z o.o."),
+    ("company-street", "street", company.street, "np. ul. Krakowska 10"),
+    ("company-city", "city", company.city, "np. Kraków"),
+    ("company-zip", "zip_code", company.zip_code, "np. 30-001"),
+    ("company-country", "country", "Polska", "np. Polska"),
+] %}
+{% for id, name, value, placeholder in fields %}
 <input
-    id="company-name"
+    id="{{ id }}"
     hx-swap-oob="outerHTML"
-    name="name"
-    value="{{ company.name }}"
+    name="{{ name }}"
+    value="{{ value }}"
+    placeholder="{{ placeholder }}"
+    class="w-full border rounded px-3 py-2"
 >
-
-<input
-    id="company-street"
-    hx-swap-oob="outerHTML"
-    name="street"
-    value="{{ company.street }}"
->
-
-<input
-    id="company-city"
-    hx-swap-oob="outerHTML"
-    name="city"
-    value="{{ company.city }}"
->
-
-<input
-    id="company-zip"
-    hx-swap-oob="outerHTML"
-    name="zip_code"
-    value="{{ company.zip_code }}"
->
-
-<input
-    id="company-country"
-    hx-swap-oob="outerHTML"
-    name="country"
-    value="Polska"
->
+{% endfor %}
