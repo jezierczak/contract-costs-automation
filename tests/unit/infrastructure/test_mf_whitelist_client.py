@@ -58,6 +58,7 @@ def test_lookup_returns_name_and_working_address(monkeypatch):
         "street": "Ul. Krakowska 10",
         "zip_code": "30-001",
         "city": "Kraków",
+        "country": "Polska",
     }
     assert "/nip/1234563218?" in calls[0]
 
@@ -107,3 +108,8 @@ def test_normalize_case_keeps_legal_forms_and_roman_numerals():
     assert normalize_case("FIRMA S.A.") == "Firma S.A."
     assert normalize_case("AL. JANA PAWŁA II 12/3") == "Al. Jana Pawła II 12/3"
     assert normalize_case("JAN I SYN") == "Jan I Syn"
+
+
+def test_normalize_case_keeps_foreign_legal_forms():
+    assert normalize_case("MUSTER GMBH") == "Muster GmbH"
+    assert normalize_case("AGRO HANDEL AG") == "Agro Handel AG"

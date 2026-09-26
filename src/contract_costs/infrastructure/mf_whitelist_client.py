@@ -13,13 +13,21 @@ _ROMAN_NUMERAL = re.compile(r"^(?=..)X{0,3}(IX|IV|V?I{0,3})$")
 
 _LEGAL_FORMS = {
     "Sp. Z O.o.": "Sp. z o.o.",
-    "S.a.": "S.A.",
+}
+
+# skróty form prawnych (PL i zagraniczne z VIES), które nie mają być "Pierwsza wielka"
+_WORD_FORMS = {
+    form.upper(): form
+    for form in ("S.A.", "GmbH", "AG", "KG", "BV", "B.V.", "NV", "N.V.", "SRL", "S.R.L.",
+                 "SAS", "SARL", "S.L.", "SL", "Ltd", "Ltd.", "LLC", "s.r.o.", "a.s.", "UAB", "OÜ", "AB", "ApS", "A/S")
 }
 
 
 def _capitalize_word(word: str) -> str:
     if _ROMAN_NUMERAL.match(word):
         return word
+    if word.upper() in _WORD_FORMS:
+        return _WORD_FORMS[word.upper()]
     return "-".join(part.capitalize() for part in word.split("-"))
 
 
@@ -75,4 +83,4 @@ def lookup_company_by_nip(nip: str, timeout: float = 5.0) -> dict | None:
 
     address = subject.get("workingAddress") or subject.get("residenceAddress")
     fields = {"name": subject.get("name") or "", **parse_whitelist_address(address)}
-    return {key: normalize_case(value) for key, value in fields.items()}
+    return {**{key: normalize_case(value) for key, value in fields.items()}, "country": "Polska"}

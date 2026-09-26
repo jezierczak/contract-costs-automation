@@ -10,6 +10,8 @@ from starlette.responses import HTMLResponse
 
 import contract_costs.config as cfg
 from contract_costs.infrastructure.mf_whitelist_client import lookup_company_by_nip
+from contract_costs.infrastructure.vies_client import ViesUnavailableError, lookup_company_by_vat_number
+from contract_costs.services.common.resolve_utils import normalize_tax_number
 from api.dependencies import get_services
 from contract_costs.model.company import CompanyType, Address, Contact, BankAccount, ReferenceNumberingMode
 from contract_costs.model.company_ksef_settings import KsefEnvironment
@@ -147,11 +149,25 @@ def company_gus_lookup(
     if not tax_number:
         return HTMLResponse("")
 
-    company = lookup_company_by_nip(tax_number)
+    # polski NIP (same cyfry) → Biała Lista MF, numer z prefiksem kraju → VIES
+    normalized = normalize_tax_number(tax_number) or ""
+    is_eu_vat = normalized[:2].isalpha()
+    try:
+        company = lookup_company_by_vat_number(normalized) if is_eu_vat else lookup_company_by_nip(normalized)
+    except ViesUnavailableError:
+        return HTMLResponse(
+            "<div class='text-sm text-red-600 mt-2'>VIES chwilowo nie odpowiada – spróbuj za chwilę</div>"
+        )
 
     if not company:
         return HTMLResponse(
-            "<div class='text-sm text-red-600 mt-2'>Nie znaleziono firmy o tym NIP-ie</div>"
+            "<div class='text-sm text-red-600 mt-2'>Nie znaleziono firmy o tym numerze</div>"
+        )
+
+    if not company["name"] and not company["street"]:
+        return HTMLResponse(
+            "<div class='text-sm text-green-700 mt-2'>Numer VAT aktywny w VIES, ale ten kraj "
+            "nie udostępnia nazwy ani adresu – uzupełnij je ręcznie</div>"
         )
 
     return request.app.state.templates.TemplateResponse(
