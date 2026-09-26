@@ -1223,7 +1223,9 @@ class Services:
             self._get_document_service = GetDocumentQueryService(
                 matching_service=FindMatchingRecordService(
                     document_parse_normalizer=DocumentParseNormalizer(),
-                )
+                ),
+                company_evaluate=self.company_evaluate_orchestrator,
+                normalizer=DocumentParseNormalizer(),
             )
         return self._get_document_service
 

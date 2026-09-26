@@ -146,7 +146,8 @@ def documents_list(
         },
     )
 
-from fastapi.responses import FileResponse
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import FileResponse, JSONResponse
 
 
 @router.get("/documents/{document_id}/file")
@@ -217,6 +218,25 @@ def document_file(
     # ==========================================
 
     return FileResponse(path)
+
+@router.get("/documents/{document_id}/match-data")
+def document_match_data(
+    request: Request,
+    document_id: str,
+    services=Depends(get_services),
+):
+    """Surowe dane ekranu dopasowania (JSON) – do sprawdzenia przed widokiem."""
+    ctx = request.state.ctx
+    document = services.action_bus.execute(
+        action=GetDocumentQuery(
+            organization_id=ctx.organization_id,
+            actor_user_id=ctx.user_id,
+            document_id=UUID(document_id),
+        ),
+        handler=services.get_document_service,
+    )
+    return JSONResponse(jsonable_encoder(document))
+
 
 @router.get("/documents/{document_id}/apply-form")
 def document_apply_form(
