@@ -5,6 +5,7 @@ from contract_costs.cli.context import get_services
 from contract_costs.cli.registry import REGISTRY
 from contract_costs.cli.utils.context_helpers import require_organization_id, require_user_id
 from contract_costs.common.context.exceptions import ContextError
+from contract_costs.services.companies.migration.delete_unused_companies_command import DeleteUnusedCompaniesCommand
 from contract_costs.services.contracts.migration.backfill_system_contracts_command import BackfillSystemContractsCommand
 from contract_costs.services.documents.scoring.simple_scoring_policy import SimpleScoringPolicy
 from contract_costs.services.documents.migration.repair_document_paths_command import RepairDocumentPathsCommand
@@ -75,6 +76,18 @@ def build_system_commands(subparsers):
         help="Re-link unambiguous records (default: only list what would change)",
     )
     p5.set_defaults(handler=handle_repair_record_companies)
+
+    p6 = subparsers.add_parser(
+        "delete-unused-companies",
+        help="Delete non-OWN companies without records, contracts or KSeF settings; "
+             "dry-run unless --apply",
+    )
+    p6.add_argument(
+        "--apply",
+        action="store_true",
+        help="Delete the listed companies (default: only list them)",
+    )
+    p6.set_defaults(handler=handle_delete_unused_companies)
 
 
 REGISTRY.register_group("system", build_system_commands)
@@ -261,3 +274,32 @@ def handle_repair_record_companies(args):
         print(f"Przepięto pozycje {RepairKind.FIX.value}; pozostałe do ręcznego sprawdzenia.")
     else:
         print("Tryb podglądu – nic nie zapisano. Uruchom z --apply, żeby przepiąć pozycje fix.")
+
+
+def handle_delete_unused_companies(args):
+    services = get_services()
+
+    try:
+        organization_id = require_organization_id(services.context)
+        actor_user_id = require_user_id(services.context)
+    except ContextError:
+        return
+
+    companies = services.action_bus.execute(
+        action=DeleteUnusedCompaniesCommand(
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
+            apply=args.apply,
+        ),
+        handler=services.delete_unused_companies,
+    )
+
+    print(f"{'NIP':<16} {'ROLA':<10} {'AKTYWNA':<8} NAZWA")
+    for company in sorted(companies, key=lambda c: c.name.lower()):
+        print(f"{company.tax_number:<16} {company.role.value:<10} {'tak' if company.is_active else 'nie':<8} {company.name}")
+
+    print(f"----- Nieużywanych firm: {len(companies)} -----")
+    if args.apply:
+        print("Usunięto.")
+    else:
+        print("Tryb podglądu – nic nie usunięto. Uruchom z --apply, żeby usunąć.")

@@ -1099,6 +1099,13 @@ class Services:
 
         return self._document_action_excel_loader_service
     @property
+    def delete_unused_companies(self):
+        from contract_costs.services.companies.migration.delete_unused_companies_service import (
+            DeleteUnusedCompaniesService,
+        )
+        return DeleteUnusedCompaniesService()
+
+    @property
     def repair_record_companies(self):
         from contract_costs.ksef.parser.ksef_document_parser import KsefDocumentParser
         from contract_costs.services.financial_records.migration.repair_record_companies_service import (
