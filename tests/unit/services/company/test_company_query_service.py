@@ -198,3 +198,28 @@ def test_returns_dto_with_quality_score(company_repo, uow):
 
     assert len(result) == 1
     assert isinstance(result[0].quality_score, (int, float))
+
+
+def test_to_verify_only_filter(company_repo, uow):
+    from contract_costs.model.company import CompanyVerificationStatus
+
+    service = CompanyQueryService()
+    org_id = new_uuid()
+    verified = CompanyBuilder().with_organization_id(org_id).with_tax_number("5261009959").build()
+    to_verify = (
+        CompanyBuilder()
+        .with_organization_id(org_id)
+        .with_tax_number("TMP-abcd1234")
+        .with_verification_status(CompanyVerificationStatus.TO_VERIFY)
+        .build()
+    )
+    company_repo.add(verified)
+    company_repo.add(to_verify)
+
+    result = service.execute(
+        action=CompanyQuery(organization_id=org_id, actor_user_id=new_uuid(), to_verify_only=True),
+        uow=uow,
+    )
+
+    assert [dto.id for dto in result] == [to_verify.id]
+    assert result[0].verification_status == CompanyVerificationStatus.TO_VERIFY

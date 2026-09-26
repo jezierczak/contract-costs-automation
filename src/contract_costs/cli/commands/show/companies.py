@@ -18,6 +18,7 @@ def build_show_companies(subparsers):
 
     p.add_argument("--own", action="store_true", help="Show own companies only")
     p.add_argument("--inactive", action="store_true", help="Include inactive companies")
+    p.add_argument("--to-verify", action="store_true", help="Show companies waiting for verification only")
     p.add_argument("--nip", help="Filter by tax number (strict)")
     p.add_argument("--search", help="Search in name, description, address, email")
     p.add_argument("--role", help="Filter by company role")
@@ -49,6 +50,7 @@ def handle_show_companies(args) -> None:
         tax_number=args.nip,
         own_only=args.own,
         include_inactive=args.inactive,
+        to_verify_only=args.to_verify,
         search=args.search,
         role=role,
     )

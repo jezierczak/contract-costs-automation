@@ -25,6 +25,7 @@ class CompanyQuery(Query):
     # =====================
     own_only: bool = False
     include_inactive: bool = False
+    to_verify_only: bool = False
 
     # =====================
     # FILTRY ENUM

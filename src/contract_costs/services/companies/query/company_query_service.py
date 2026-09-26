@@ -1,5 +1,5 @@
 from contract_costs.action_bus.action_handler import ActionHandler
-from contract_costs.model.company import Company, CompanyType
+from contract_costs.model.company import Company, CompanyType, CompanyVerificationStatus
 from contract_costs.model.financial_record import FinancialRecordStatus
 
 from contract_costs.services.companies.confidence.quality_default import DefaultCompanyQuality
@@ -44,6 +44,9 @@ class CompanyQueryService(ActionHandler[CompanyQuery, list[CompanyDTO]]):
 
         if not query.include_inactive:
             companies = [c for c in companies if c.is_active]
+
+        if query.to_verify_only:
+            companies = [c for c in companies if c.verification_status == CompanyVerificationStatus.TO_VERIFY]
 
         if query.search:
             phrase = query.search.lower()

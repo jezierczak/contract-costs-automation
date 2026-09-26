@@ -1,6 +1,7 @@
 from contract_costs.infrastructure.excel.excel_column_v2.excel_column import ExcelColumn
 # from contract_costs.infrastructure.excel.excel_column_v2.excel_column_type import ExcelColumnType
 from contract_costs.infrastructure.excel.excel_column import ExcelColumnType
+from contract_costs.model.company import CompanyVerificationStatus
 from contract_costs.services.companies.query.dto.company_dto import CompanyDTO
 
 
@@ -8,6 +9,7 @@ def company_list_columns() -> list[ExcelColumn[CompanyDTO]]:
     return ExcelColumn.from_lists(
         headers=[
             "Q",
+            "VERIFY",
             "NAME",
             "NIP",
             "ROLE",
@@ -18,6 +20,7 @@ def company_list_columns() -> list[ExcelColumn[CompanyDTO]]:
         ],
         getters=[
             lambda c: str(c.quality_score) if c.quality_score is not None else "-",
+            lambda c: "TODO" if c.verification_status == CompanyVerificationStatus.TO_VERIFY else "",
             lambda c: c.name,
             lambda c: c.tax_number,
             lambda c: c.role.value,
@@ -28,6 +31,7 @@ def company_list_columns() -> list[ExcelColumn[CompanyDTO]]:
         ],
         types=[
             ExcelColumnType.DISPLAY,  # Q
+            ExcelColumnType.DISPLAY,  # verify
             ExcelColumnType.DISPLAY,  # name
             ExcelColumnType.DISPLAY,  # nip
             ExcelColumnType.DISPLAY,  # role
