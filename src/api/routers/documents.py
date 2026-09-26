@@ -1,5 +1,6 @@
 import json
 import logging
+from html import escape as html_escape
 from datetime import date, timedelta
 from uuid import UUID
 from pathlib import Path
@@ -159,6 +160,13 @@ def document_file(
 
     path = Path(dto.file_path)
 
+    if not path.is_file():
+        logger.error("Document %s file missing on disk: %s", document_id, path)
+        return HTMLResponse(
+            f"<p>Brak pliku dokumentu na dysku: <code>{html_escape(str(path))}</code></p>",
+            status_code=404,
+        )
+
     download = request.query_params.get("download")
     raw = request.query_params.get("raw")
 
@@ -168,13 +176,9 @@ def document_file(
 
     if download:
         # XML też jako oryginał – PDF z wizualizacji robi się przez druk w podglądzie
-        return FileResponse(
-            path,
-            filename=path.name,
-            headers={
-                "Content-Disposition": f'attachment; filename="{path.name}"'
-            },
-        )
+        # Starlette sam koduje nazwę (filename*=utf-8''…) – ręczny nagłówek
+        # wywracał się na polskich znakach
+        return FileResponse(path, filename=path.name)
 
     # ==========================================
     # XML PREVIEW

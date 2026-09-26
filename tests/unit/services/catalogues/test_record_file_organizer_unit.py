@@ -11,6 +11,11 @@ def test_record_file_organizer_sanitize_filename() -> None:
     assert value == "A_B_C_X_"
 
 
+def test_record_file_organizer_sanitize_filename_strips_trailing_dots() -> None:
+    assert RecordFileOrganizer._sanitize_filename("Remontivo Sp. z o.o.") == "REMONTIVO_SP._Z_O.O"
+    assert RecordFileOrganizer._sanitize_filename("...") == "UNKNOWN"
+
+
 def test_record_file_organizer_build_invoice_filename() -> None:
     filename = RecordFileOrganizer._build_invoice_filename(
         client_name="Very Long Client Name",

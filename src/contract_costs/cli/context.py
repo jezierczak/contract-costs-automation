@@ -1099,6 +1099,13 @@ class Services:
 
         return self._document_action_excel_loader_service
     @property
+    def repair_document_paths(self):
+        from contract_costs.services.documents.migration.repair_document_paths_service import (
+            RepairDocumentPathsService,
+        )
+        return RepairDocumentPathsService()
+
+    @property
     def backfill_import_payments(self):
         from contract_costs.services.financial_records.migration.backfill_import_payments_service import (
             BackfillImportPaymentsService,

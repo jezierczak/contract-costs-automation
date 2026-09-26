@@ -7,6 +7,7 @@ from contract_costs.cli.utils.context_helpers import require_organization_id, re
 from contract_costs.common.context.exceptions import ContextError
 from contract_costs.services.contracts.migration.backfill_system_contracts_command import BackfillSystemContractsCommand
 from contract_costs.services.documents.scoring.simple_scoring_policy import SimpleScoringPolicy
+from contract_costs.services.documents.migration.repair_document_paths_command import RepairDocumentPathsCommand
 from contract_costs.services.financial_records.migration.backfill_import_payments_command import (
     BackfillImportPaymentsCommand,
 )
@@ -46,6 +47,18 @@ def build_system_commands(subparsers):
         help="Add the missing payments (default: only list what would change)",
     )
     p3.set_defaults(handler=handle_backfill_import_payments)
+
+    p4 = subparsers.add_parser(
+        "repair-document-paths",
+        help="Fix document paths with trailing dots/spaces (Windows vs container dirs); "
+             "run inside the container; dry-run unless --apply",
+    )
+    p4.add_argument(
+        "--apply",
+        action="store_true",
+        help="Move files and update paths (default: only list what would change)",
+    )
+    p4.set_defaults(handler=handle_repair_document_paths)
 
 
 REGISTRY.register_group("system", build_system_commands)
@@ -158,3 +171,35 @@ def handle_backfill_import_payments(args):
         print("Zapisano wpłaty i przeliczono statusy.")
     else:
         print("Tryb podglądu – nic nie zapisano. Uruchom z --apply, żeby naprawić.")
+
+
+def handle_repair_document_paths(args):
+    services = get_services()
+
+    try:
+        organization_id = require_organization_id(services.context)
+        actor_user_id = require_user_id(services.context)
+    except ContextError:
+        return
+
+    fixes = services.action_bus.execute(
+        action=RepairDocumentPathsCommand(
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
+            apply=args.apply,
+        ),
+        handler=services.repair_document_paths,
+    )
+
+    for fix in sorted(fixes, key=lambda f: (f.kind.value, f.old_path)):
+        print(f"{fix.kind.value:<10} {fix.old_path}")
+        print(f"{'':<10} -> {fix.new_path}")
+
+    counts = {kind: sum(1 for f in fixes if f.kind == kind) for kind in {f.kind for f in fixes}}
+    summary = ", ".join(f"{kind.value}: {count}" for kind, count in sorted(counts.items(), key=lambda i: i[0].value))
+    print(f"----- Dokumentów: {len(fixes)} ({summary or 'brak'}) -----")
+    if args.apply:
+        print("Zapisano (missing pominięte – do ręcznego sprawdzenia).")
+    else:
+        print("Tryb podglądu – nic nie zapisano. Uruchom z --apply, żeby naprawić.")
+

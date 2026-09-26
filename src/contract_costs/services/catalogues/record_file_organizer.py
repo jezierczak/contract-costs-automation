@@ -167,4 +167,9 @@ class RecordFileOrganizer:
         # usuń podwójne _
         value = re.sub(r"_+", "_", value)
 
-        return value
+        # Windows po cichu obcina kropki/spacje na końcu nazwy – bez tego np.
+        # „SP. Z O.O.” daje katalog, który w kontenerze (Linux) i na hoście
+        # (Windows) jest dwoma różnymi katalogami
+        value = value.rstrip(". ")
+
+        return value or "UNKNOWN"

@@ -114,6 +114,7 @@ uv run python -m contract_costs.cli.main <command>
 
 - `system backfill` - Ensure required system contracts exist.
 - `system backfill-import-payments [--apply]` - Add missing payments for records paid at sale (cash/card/BLIK/bon/pre-paid) or PAID without payments; dry-run without `--apply`.
+- `system repair-document-paths [--apply]` - Fix document paths with trailing dots/spaces in directory names (run inside the container); dry-run without `--apply`.
 
 ### `report`
 
