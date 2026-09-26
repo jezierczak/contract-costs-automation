@@ -680,6 +680,7 @@ def unattach_document(
 def delete_document(
     request: Request,
     document_id: str,
+    from_screen: int = Form(0),
 
     services=Depends(get_services),
 ):
@@ -700,6 +701,11 @@ def delete_document(
         entity_type="document",
         entity_id=UUID(document_id),
     )
+
+    if from_screen:
+        response = Response(status_code=204)
+        response.headers["HX-Location"] = json.dumps({"path": "/documents", "target": "#content-area"})
+        return response
 
     return _render_documents_table(
         request=request,

@@ -86,6 +86,7 @@ def test_match_screen_renders_parties_candidates_and_actions():
     assert "PRO/1" in html and "różnica 2.00" in html
     assert ">nazwy<" in html and ">suma<" in html
     assert 'value="ADD_TO_EXISTING"' in html
+    assert f'hx-post="/documents/{DOC_ID}/delete"' in html
 
 
 def _apply(client, **form):
@@ -127,3 +128,14 @@ def test_seller_mismatch_asks_for_confirmation():
 
     assert "Przypnij mimo to" in response.text
     assert "Przepnij rekord na sprzedawcę z KSeF" in response.text
+
+
+def test_delete_from_screen_returns_to_documents_list():
+    calls = []
+    client = _client(lambda **kw: calls.append(kw))
+    client.app.dependency_overrides[get_services]().delete_document_service = object()
+
+    response = client.post(f"/documents/{DOC_ID}/delete", data={"from_screen": "1"})
+
+    assert calls[0]["action"].document_id == DOC_ID
+    assert json.loads(response.headers["HX-Location"])["path"] == "/documents"

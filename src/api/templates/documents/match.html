@@ -193,6 +193,17 @@
                         class="border px-4 py-2 rounded text-gray-700 hover:bg-gray-100">
                     Pomiń
                 </button>
+                <button
+                    type="button"
+                    hx-post="/documents/{{ document.document_id }}/delete"
+                    hx-vals='{"from_screen": "1"}'
+                    hx-confirm="Na pewno usunąć ten dokument?"
+                    hx-target="#match-feedback"
+                    hx-swap="innerHTML"
+                    class="border border-red-300 px-4 py-2 rounded text-red-600 hover:bg-red-50"
+                >
+                    🗑 Usuń
+                </button>
             </div>
         </div>
 
