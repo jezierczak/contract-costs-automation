@@ -56,7 +56,12 @@ class CompanyFinancialsCalculator:
         year: int,
         company_id: UUID,
         lines: Iterable[CompanyLedgerLineRaw],
+        skip_internal: bool = False,
     ) -> CompanyFinancials:
+        """
+        skip_internal=True – do sumy grupy (organizacji): faktury INTERNAL między firmami own
+        to u jednej przychód, u drugiej koszt, więc w wyniku grupy się znoszą.
+        """
 
         total = EMPTY
         months: dict[int, CompanyPeriodFinancials] = {}
@@ -65,6 +70,9 @@ class CompanyFinancialsCalculator:
         for line in lines:
             if not cls.is_approved(line):
                 unapproved.add(str(line.record_id))
+                continue
+
+            if skip_internal and line.direction == ValueDirection.INTERNAL.value:
                 continue
 
             period = cls.classify(line=line, company_id=company_id)

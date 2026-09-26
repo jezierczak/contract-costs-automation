@@ -31,6 +31,7 @@ from contract_costs.services.ksef.enqueue_ksef_auto_import_service import Enqueu
 from contract_costs.services.companies.query.company_detail_query_service import CompanyDetailQueryService
 from contract_costs.services.companies.update_company_service import UpdateCompanyService
 from contract_costs.services.company_dashboard.company_dashboard_query_service import CompanyDashboardQueryService
+from contract_costs.services.dashboard.dashboard_query_service import DashboardQueryService
 from contract_costs.services.company_dashboard.company_fixed_costs_query_service import CompanyFixedCostsQueryService
 from contract_costs.services.company_dashboard.company_month_breakdown_query_service import \
     CompanyMonthBreakdownQueryService
@@ -306,6 +307,7 @@ class Services:
         self._mainboard_stats_query_service=None
 
         self._company_dashboard_query_service = None
+        self._dashboard_query_service = None
 
         self._company_month_breakdown_service = None
         self._company_fixed_costs_query_service = None
@@ -1258,6 +1260,12 @@ class Services:
         if self._company_dashboard_query_service is None:
             self._company_dashboard_query_service = CompanyDashboardQueryService()
         return self._company_dashboard_query_service
+
+    @property
+    def dashboard_query_service(self):
+        if self._dashboard_query_service is None:
+            self._dashboard_query_service = DashboardQueryService()
+        return self._dashboard_query_service
 
     @property
     def company_month_breakdown_service(self):
