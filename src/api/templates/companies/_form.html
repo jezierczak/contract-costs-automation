@@ -45,12 +45,22 @@ NIP
 
 <div class="flex gap-2">
 
-<input
-    name="tax_number"
-    value="{{ company.tax_number if company and company.tax_number else '' }}"
-    placeholder="np. 7352861234"
-    class="flex-1 border rounded px-3 py-2"
+{% with tax_number = company.tax_number if company else '' %}
+{% include "companies/_tax_number_input.html" %}
+{% endwith %}
+
+{% if not company %}
+<button
+    type="button"
+    hx-get="/companies/next-identifier"
+    hx-target="#company-tax-number"
+    hx-swap="outerHTML"
+    title="Dla kontrahenta bez NIP-u (osoba prywatna, pracownik) – kolejny numer OTH-"
+    class="bg-gray-100 border px-3 py-2 rounded hover:bg-gray-200 whitespace-nowrap"
 >
+    Generuj numer
+</button>
+{% endif %}
 
 <button
     type="button"

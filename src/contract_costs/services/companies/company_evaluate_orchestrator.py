@@ -3,7 +3,7 @@ from dataclasses import replace
 from datetime import datetime
 from enum import Enum
 from typing import Callable
-from uuid import uuid4, UUID
+from uuid import UUID
 
 from contract_costs.common.ids import new_uuid
 from contract_costs.common.time import utc_now
@@ -18,6 +18,8 @@ from contract_costs.services.companies.normalize.normalize_service import Compan
 from contract_costs.services.companies.providers.candidate_provider import CompanyCandidateProvider
 from contract_costs.services.companies.providers.excact_nip import ExactNipCandidateProvider
 from contract_costs.services.companies.validators.company import CompanyValidator
+from contract_costs.services.companies.identifiers import unknown_company
+from contract_costs.services.common.resolve_utils import UNKNOWN_COMPANY_IDS
 from contract_costs.services.financial_records.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
 from contract_costs.unit_of_work import UnitOfWork
 
@@ -87,9 +89,10 @@ class CompanyEvaluateOrchestrator:
         Main entry point for company resolution.
 
         Rules:
-        1. Match ONLY by exact tax number (or raw TMP-/AI- placeholder)
-        2. No match → CREATE (unless NO_CREATE)
-        3. Match → fill in data (see _maybe_update); tax number never changes
+        1. Match ONLY by exact tax number (or raw TMP-/AI-/OTH- identifier)
+        2. No match + trusted tax number → CREATE (unless NO_CREATE)
+        3. No match + no / untrusted tax number → shared UNKNOWN_SELLER / UNKNOWN_BUYER
+        4. Match → fill in data (see _maybe_update); tax number never changes
 
         Fuzzy providers (name, bank, email, ...) never decide - see suggest().
         """
@@ -100,6 +103,16 @@ class CompanyEvaluateOrchestrator:
         if not candidates:
             if mode == EvaluateMode.NO_CREATE:
                 raise RuntimeError(f"({mode.value} mode) No candidates found for NIP: {input_.tax_number}")
+            tax_number = self._normalizator.normalize_tax_number(input_.tax_number)
+            if not tax_number or not CompanyValidator.is_trusted_tax_number(tax_number):
+                logger.info("Untrusted tax number %r → unknown company", input_.tax_number)
+                return unknown_company(
+                    uow=uow,
+                    organization_id=organization_id,
+                    actor_user_id=actor_user_id,
+                    buyer=input_.role == CompanyType.BUYER.value,
+                    now=self._clock(),
+                )
             logger.info("No company with this tax number → creating new company")
             return self._create_company(
                 uow=uow,
@@ -142,12 +155,8 @@ class CompanyEvaluateOrchestrator:
                         input_: CompanyInput,
                         id_generator: Callable[[], UUID] = new_uuid
                         ) -> Company:
-        normalized_tax = self._normalizator.normalize_tax_number(input_.tax_number)
-        tax_number = (
-            normalized_tax
-            if normalized_tax is not None
-            else self.generate_placeholder_tax_number()
-        )
+        # evaluate() tworzy firmę tylko z pewnym numerem (is_trusted_tax_number)
+        tax_number = self._normalizator.normalize_tax_number(input_.tax_number)
 
         company = Company(
             id=id_generator(),
@@ -173,12 +182,10 @@ class CompanyEvaluateOrchestrator:
             role=CompanyType(input_.role),
             tags=set(),
             is_active=True,
-            # pewny NIP + nazwa z dokumentu = firma gotowa; inaczej użytkownik ją uzupełnia
+            # bez nazwy z dokumentu użytkownik musi firmę uzupełnić
             verification_status=(
                 CompanyVerificationStatus.VERIFIED
-                if normalized_tax is not None
-                and CompanyValidator.is_trusted_tax_number(normalized_tax)
-                and (input_.name or "").strip()
+                if (input_.name or "").strip()
                 else CompanyVerificationStatus.TO_VERIFY
             ),
 
@@ -278,6 +285,10 @@ class CompanyEvaluateOrchestrator:
         - otherwise only empty fields are filled in
         """
 
+        # wspólna firma nieznanych kontrahentów nie przejmuje danych z dokumentów
+        if company.tax_number in UNKNOWN_COMPANY_IDS:
+            return company
+
         input_quality = DefaultCompanyQuality.from_input(input_)
         company_quality = DefaultCompanyQuality.from_company(company)
         authoritative = mode == EvaluateMode.AUTHORITATIVE
@@ -316,10 +327,3 @@ class CompanyEvaluateOrchestrator:
         )
         uow.companies.update(updated_company)
         return updated_company
-
-
-    @staticmethod
-    def generate_placeholder_tax_number() -> str:
-        return f"TMP-{uuid4().hex[:8]}"
-
-

@@ -2,7 +2,7 @@ from uuid import UUID
 
 from contract_costs.model.company import Company
 from contract_costs.repository.company_repository import CompanyRepository
-from contract_costs.services.common.resolve_utils import normalize_tax_number
+from contract_costs.services.common.resolve_utils import is_placeholder_identifier, normalize_tax_number
 from contract_costs.services.companies.providers.candidate_provider import CompanyCandidateProvider
 from contract_costs.services.financial_records.assigment.invoice_sources.pdf.parsers.dto.parse import CompanyInput
 from contract_costs.unit_of_work import UnitOfWork
@@ -40,8 +40,8 @@ class ExactNipCandidateProvider(CompanyCandidateProvider):
             if company:
                 return [company]
 
-        # --- fallback tylko dla placeholderów ---
-        if input_.tax_number.startswith(("TMP-", "AI-")):
+        # --- fallback tylko dla placeholderów (TMP-/AI-/OTH-) ---
+        if is_placeholder_identifier(input_.tax_number):
             company_dirty = uow.companies.get_by_tax_number(
                 tax_number=input_.tax_number,
                 organization_id=organization_id,

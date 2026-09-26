@@ -19,6 +19,7 @@ from contract_costs.services.companies.dto.update_company_command import UpdateO
     UpdateCounterpartyCompanyCommand
 from contract_costs.services.companies.query.dto.company_detail_query import CompanyDetailQuery
 from contract_costs.services.companies.query.dto.company_query import CompanyQuery
+from contract_costs.services.companies.identifiers import next_other_identifier
 from contract_costs.services.companies.dto.save_company_ksef_settings_command import SaveCompanyKsefSettingsCommand
 
 COMPANY_NUMBERING_OPTIONS = [
@@ -133,6 +134,23 @@ def create_owner_company(
         url=f"/companies/{tax_number}",
         status_code=303,
     )
+@router.get("/companies/next-identifier", response_class=HTMLResponse)
+def company_next_identifier(
+    request: Request,
+    services=Depends(get_services),
+):
+    with services.uow as uow:
+        tax_number = next_other_identifier(uow=uow, organization_id=request.state.ctx.organization_id)
+
+    return request.app.state.templates.TemplateResponse(
+        "companies/_tax_number_input.html",
+        {
+            "request": request,
+            "tax_number": tax_number,
+        },
+    )
+
+
 @router.get("/companies/gus", response_class=HTMLResponse)
 def company_gus_lookup(
     request: Request,

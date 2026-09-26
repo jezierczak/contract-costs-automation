@@ -226,3 +226,22 @@ def test_update_company_marks_verified_only_from_form(company_repo, uow):
 
     service.execute(action=_numbering_cmd(company, org_id, mark_verified=True), uow=uow)
     assert company_repo.get(company.id, org_id).verification_status == CompanyVerificationStatus.VERIFIED
+
+
+def test_update_company_never_verifies_unknown_company(company_repo, uow):
+    from contract_costs.model.company import CompanyVerificationStatus
+
+    service = UpdateCompanyService()
+    org_id = uuid4()
+    unknown = (
+        CompanyBuilder()
+        .with_organization_id(org_id)
+        .with_tax_number("UNKNOWN_SELLER")
+        .with_verification_status(CompanyVerificationStatus.TO_VERIFY)
+        .build()
+    )
+    company_repo.add(unknown)
+
+    service.execute(action=_numbering_cmd(unknown, org_id, mark_verified=True), uow=uow)
+
+    assert company_repo.get(unknown.id, org_id).verification_status == CompanyVerificationStatus.TO_VERIFY

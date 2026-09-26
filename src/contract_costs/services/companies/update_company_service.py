@@ -6,7 +6,7 @@ from contract_costs.model.company import CompanyVerificationStatus
 from contract_costs.action_bus.action_handler import ActionHandler
 from contract_costs.common.time import utc_now
 from contract_costs.repository.company_repository import CompanyRepository
-from contract_costs.services.common.resolve_utils import normalize_required_tax_number
+from contract_costs.services.common.resolve_utils import normalize_required_tax_number, UNKNOWN_COMPANY_IDS
 from contract_costs.services.companies.dto.update_company_command import BaseUpdateCompanyCommand
 from contract_costs.unit_of_work import UnitOfWork
 
@@ -63,7 +63,7 @@ class UpdateCompanyService(ActionHandler[BaseUpdateCompanyCommand, None]):
             ),
             verification_status=(
                 CompanyVerificationStatus.VERIFIED
-                if action.mark_verified
+                if action.mark_verified and company.tax_number not in UNKNOWN_COMPANY_IDS
                 else company.verification_status
             ),
             updated_at=self._clock(),

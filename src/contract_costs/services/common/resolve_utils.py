@@ -20,6 +20,24 @@ def resolve_or_none(getter,organization_id: UUID, code: str | None, label: str) 
 
 
 
+# identyfikatory firm, które nie są NIP-em – zostają w bazie w niezmienionej postaci
+OTHER_IDENTIFIER_PREFIX = "OTH-"          # nadawany ręcznie (przycisk „Generuj numer”)
+LEGACY_PLACEHOLDER_PREFIXES = ("TMP-", "AI-")
+UNKNOWN_SELLER_ID = "UNKNOWN_SELLER"      # wspólna firma dla nierozpoznanych sprzedawców
+UNKNOWN_BUYER_ID = "UNKNOWN_BUYER"        # wspólna firma dla nierozpoznanych nabywców
+UNKNOWN_COMPANY_IDS = (UNKNOWN_SELLER_ID, UNKNOWN_BUYER_ID)
+
+
+def is_placeholder_identifier(value: str | None) -> bool:
+    if not value:
+        return False
+    value = value.strip()
+    return (
+        value.startswith((OTHER_IDENTIFIER_PREFIX, *LEGACY_PLACEHOLDER_PREFIXES))
+        or value in UNKNOWN_COMPANY_IDS
+    )
+
+
 # etykieta dopisana przez OCR/AI, np. "NIP: 123-456-78-90" (żaden kod kraju UE nie zaczyna się od N ani V)
 _TAX_NUMBER_LABEL = re.compile(r'^(NIP|VAT\s*(ID)?)\s*:?\s*', flags=re.IGNORECASE)
 
@@ -57,7 +75,7 @@ def normalize_tax_number(nip: str | int | None) -> str | None:
 def normalize_required_tax_number(nip: str | int | None) -> str:
     if isinstance(nip,str):
         value = nip.strip()
-        if value.startswith(("TMP-", "AI-")):
+        if is_placeholder_identifier(value):
             return value  # 🔥 KLUCZ
 
     normalized = normalize_tax_number(nip)

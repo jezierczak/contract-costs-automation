@@ -2,7 +2,7 @@ import re
 from dataclasses import replace
 
 from contract_costs.model.company import Company, Contact, BankAccount
-from contract_costs.services.common.resolve_utils import normalize_tax_number
+from contract_costs.services.common.resolve_utils import is_placeholder_identifier, normalize_tax_number
 
 
 class CompanyNormalizeService:
@@ -37,7 +37,7 @@ class CompanyNormalizeService:
 
     @staticmethod
     def _normalize_tax_number_company(value: str) -> str:
-        if value.startswith("TMP-"):
+        if is_placeholder_identifier(value):
             return value
         normalized = normalize_tax_number(value)
         if not normalized:
@@ -48,7 +48,7 @@ class CompanyNormalizeService:
     def normalize_tax_number(value: str | None) -> str | None:
         if not value:
             return None
-        if value.startswith("TMP-"):
+        if is_placeholder_identifier(value):
             return value
         return normalize_tax_number(value) or ""
 

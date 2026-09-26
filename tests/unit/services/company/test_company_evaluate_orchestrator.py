@@ -25,6 +25,9 @@ class FakeCandidateProvider(CompanyCandidateProvider):
         return self._candidates
 
 
+VALID_NIP = "5261009959"
+
+
 # ============================================================
 # HELPERS
 # ============================================================
@@ -68,11 +71,11 @@ def test_creates_company_when_no_candidates(uow):
         uow=uow,
         organization_id=new_uuid(),
         actor_user_id=new_uuid(),
-        input_=build_input(),
+        input_=build_input(tax=VALID_NIP),
     )
 
     assert result.name == "ACME"
-    assert result.tax_number == "1234567890"
+    assert result.tax_number == VALID_NIP
     assert result.is_active is True
 
 
@@ -120,11 +123,11 @@ def test_fuzzy_candidates_do_not_block_creation(company_repo, uow):
         uow=uow,
         organization_id=org_id,
         actor_user_id=new_uuid(),
-        input_=build_input(),
+        input_=build_input(tax=VALID_NIP),
     )
 
     assert result.id != similar.id
-    assert result.tax_number == "1234567890"
+    assert result.tax_number == VALID_NIP
 
 
 def test_suggest_returns_fuzzy_candidates(uow):
@@ -215,8 +218,6 @@ def test_no_change_does_not_update_timestamp(company_repo, uow):
     [
         ("ACME", "5261009959", CompanyVerificationStatus.VERIFIED),       # poprawna suma kontrolna
         ("ACME", "IE3463004VH", CompanyVerificationStatus.VERIFIED),      # VAT UE z prefiksem
-        ("ACME", "1234567890", CompanyVerificationStatus.TO_VERIFY),      # zła suma kontrolna
-        ("ACME", None, CompanyVerificationStatus.TO_VERIFY),              # brak NIP → TMP-
         (None, "5261009959", CompanyVerificationStatus.TO_VERIFY),        # brak nazwy
     ],
 )
@@ -228,4 +229,48 @@ def test_created_company_verification_status(uow, name, tax, expected):
         input_=build_input(name=name, tax=tax),
     )
 
+    assert result.tax_number == tax
     assert result.verification_status == expected
+
+
+@pytest.mark.parametrize(
+    ("tax", "role", "expected_id"),
+    [
+        (None, CompanyType.SELLER, "UNKNOWN_SELLER"),          # brak NIP-u
+        ("1234567890", CompanyType.SELLER, "UNKNOWN_SELLER"),  # zła suma kontrolna (OCR)
+        ("3463004", CompanyType.BUYER, "UNKNOWN_BUYER"),       # obcięty numer zagraniczny
+    ],
+)
+def test_untrusted_tax_number_goes_to_shared_unknown_company(uow, tax, role, expected_id):
+    org_id = new_uuid()
+    orchestrator = build_orchestrator()
+
+    first = orchestrator.evaluate(
+        uow=uow, organization_id=org_id, actor_user_id=new_uuid(),
+        input_=build_input(name="FIRMA A", tax=tax, role=role),
+    )
+    second = orchestrator.evaluate(
+        uow=uow, organization_id=org_id, actor_user_id=new_uuid(),
+        input_=build_input(name="FIRMA B", tax=tax, role=role, email="b@firma.pl"),
+    )
+
+    assert first.tax_number == expected_id
+    assert second.id == first.id
+    assert first.verification_status == CompanyVerificationStatus.TO_VERIFY
+    # dane z dokumentów nie nadpisują wspólnej firmy
+    stored = uow.companies.get(first.id, org_id)
+    assert stored.name == first.name
+    assert stored.contact is None
+
+
+def test_existing_company_with_untrusted_identifier_is_still_matched(company_repo, uow):
+    org_id = new_uuid()
+    employee = CompanyBuilder().with_organization_id(org_id).with_tax_number("OTH-000007").build()
+    company_repo.add(employee)
+
+    result = build_orchestrator().evaluate(
+        uow=uow, organization_id=org_id, actor_user_id=new_uuid(),
+        input_=build_input(tax="OTH-000007"),
+    )
+
+    assert result.id == employee.id
