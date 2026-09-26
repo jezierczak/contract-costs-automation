@@ -166,3 +166,77 @@ def test_is_scoped_to_organization(company_repo, uow):
     )
 
     assert result == []
+
+
+# ------------------------------------------------------------
+# PREFIKS KRAJU (numer zapisany z literami lub bez)
+# ------------------------------------------------------------
+
+def _add(company_repo, org_id, tax_number):
+    company = CompanyBuilder().with_organization_id(org_id).with_tax_number(tax_number).build()
+    company_repo.add(company)
+    return company
+
+
+def _find(uow, org_id, tax_number):
+    return ExactNipCandidateProvider().find_candidates(
+        uow=uow, organization_id=org_id, input_=build_input(tax_number=tax_number),
+    )
+
+
+def test_prefixed_input_matches_company_saved_without_letters(company_repo, uow):
+    org_id = new_uuid()
+    company = _add(company_repo, org_id, "123456789")
+
+    result = _find(uow, org_id, "DE123456789")
+
+    assert [c.id for c in result] == [company.id]
+
+
+def test_digits_input_matches_company_saved_with_prefix(company_repo, uow):
+    org_id = new_uuid()
+    company = _add(company_repo, org_id, "DE123456789")
+
+    result = _find(uow, org_id, "123456789")
+
+    assert [c.id for c in result] == [company.id]
+
+
+def test_letters_inside_number_are_ignored_too(company_repo, uow):
+    org_id = new_uuid()
+    company = _add(company_repo, org_id, "12345678901")
+
+    result = _find(uow, org_id, "NL123456789B01")
+
+    assert [c.id for c in result] == [company.id]
+
+
+def test_exact_match_wins_over_digits_match(company_repo, uow):
+    org_id = new_uuid()
+    _add(company_repo, org_id, "DE123456789")
+    exact = _add(company_repo, org_id, "123456789")
+
+    result = _find(uow, org_id, "123456789")
+
+    assert [c.id for c in result] == [exact.id]
+
+
+def test_ambiguous_digits_match_returns_nothing(company_repo, uow):
+    org_id = new_uuid()
+    _add(company_repo, org_id, "DE123456789")
+    _add(company_repo, org_id, "AT123456789")
+
+    assert _find(uow, org_id, "123456789") == []
+
+
+def test_digits_match_ignores_placeholders(company_repo, uow):
+    org_id = new_uuid()
+    _add(company_repo, org_id, "OTH-000001")
+
+    assert _find(uow, org_id, "DE000001") == []
+
+
+def test_digits_match_is_scoped_to_organization(company_repo, uow):
+    _add(company_repo, new_uuid(), "123456789")
+
+    assert _find(uow, new_uuid(), "DE123456789") == []
